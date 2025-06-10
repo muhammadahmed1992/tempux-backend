@@ -12,7 +12,12 @@
     "baseUrl": ".",
     "paths": {
       "@nestjs/*": ["node_modules/@nestjs/*"],
-      "@types/*": ["node_modules/@types/*"]
+      "@types/*": ["node_modules/@types/*"],
+      "@API-Gateway/*": ["api-gateway/src/*"],
+      "@Auth/*": ["auth-service/src/*"],
+      "@Product/*": ["product-service/src/*"],
+      "@Buyer/*": ["buyer-service/src/*"],
+      "@Seller/*": ["seller-service/src/*"]
     },
     "incremental": true,
     "outDir": "./dist"

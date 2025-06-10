@@ -19,6 +19,7 @@
     "prepare": "husky install"
   },
   "devDependencies": {
+    "@types/express": "^5.0.3",
     "@types/node": "^24.0.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
@@ -28,7 +29,8 @@
     "globals": "^16.2.0",
     "husky": "^8.0.0",
     "lint-staged": "^13.0.0",
-    "prettier": "^2.8.8"
+    "prettier": "^2.8.8",
+    "ts-node": "^10.9.2"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
