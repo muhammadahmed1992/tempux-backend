@@ -2,7 +2,8 @@
   "name": "backend-monorepo",
   "private": true,
   "workspaces": [
-    "api-gateway",
+    "api-gateway-service",
+    "auth-service",
     "buyer-service",
     "product-service",
     "seller-service"

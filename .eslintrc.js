@@ -1,14 +1,33 @@
+const fs = require("fs");
+const path = require("path");
+
+const baseDir = __dirname;
+
+// Function to find all `tsconfig.json` files inside service-like folders
+function findTSConfigs(baseDir) {
+  const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+
+  return entries.flatMap((entry) => {
+    if (
+      entry.isDirectory() &&
+      (entry.name.endsWith("-service") || entry.name === "api-gateway")
+    ) {
+      const configPath = path.join(baseDir, entry.name, "tsconfig.json");
+      if (fs.existsSync(configPath)) {
+        return [`./${entry.name}/tsconfig.json`];
+      }
+    }
+    return [];
+  });
+}
+
+const serviceProjects = findTSConfigs(baseDir);
+console.log(serviceProjects);
 module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: {
-    project: [
-      "./tsconfig.base.json",
-      "./api-gateway/tsconfig.json",
-      "./buyer-service/tsconfig.json",
-      "./product-service/tsconfig.json",
-      "./seller-service/tsconfig.json",
-    ],
+    project: ["./tsconfig.base.json", ...serviceProjects],
     sourceType: "module",
     ecmaVersion: 2020,
   },
