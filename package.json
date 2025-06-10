@@ -3,7 +3,9 @@
   "private": true,
   "workspaces": [
     "api-gateway",
-    "buyer-service"
+    "buyer-service",
+    "product-service",
+    "seller-service"
   ],
   "scripts": {
     "lint": "eslint '*/src/**/*.{ts,tsx,js,jsx}' --fix",

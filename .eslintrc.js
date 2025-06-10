@@ -6,6 +6,8 @@ module.exports = {
       "./tsconfig.base.json",
       "./api-gateway/tsconfig.json",
       "./buyer-service/tsconfig.json",
+      "./product-service/tsconfig.json",
+      "./seller-service/tsconfig.json",
     ],
     sourceType: "module",
     ecmaVersion: 2020,
