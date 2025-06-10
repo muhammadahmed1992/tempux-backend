@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug API Gateway",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/api-gateway/src/main.ts",
+      "cwd": "${workspaceFolder}/api-gateway",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "env": {
+        "TS_NODE_PROJECT": "${workspaceFolder}/api-gateway/tsconfig.json"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Auth Service",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/auth-service/src/main.ts",
+      "cwd": "${workspaceFolder}/auth-service",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "env": {
+        "TS_NODE_PROJECT": "${workspaceFolder}/auth-service/tsconfig.json"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Product Service",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/product-service/src/main.ts",
+      "cwd": "${workspaceFolder}/product-service",
+      "runtimeArgs": ["-r", "ts-node/register"],
+      "env": {
+        "TS_NODE_PROJECT": "${workspaceFolder}/product-service/tsconfig.json"
+      }
+    }
+  ]
+}
