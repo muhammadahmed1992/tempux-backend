@@ -22,7 +22,6 @@ function findTSConfigs(baseDir) {
 }
 
 const serviceProjects = findTSConfigs(baseDir);
-console.log(serviceProjects);
 module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
