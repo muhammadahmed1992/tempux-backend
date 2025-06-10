@@ -1,4 +1,16 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+echo "Checking for missing node_modules in workspace projects..."
+
+# Loop through all sub-projects
+for dir in */ ; do
+  if [ -f "$dir/package.json" ]; then
+    if [ ! -d "$dir/node_modules" ]; then
+      echo "Installing dependencies for $dir"
+      (cd "$dir" && npm install)
+    fi
+  fi
+done
+
 npx lint-staged
