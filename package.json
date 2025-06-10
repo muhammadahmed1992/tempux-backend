@@ -2,7 +2,8 @@
   "name": "backend-monorepo",
   "private": true,
   "workspaces": [
-    "api-gateway"
+    "api-gateway",
+    "buyer-service"
   ],
   "scripts": {
     "lint": "eslint '*/src/**/*.{ts,tsx,js,jsx}' --fix",
@@ -15,7 +16,6 @@
     "prepare": "husky install"
   },
   "devDependencies": {
-    "@eslint/js": "^9.28.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "eslint": "^8.57.1",
@@ -28,11 +28,11 @@
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
-      "eslint --fix",
-      "prettier --write"
+      "npx eslint --fix",
+      "npx prettier --write"
     ],
     "*.{json,css,md}": [
-      "prettier --write"
+      "npx prettier --write"
     ]
   }
 }
