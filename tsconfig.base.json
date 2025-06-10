@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "target": "ES2023",
     "module": "commonjs",
     "strict": true,
@@ -8,7 +10,10 @@
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true,
     "baseUrl": ".",
-    "paths": {},
+    "paths": {
+      "@nestjs/*": ["node_modules/@nestjs/*"],
+      "@types/*": ["node_modules/@types/*"]
+    },
     "incremental": true,
     "outDir": "./dist"
   }

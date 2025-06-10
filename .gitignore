@@ -1,1 +1,12 @@
 node_modules
+**/dist/
+# TypeScript build info
+**/*.tsbuildinfo
+
+# Logs
+*.log
+logs
+**/*.log
+
+# Env files
+**/.env
