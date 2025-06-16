@@ -1,41 +1,67 @@
 {
   "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Debug All Services",
+      "configurations": [
+        "Debug API Gateway",
+        "Debug Auth Service",
+        "Debug Buyer Service",
+        "Debug Product Service",
+        "Debug Seller Service"
+      ]
+    }
+  ],
   "configurations": [
     {
       "type": "node",
       "request": "launch",
       "name": "Debug API Gateway",
-      "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/api-gateway/src/main.ts",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
       "cwd": "${workspaceFolder}/api-gateway",
-      "runtimeArgs": ["-r", "ts-node/register"],
-      "env": {
-        "TS_NODE_PROJECT": "${workspaceFolder}/api-gateway/tsconfig.json"
-      }
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Debug Auth Service",
-      "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/auth-service/src/main.ts",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
       "cwd": "${workspaceFolder}/auth-service",
-      "runtimeArgs": ["-r", "ts-node/register"],
-      "env": {
-        "TS_NODE_PROJECT": "${workspaceFolder}/auth-service/tsconfig.json"
-      }
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Buyer Service",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
+      "cwd": "${workspaceFolder}/buyer-service",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Debug Product Service",
-      "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/product-service/src/main.ts",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
       "cwd": "${workspaceFolder}/product-service",
-      "runtimeArgs": ["-r", "ts-node/register"],
-      "env": {
-        "TS_NODE_PROJECT": "${workspaceFolder}/product-service/tsconfig.json"
-      }
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Seller Service",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start:debug"],
+      "cwd": "${workspaceFolder}/seller-service",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
     }
   ]
 }
