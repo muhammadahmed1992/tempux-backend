@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../libs/prisma/generated/auth-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_AUTH")
+}
+
+model access_management {
+  id           Int       @id @default(autoincrement())
+  access       String    @db.VarChar(50)
+  description  String?   @db.VarChar(200)
+  user_type_id Int       @db.SmallInt
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  is_deleted   Boolean   @default(false)
+  user_type    user_type @relation(fields: [user_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model saved_searches {
+  id           BigInt    @id @default(autoincrement())
+  user_id      BigInt
+  search_query Json
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  is_deleted   Boolean   @default(false)
+  users        users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model seller_profile_detail {
+  id                BigInt    @id @default(autoincrement())
+  brand_name        String    @db.VarChar(50)
+  brand_description String?   @db.VarChar(100)
+  user_id           BigInt
+  vat_number        String?   @db.VarChar(15)
+  is_private        Boolean   @default(false)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime? @db.Timestamptz(6)
+  is_deleted        Boolean   @default(false)
+  users             users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model seller_profile_rating {
+  id                                             BigInt    @id @default(autoincrement())
+  rating_name                                    String    @db.VarChar(50)
+  rating_value                                   Decimal?  @db.Decimal(2, 1)
+  seller_id                                      BigInt?
+  reviewed_by                                    BigInt?
+  created_at                                     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                                     DateTime? @db.Timestamptz(6)
+  is_deleted                                     Boolean   @default(false)
+  users_seller_profile_rating_reviewed_byTousers users?    @relation("seller_profile_rating_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_seller_profile_rating_seller_idTousers   users?    @relation("seller_profile_rating_seller_idTousers", fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model user_type {
+  id                               Int                 @id @db.SmallInt
+  name                             String              @unique @db.VarChar(20)
+  created_at                       DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at                       DateTime            @default(now()) @db.Timestamptz(6)
+  is_deleted                       Boolean             @default(false)
+  access_management                access_management[]
+  users_users_user_typeTouser_type users[]             @relation("users_user_typeTouser_type")
+}
+
+model users {
+  id                                                             BigInt                  @id @default(autoincrement())
+  name                                                           String                  @db.VarChar(15)
+  email                                                          String                  @unique @db.VarChar(150)
+  full_name                                                      String                  @db.VarChar(100)
+  password                                                       String                  @db.VarChar(150)
+  user_type                                                      Int                     @db.SmallInt
+  telephone                                                      String?                 @db.VarChar(15)
+  address                                                        String?                 @db.VarChar(150)
+  created_at                                                     DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at                                                     DateTime                @default(now()) @db.Timestamptz(6)
+  is_deleted                                                     Boolean                 @default(false)
+  saved_searches                                                 saved_searches[]
+  seller_profile_detail                                          seller_profile_detail[]
+  seller_profile_rating_seller_profile_rating_reviewed_byTousers seller_profile_rating[] @relation("seller_profile_rating_reviewed_byTousers")
+  seller_profile_rating_seller_profile_rating_seller_idTousers   seller_profile_rating[] @relation("seller_profile_rating_seller_idTousers")
+  user_type_users_user_typeTouser_type                           user_type               @relation("users_user_typeTouser_type", fields: [user_type], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([name, user_type], map: "users_name_user_type_unique")
+}
