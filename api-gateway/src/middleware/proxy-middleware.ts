@@ -18,7 +18,7 @@ export class ProxyMiddleware implements NestMiddleware {
     }
 
     const remainingPath = "/" + segments.slice(1).join("/");
-
+    console.log(remainingPath);
     const proxy = createProxyMiddleware({
       target,
       changeOrigin: true,
@@ -34,7 +34,7 @@ export class ProxyMiddleware implements NestMiddleware {
 
         proxyRes(proxyRes, req, res) {
           if (proxyRes.statusCode === 404) {
-            console.warn(`404 from target: ${req.url}`);
+            console.error(`404 from target: ${req.url}`);
           }
         },
         error(

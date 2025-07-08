@@ -6,10 +6,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // TODO: Need to upgrade this logic...
-  const allServiceKeys = ["product", "buyer", "seller"];
-  ///product/{1,1}|/auth/{1,1}
-  const pattern = `/(${allServiceKeys}/{1,1}`;
-  const routeRegex = new RegExp(`/${allServiceKeys.join("{1,}|")}/`);
+  const allServiceKeys = ["product", "buyer", "seller", "auth"];
+
+  // Build pattern: ^/(product|buyer|seller|auth)(/|$)
+  const pattern = `^/(${allServiceKeys.join("|")})(/|$)`;
+
+  const routeRegex = new RegExp(pattern);
 
   app.use(routeRegex, new ProxyMiddleware().use);
 
