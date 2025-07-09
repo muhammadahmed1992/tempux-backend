@@ -1,53 +1,107 @@
 import { Injectable, NestMiddleware } from "@nestjs/common";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { Request, Response, NextFunction } from "express";
-import { IncomingMessage, ServerResponse } from "http";
-import { Socket } from "net";
-import { ProxyTargetUrl } from "http-proxy";
+import { IncomingMessage } from "http";
 import { ServiceResolver } from "@API-Gateway/config/service.resolver";
-
+import * as express from "express";
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-    const segments = req.originalUrl.split("/").filter((url) => url);
-    const serviceKey = segments[0];
+    // Parse first path segment: /auth/register => auth
+    const [, serviceKey, ...restSegments] = req.originalUrl.split("/");
     const target = ServiceResolver.getServiceUrl(serviceKey);
+    const newPath = "/" + restSegments.join("/");
 
     if (!target) {
       return res.status(502).json({ error: "Unknown service" });
     }
 
-    const remainingPath = "/" + segments.slice(1).join("/");
-    console.log(remainingPath);
+    console.log("Incoming:", req.originalUrl);
+    console.log(`target: ${target}`);
+    console.log("Resolved service:", serviceKey, " → ", target);
+    console.log(`new path: ${newPath}`);
     const proxy = createProxyMiddleware({
       target,
       changeOrigin: true,
-      pathRewrite: (path) => {
-        // Remove the service prefix like "/product/..."
-        return remainingPath;
+      pathRewrite: () => {
+        return newPath;
       },
       on: {
-        proxyReq(proxyReq, req, res) {
-          // Add custom header
-          proxyReq.setHeader("X-Gateway", "MyGateway");
-        },
+        proxyReq(proxyReq, req: Request) {
+          // TODO: will update it later
+          // Cast 'req' to 'express.Request' to access Express-specific properties
+          // and to 'IncomingMessage' to access stream-related properties.
+          // Note: 'readableBuffer' is often an internal property, so direct access
+          // might not be fully type-safe without custom type augmentations.
+          const expressReq = req as express.Request &
+            IncomingMessage & { readableBuffer?: Buffer };
+          if (
+            expressReq.body &&
+            Object.keys(expressReq.body).length &&
+            ["POST", "PUT", "PATCH"].includes(req.method)
+          ) {
+            const bodyData = JSON.stringify(expressReq.body);
 
-        proxyRes(proxyRes, req, res) {
-          if (proxyRes.statusCode === 404) {
-            console.error(`404 from target: ${req.url}`);
+            proxyReq.setHeader("Content-Type", "application/json");
+            proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+            proxyReq.end();
+            // --- Debugging Logs (Outgoing Proxy Request) ---
+            console.log(
+              "--- Outgoing ProxyReq Headers (after body processing) ---"
+            );
+            console.log(
+              "Content-Type (on proxyReq):",
+              proxyReq.getHeader("Content-Type")
+            );
+            console.log(
+              "Content-Length (on proxyReq):",
+              proxyReq.getHeader("Content-Length")
+            );
+            console.log(
+              "---------------------------------------------------------"
+            );
+
+            // Add listeners to the proxyReq for debugging stream completion
+            proxyReq.on("error", (err) => {
+              console.error("ProxyReq Error:", err);
+            });
+            proxyReq.on("close", () => {
+              console.log(
+                "ProxyReq Closed (connection to target server closed)"
+              );
+            });
+            proxyReq.on("finish", () => {
+              console.log(
+                "ProxyReq Finished (all data written to target server)"
+              );
+            });
+          } else if (
+            expressReq.method === "GET" ||
+            expressReq.method === "HEAD"
+          ) {
+            // For GET/HEAD requests, no body is expected
+            proxyReq.end(); // End the proxy request
+          } else {
+            // For other methods or if body is unexpectedly missing,
+            // you might want to log a warning or handle differently.
+            console.warn(
+              `Unhandled method or missing body for ${expressReq.method} request.`
+            );
+            proxyReq.end();
           }
         },
-        error(
-          error: Error,
-          request: IncomingMessage,
-          res: ServerResponse<IncomingMessage> | Socket,
-          target?: ProxyTargetUrl | undefined
-        ) {
-          // TODO: Ahmed (This block will only get called if we are unable to make call to this service i.e timeout or maybe it is down)
-          console.log(error);
-          console.log(request);
-          console.log(res);
-          console.log(target);
+        proxyRes() {
+          // proxyRes, req, res
+          // TODO: Will investigate later
+        },
+        error(error, request, response, target) {
+          console.error(request);
+          console.error(target);
+          console.error("Proxy error:", error);
+          response.end(
+            JSON.stringify({ error: "Proxy error", details: error.message })
+          );
         },
       },
     });

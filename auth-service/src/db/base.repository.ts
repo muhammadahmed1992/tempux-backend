@@ -1,33 +1,57 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+export class BaseRepository<
+  TModel,
+  TCreateInput,
+  TUpdateInput,
+  TWhereUniqueInput,
+  TFindUniqueArgs extends { where: TWhereUniqueInput; select?: object },
+  TFindManyArgs extends object
+> {
+  constructor(
+    protected readonly model: {
+      create: (args: {
+        data: TCreateInput;
+        select?: object;
+      }) => Promise<TModel>;
+      findUnique: (args: TFindUniqueArgs) => Promise<TModel | null>;
+      findMany: (args: TFindManyArgs) => Promise<TModel[]>;
+      update: (args: {
+        where: TWhereUniqueInput;
+        data: TUpdateInput;
+        select?: object;
+      }) => Promise<TModel>;
+      delete: (args: {
+        where: TWhereUniqueInput;
+        select?: object;
+      }) => Promise<TModel>;
+      count: (args?: { where?: object }) => Promise<number>;
+    }
+  ) {}
 
-export abstract class BaseRepository<TModel> {
-  protected prisma: PrismaClient;
-  protected model: any; // the specific Prisma model
-
-  constructor(prisma: PrismaClient, model: any) {
-    this.prisma = prisma;
-    this.model = model;
+  async create(data: TCreateInput, select?: object): Promise<TModel> {
+    return this.model.create({ data, ...(select && { select }) });
   }
 
-  async create(data: Prisma.PrismaClientKnownRequestError): Promise<TModel> {
-    return this.model.create({ data });
+  async findUnique(args: TFindUniqueArgs): Promise<TModel | null> {
+    return this.model.findUnique(args);
   }
 
-  async findUnique(
-    where: Prisma.PrismaClientKnownRequestError
-  ): Promise<TModel | null> {
-    return this.model.findUnique({ where });
+  async findMany(args: TFindManyArgs): Promise<TModel[]> {
+    return this.model.findMany(args);
   }
 
-  async findMany(where = {}): Promise<TModel[]> {
-    return this.model.findMany({ where });
+  async update(
+    where: TWhereUniqueInput,
+    data: TUpdateInput,
+    select?: object
+  ): Promise<TModel> {
+    return this.model.update({ where, data, ...(select && { select }) });
   }
 
-  async update(where: any, data: any): Promise<TModel> {
-    return this.model.update({ where, data });
+  async delete(where: TWhereUniqueInput, select?: object): Promise<TModel> {
+    return this.model.delete({ where, ...(select && { select }) });
   }
 
-  async delete(where: any): Promise<TModel> {
-    return this.model.delete({ where });
+  async count(where?: object): Promise<number> {
+    return this.model.count({ where });
   }
 }
