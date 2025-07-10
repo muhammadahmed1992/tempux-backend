@@ -3,7 +3,11 @@ export class BaseRepository<
   TCreateInput,
   TUpdateInput,
   TWhereUniqueInput,
-  TFindUniqueArgs extends { where: TWhereUniqueInput; select?: object },
+  TFindUniqueArgs extends {
+    where: TWhereUniqueInput;
+    select?: object | null;
+    include?: object | null;
+  },
   TFindManyArgs extends object
 > {
   constructor(

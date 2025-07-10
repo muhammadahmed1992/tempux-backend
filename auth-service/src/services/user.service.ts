@@ -94,7 +94,7 @@ export class UserService {
     return ResponseHelper.CreateResponse<LoginDTO>(
       Constants.USER_LOGGED_IN_SUCCESSFULLY,
       { accessToken: token },
-      HttpStatus.ACCEPTED
+      HttpStatus.OK
     );
   }
 
