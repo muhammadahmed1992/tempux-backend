@@ -13,6 +13,8 @@ import { OTPVerificationRequestDTO } from "@DTO/otp.verification.dto";
 import { EmailService } from "@Services/email.service";
 import { ConfigService } from "@nestjs/config";
 import { ResendOTPDTO } from "@DTO/resend.otp.dto";
+import { SocialLoginResponseDTO } from "@DTO/social-login-response.dto";
+import { Prisma } from "@prisma/client";
 
 @Injectable()
 export class UserService {
@@ -53,7 +55,7 @@ export class UserService {
         HttpStatus.CREATED
       );
     } catch (e: unknown) {
-      console.table(e);
+      console.error(e);
       return ResponseHelper.CreateResponse<boolean>(
         Constants.ERROR_MESSAGE,
         false,
@@ -62,7 +64,9 @@ export class UserService {
     }
   }
 
-  async login(request: LoginRequestDTO): Promise<ApiResponse<LoginDTO>> {
+  async login(
+    request: LoginRequestDTO | SocialLoginResponseDTO
+  ): Promise<ApiResponse<LoginDTO>> {
     const user = await this.userRepository.validateUser(
       request.email,
       request.userType
@@ -74,17 +78,20 @@ export class UserService {
         HttpStatus.NOT_FOUND
       );
 
-    const isPasswordValid = await bcrypt.compare(
-      request.password,
-      user.password
-    );
-
-    if (!isPasswordValid)
-      return ResponseHelper.CreateResponse<LoginDTO>(
-        Constants.USER_NOT_FOUND,
-        { accessToken: "" },
-        HttpStatus.NOT_FOUND
+    if (request instanceof LoginRequestDTO) {
+      const isPasswordValid = await bcrypt.compare(
+        request.password,
+        user.password
       );
+
+      if (!isPasswordValid)
+        return ResponseHelper.CreateResponse<LoginDTO>(
+          Constants.USER_NOT_FOUND,
+          { accessToken: "" },
+          HttpStatus.NOT_FOUND
+        );
+    }
+
     const payload = {
       sub: Number(user.id),
       email: user.email,
@@ -147,6 +154,138 @@ export class UserService {
       true,
       HttpStatus.ACCEPTED
     );
+  }
+
+  /**
+   * Validates a social user (Google/Facebook).
+   * Finds an existing user by socialId, or creates a new one.
+   * @param provider - 'google' or 'facebook'
+   * @param socialId - The unique ID from the social provider
+   * @param email - The user's email from the social profile
+   * @param name - The user's name from the social profile
+   * @returns The user object from your database.
+   */
+  async validateSocialUser(
+    provider: "google" | "facebook",
+    socialId: string,
+    email: string,
+    userType: number
+  ): Promise<ApiResponse<SocialLoginResponseDTO>> {
+    const socialLoginFields = {
+      google: "googleId",
+      facebook: "facebookId",
+    };
+    // Determine which ID field to use
+    const socialIdField = socialLoginFields[provider];
+
+    // Try to find the user by their social ID
+    const user = await this.userRepository.findUserBySocialId(
+      socialIdField,
+      socialId
+    );
+
+    if (Array.isArray(user) && user?.length) {
+      // User found, return it
+      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+        Constants.USER_ALREADY_EXISTS,
+        {
+          id: Number(user[0].id),
+          email: user[0].email,
+          userType: user[0].user_type,
+        },
+        HttpStatus.FOUND
+      );
+    }
+
+    // If user not found by social ID, check if an account with this email already exists
+    // This handles cases where a user might register with email/password, then try social login with the same email.
+    // You might want to link accounts here, or prevent login if email already exists without social link.
+    const result = await this.userRepository.validateUser(email, userType);
+
+    if (Array.isArray(result) && result?.length) {
+      // User with this email exists, link the social ID
+      const updatedUser = await this.userRepository.update(
+        { id: result.id },
+        { [socialIdField]: socialId },
+        { select: { id: true } }
+      );
+      // User found, return it
+      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+        Constants.USER_ALREADY_EXISTS,
+        {
+          id: Number(updatedUser.id),
+          email: updatedUser.email,
+          userType: updatedUser.user_type,
+        },
+        HttpStatus.FOUND
+      );
+    }
+    // const result = await this.userRepository.createUser(
+    //   {
+    //     name: user.username,
+    //     email: user.email,
+    //     password: hashedPassword,
+    //     full_name: user.fullName,
+    //     // TODO: Fix this long name sequence later.
+    //     user_type_users_user_typeTouser_type: {
+    //       connect: {
+    //         id: user.userType,
+    //       },
+    //     },
+    //     otp: otpResponse.otp,
+    //     otp_expires_at: otpResponse.otp_expiry_date_time,
+    //   },
+    //   {
+    //     id: true,
+    //   }
+    // );
+    // No existing user found, create a new one
+    // generating OTP as well which will needed
+    // TODO: Will refactor later with actual create method of user service
+    const otpResponse = await this.generateOTPAndExpiry();
+    try {
+      // Construct the data object for createUser
+      const newUserCreateData: Prisma.usersCreateInput = {
+        name: "SOCIAL_LOGIN_USER_NAME",
+        email: email,
+        password: "SOCIAL_LOGIN_PASSWORD_PLACEHOLDER",
+        user_type_users_user_typeTouser_type: {
+          connect: {
+            id: userType,
+          },
+        },
+        otp: otpResponse.otp,
+        otp_expires_at: otpResponse.otp_expiry_date_time,
+      };
+
+      // Conditionally add the social ID field to the data object.
+      // Because Prisma doesn't allow dynamic column.
+      if (provider === "google") {
+        newUserCreateData.googleId = socialId;
+      } else if (provider === "facebook") {
+        newUserCreateData.facebookId = socialId;
+      }
+
+      const newUser = await this.userRepository.createUser(newUserCreateData);
+
+      this.sendOTPInEmail(email, otpResponse.plainOTP, userType);
+      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+        Constants.USER_CREATED_SUCCESS,
+        {
+          id: Number(newUser.id),
+          email: newUser.email,
+          userType: newUser.user_type,
+        },
+        HttpStatus.CREATED
+      );
+    } catch (e) {
+      console.log(e);
+      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+        Constants.USER_CREATED_SUCCESS,
+        {} as any,
+        HttpStatus.BAD_REQUEST
+      );
+    }
   }
 
   /**

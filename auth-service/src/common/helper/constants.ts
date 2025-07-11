@@ -12,4 +12,6 @@ export default class Constants {
     "Your OTP has been expired. Please regenerate this";
   public static readonly OTP_RESEND =
     "OTP has been re-send. Please check your emails i.e Spam/Junk";
+  public static readonly USER_ALREADY_EXISTS =
+    "User is already exists with the same social id";
 }

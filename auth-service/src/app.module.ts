@@ -7,14 +7,20 @@ import { PrismaService } from "@Services/prisma.service";
 import { AppController } from "@Controllers/app.controller";
 import { JwtModule } from "@nestjs/jwt";
 import { EmailService } from "@Services/email.service";
-import { ConfigService } from "@nestjs/config";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { GoogleStrategy } from "./social-login/google-strategy";
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || "yourSecretKeyHere",
-      signOptions: { expiresIn: "1d" },
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get("JWT_SECRET") || "yourSecretKeyHere",
+        signOptions: { expiresIn: "1d" },
+      }),
+      inject: [ConfigService],
     }),
+    ConfigModule,
   ],
   controllers: [AppController, UserController],
   providers: [
@@ -24,6 +30,7 @@ import { ConfigService } from "@nestjs/config";
     PrismaClient,
     EmailService,
     ConfigService,
+    GoogleStrategy,
   ],
   exports: [],
 })

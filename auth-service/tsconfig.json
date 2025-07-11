@@ -1,6 +1,11 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "lib": ["es2020"],
+    "types": ["node"], // Ensure 'express' types are explicitly included
+    "skipLibCheck": true, // Can sometimes help with type conflicts from node_modules,
+    "esModuleInterop": true, // Recommended for better module interoperability
+    "forceConsistentCasingInFileNames": true, // Good practice
     "outDir": "dist",
     "rootDir": "src",
     "baseUrl": "./",

@@ -34,4 +34,17 @@ export class UserRepository extends BaseRepository<
       },
     });
   }
+
+  async findUserBySocialId(
+    socialIdField: string,
+    socialId?: string,
+    select?: object
+  ) {
+    return this.model.findMany({
+      where: {
+        [socialIdField]: socialId,
+      },
+      select,
+    });
+  }
 }

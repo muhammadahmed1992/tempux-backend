@@ -20,7 +20,7 @@ export default class ApiResponse<T> {
   }
 
   private statusCode: number = HttpStatus.OK;
-  private data: T;
+  public data: T;
   private message = "";
   private success: boolean;
   private meta?: Meta;
