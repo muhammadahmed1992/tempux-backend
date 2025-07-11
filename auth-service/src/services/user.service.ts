@@ -48,7 +48,7 @@ export class UserService {
           id: true,
         }
       );
-      this.sendOTPInEmail(user.email, otpResponse.plainOTP, user.userType);
+      this.sendOTPInEmail(user.email, otpResponse.plainOTP);
       return ResponseHelper.CreateResponse<boolean>(
         Constants.USER_CREATED_SUCCESS,
         result.id ? true : false,
@@ -147,13 +147,26 @@ export class UserService {
   }
 
   async resendOTP(request: ResendOTPDTO): Promise<ApiResponse<boolean>> {
-    const otpRes = await this.generateOTPAndExpiry();
-    await this.sendOTPInEmail(request.email, otpRes.otp, request.userType);
-    return ResponseHelper.CreateResponse<boolean>(
-      Constants.OTP_RESEND,
-      true,
-      HttpStatus.ACCEPTED
-    );
+    // TODO: Need to implement a function findFirst
+    const checkEmail = await this.userRepository.findMany({
+      where: { email: request.email },
+      select: { id: true },
+    });
+    if (Array.isArray(checkEmail) && checkEmail.length) {
+      const otpRes = await this.generateOTPAndExpiry();
+      this.sendOTPInEmail(request.email, otpRes.plainOTP);
+      return ResponseHelper.CreateResponse<boolean>(
+        Constants.OTP_RESEND,
+        true,
+        HttpStatus.ACCEPTED
+      );
+    } else {
+      return ResponseHelper.CreateResponse<boolean>(
+        Constants.INVALID_EMAIL,
+        false,
+        HttpStatus.NOT_FOUND
+      );
+    }
   }
 
   /**
@@ -246,49 +259,40 @@ export class UserService {
     // generating OTP as well which will needed
     // TODO: Will refactor later with actual create method of user service
     const otpResponse = await this.generateOTPAndExpiry();
-    try {
-      // Construct the data object for createUser
-      const newUserCreateData: Prisma.usersCreateInput = {
-        name: "SOCIAL_LOGIN_USER_NAME",
-        email: email,
-        password: "SOCIAL_LOGIN_PASSWORD_PLACEHOLDER",
-        user_type_users_user_typeTouser_type: {
-          connect: {
-            id: userType,
-          },
+    // Construct the data object for createUser
+    const newUserCreateData: Prisma.usersCreateInput = {
+      name: "SOCIAL_LOGIN_USER_NAME",
+      email: email,
+      password: "SOCIAL_LOGIN_PASSWORD_PLACEHOLDER",
+      user_type_users_user_typeTouser_type: {
+        connect: {
+          id: userType,
         },
-        otp: otpResponse.otp,
-        otp_expires_at: otpResponse.otp_expiry_date_time,
-      };
+      },
+      otp: otpResponse.otp,
+      otp_expires_at: otpResponse.otp_expiry_date_time,
+    };
 
-      // Conditionally add the social ID field to the data object.
-      // Because Prisma doesn't allow dynamic column.
-      if (provider === "google") {
-        newUserCreateData.googleId = socialId;
-      } else if (provider === "facebook") {
-        newUserCreateData.facebookId = socialId;
-      }
-
-      const newUser = await this.userRepository.createUser(newUserCreateData);
-
-      this.sendOTPInEmail(email, otpResponse.plainOTP, userType);
-      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-        Constants.USER_CREATED_SUCCESS,
-        {
-          id: Number(newUser.id),
-          email: newUser.email,
-          userType: newUser.user_type,
-        },
-        HttpStatus.CREATED
-      );
-    } catch (e) {
-      console.log(e);
-      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-        Constants.USER_CREATED_ERROR,
-        {} as any,
-        HttpStatus.BAD_REQUEST
-      );
+    // Conditionally add the social ID field to the data object.
+    // Because Prisma doesn't allow dynamic column.
+    if (provider === "google") {
+      newUserCreateData.googleId = socialId;
+    } else if (provider === "facebook") {
+      newUserCreateData.facebookId = socialId;
     }
+
+    const newUser = await this.userRepository.createUser(newUserCreateData);
+
+    this.sendOTPInEmail(email, otpResponse.plainOTP);
+    return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+      Constants.USER_CREATED_SUCCESS,
+      {
+        id: Number(newUser.id),
+        email: newUser.email,
+        userType: newUser.user_type,
+      },
+      HttpStatus.CREATED
+    );
   }
 
   /**
@@ -315,27 +319,12 @@ export class UserService {
    * @return {Promise<boolean>} this will shows if email has been sent successfully or not.
    */
 
-  private async sendOTPInEmail(
-    email: string,
-    otp: string,
-    userType: number
-  ): Promise<boolean> {
-    try {
-      const result = await this.emailService.sendOtpEmail(
-        email,
-        otp,
-        email,
-        userType
-      );
-      if (result) {
-        return true;
-      }
-      return false;
-    } catch (e: any) {
-      console.error(e);
-      // TODO: Need to remove all try/catch and use global exception handler
-      return false;
+  private async sendOTPInEmail(email: string, otp: string): Promise<boolean> {
+    const result = await this.emailService.sendOtpEmail(email, otp);
+    if (result) {
+      return true;
     }
+    return false;
   }
 
   /**

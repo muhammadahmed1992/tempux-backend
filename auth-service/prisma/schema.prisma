@@ -82,8 +82,8 @@ model users {
 
   // Social Login Fields
   googleId     String?     @db.VarChar(400)
-  facebookId    String?    @db.VarChar(400)
-
+  facebookId   String?     @db.VarChar(400)
+  onboarded    Boolean     @default(false)
 
   saved_searches                         saved_searches[]
   seller_profile_detail                  seller_profile_detail[]

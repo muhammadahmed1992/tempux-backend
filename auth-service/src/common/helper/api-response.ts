@@ -5,7 +5,7 @@ export default class ApiResponse<T> {
   constructor(
     response: T,
     statusCode: number = HttpStatus.OK,
-    message = "",
+    message: string | string[],
     meta?: Meta
   ) {
     this.message = message;
@@ -21,7 +21,7 @@ export default class ApiResponse<T> {
 
   private statusCode: number = HttpStatus.OK;
   public data: T;
-  private message = "";
+  private message: string | string[];
   private success: boolean;
   private meta?: Meta;
 }

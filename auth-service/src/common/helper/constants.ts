@@ -17,4 +17,6 @@ export default class Constants {
     "OTP has been re-send. Please check your emails i.e Spam/Junk";
   public static readonly USER_ALREADY_EXISTS =
     "User is already exists with the same social id";
+  public static readonly INVALID_EMAIL =
+    "Email you provided is invalid. Please try again later.";
 }

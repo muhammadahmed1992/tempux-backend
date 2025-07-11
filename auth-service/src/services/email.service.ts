@@ -42,12 +42,7 @@ export class EmailService {
    * @param otp - The 6-digit OTP to send.
    * @returns {Promise<any>} A promise that resolves with the mailer response.
    */
-  async sendOtpEmail(
-    to: string,
-    otp: string,
-    email: string,
-    usertype: number
-  ): Promise<any> {
+  async sendOtpEmail(to: string, otp: string): Promise<any> {
     const mailOptions = {
       from: this.configService.get<string>("MAIL_FROM"),
       to: to, // List of recipients

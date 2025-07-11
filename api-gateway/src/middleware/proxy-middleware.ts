@@ -1,9 +1,16 @@
-import { Injectable, NestMiddleware } from "@nestjs/common";
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NestMiddleware,
+} from "@nestjs/common";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { Request, Response, NextFunction } from "express";
 import { IncomingMessage } from "http";
-import { ServiceResolver } from "@API-Gateway/config/service.resolver";
-import * as express from "express";
+import { ServiceResolver } from "@Config/service.resolver";
+import express from "express";
+import ResponseHelper from "@Common/helper/response-helper";
+import Constants from "@Common/helper/constants";
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
@@ -13,13 +20,13 @@ export class ProxyMiddleware implements NestMiddleware {
     const newPath = "/" + restSegments.join("/");
 
     if (!target) {
-      return res.status(502).json({ error: "Unknown service" });
+      const result = ResponseHelper.CreateResponse<any>(
+        Constants.SERVICE_NOT_FOUND,
+        null,
+        HttpStatus.SERVICE_UNAVAILABLE
+      );
+      return res.status(HttpStatus.SERVICE_UNAVAILABLE).json(result);
     }
-
-    console.log("Incoming:", req.originalUrl);
-    console.log(`target: ${target}`);
-    console.log("Resolved service:", serviceKey, " → ", target);
-    console.log(`new path: ${newPath}`);
     const proxy = createProxyMiddleware({
       target,
       changeOrigin: true,
@@ -81,27 +88,51 @@ export class ProxyMiddleware implements NestMiddleware {
             expressReq.method === "HEAD"
           ) {
             // For GET/HEAD requests, no body is expected
-            proxyReq.end(); // End the proxy request
+            //proxyReq.cl(); // End the proxy request
           } else {
             // For other methods or if body is unexpectedly missing,
             // you might want to log a warning or handle differently.
             console.warn(
               `Unhandled method or missing body for ${expressReq.method} request.`
             );
-            proxyReq.end();
           }
         },
-        proxyRes() {
+        proxyRes(proxyReq, req: Request, res: Response) {
           // proxyRes, req, res
           // TODO: Will investigate later
+          // console.log(res.loca);
+          console.log("API Gateway proxy response");
         },
-        error(error, request, response, target) {
-          console.error(request);
-          console.error(target);
-          console.error("Proxy error:", error);
-          response.end(
-            JSON.stringify({ error: "Proxy error", details: error.message })
-          );
+        error(error, request, response: any, target: any) {
+          console.error(`Incoming Request: ${request.originalUrl}`);
+          console.error(`Outgoing Request: ${target.host}`);
+          console.error(Constants.PROXY_ERROR, error);
+          // throw new HttpException(
+          //   {
+          //     message: `Proxy Error: Could not reach target service. ${error.message}`,
+          //     error: error.message,
+          //     target: target,
+          //     originalUrl: request.originalUrl,
+          //   },
+          //   HttpStatus.BAD_GATEWAY
+          // );
+          const status = HttpStatus.SERVICE_UNAVAILABLE; // Or HttpStatus.BAD_GATEWAY
+          const message = `Proxy Error: Could not reach target service. ${error.message}`;
+          const errorPayload = {
+            statusCode: status,
+            data: {
+              timestamp: new Date().toISOString(),
+              path: request.originalUrl,
+              targetService: target,
+              error: error.name || "ProxyServiceError", // e.g., 'ECONNREFUSED'
+            },
+            message: message,
+            // You can add more context here if needed, e.g., correlationId
+          };
+
+          // Ensure the response is sent as JSON
+          response.writeHead(status, { "Content-Type": "application/json" });
+          response.end(JSON.stringify(errorPayload));
         },
       },
     });

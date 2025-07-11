@@ -8,8 +8,9 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@API-Gateway/*": ["src/*"],
-      "@Common/*": ["src/common/*"]
+      "@Config/*": ["src/config/*"],
+      "@Common/*": ["src/common/*"],
+      "@Helper/*": ["src/common/helper/*"]
     }
   },
   "include": ["src/**/*.ts"],

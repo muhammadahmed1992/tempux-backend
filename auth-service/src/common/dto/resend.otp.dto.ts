@@ -12,8 +12,4 @@ export class ResendOTPDTO {
   @IsEmail()
   @MaxLength(150)
   email!: string;
-
-  @IsNotEmpty()
-  @IsIn([1, 2, 3, 4])
-  userType!: number;
 }

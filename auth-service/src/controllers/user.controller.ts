@@ -51,7 +51,7 @@ export class UserController {
     return await this.userService.verifyOTP(verify);
   }
 
-  @Post("resent-otp")
+  @Post("resend-otp")
   async resendOTP(@Body() resend: ResendOTPDTO): Promise<ApiResponse<boolean>> {
     return await this.userService.resendOTP(resend);
   }
