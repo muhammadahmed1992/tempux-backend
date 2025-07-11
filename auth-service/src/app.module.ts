@@ -9,6 +9,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { EmailService } from "@Services/email.service";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { GoogleStrategy } from "./social-login/google-strategy";
+import { FacebookStrategy } from "./social-login/facebook-strategy";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { GoogleStrategy } from "./social-login/google-strategy";
     EmailService,
     ConfigService,
     GoogleStrategy,
+    FacebookStrategy,
   ],
   exports: [],
 })

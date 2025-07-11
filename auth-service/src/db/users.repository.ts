@@ -24,7 +24,7 @@ export class UserRepository extends BaseRepository<
     });
   }
 
-  async validateUser(email: string, userType: number) {
+  async validateUser(email: string, userType: number, select?: object) {
     return this.model.findUnique({
       where: {
         email_user_type: {
@@ -32,6 +32,7 @@ export class UserRepository extends BaseRepository<
           user_type: userType,
         },
       },
+      select,
     });
   }
 

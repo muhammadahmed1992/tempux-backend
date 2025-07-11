@@ -181,7 +181,12 @@ export class UserService {
     // Try to find the user by their social ID
     const user = await this.userRepository.findUserBySocialId(
       socialIdField,
-      socialId
+      socialId,
+      {
+        id: true,
+        email: true,
+        user_type: true,
+      }
     );
 
     if (Array.isArray(user) && user?.length) {
@@ -200,45 +205,43 @@ export class UserService {
     // If user not found by social ID, check if an account with this email already exists
     // This handles cases where a user might register with email/password, then try social login with the same email.
     // You might want to link accounts here, or prevent login if email already exists without social link.
-    const result = await this.userRepository.validateUser(email, userType);
+    const result = await this.userRepository.validateUser(email, userType, {
+      id: true,
+      email: true,
+      user_type: true,
+    });
 
-    if (Array.isArray(result) && result?.length) {
-      // User with this email exists, link the social ID
-      const updatedUser = await this.userRepository.update(
-        { id: result.id },
-        { [socialIdField]: socialId },
-        { select: { id: true } }
-      );
-      // User found, return it
-      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-        Constants.USER_ALREADY_EXISTS,
-        {
-          id: Number(updatedUser.id),
-          email: updatedUser.email,
-          userType: updatedUser.user_type,
-        },
-        HttpStatus.FOUND
-      );
+    if (result) {
+      // User with this email exists, link the social ID only if it's not linked.
+      if (!(result.googleId && result.facebookId)) {
+        const updatedUser = await this.userRepository.update(
+          { id: result.id },
+          { [socialIdField]: socialId },
+          { id: true, email: true, user_type: true }
+        );
+        // User found, return it
+        return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+          Constants.USER_ALREADY_EXISTS,
+          {
+            id: Number(updatedUser.id),
+            email: updatedUser.email,
+            userType: updatedUser.user_type,
+          },
+          HttpStatus.FOUND
+        );
+      } else {
+        // User found, return it
+        return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+          Constants.USER_ALREADY_EXISTS,
+          {
+            id: Number(result.id),
+            email: result.email,
+            userType: result.user_type,
+          },
+          HttpStatus.FOUND
+        );
+      }
     }
-    // const result = await this.userRepository.createUser(
-    //   {
-    //     name: user.username,
-    //     email: user.email,
-    //     password: hashedPassword,
-    //     full_name: user.fullName,
-    //     // TODO: Fix this long name sequence later.
-    //     user_type_users_user_typeTouser_type: {
-    //       connect: {
-    //         id: user.userType,
-    //       },
-    //     },
-    //     otp: otpResponse.otp,
-    //     otp_expires_at: otpResponse.otp_expiry_date_time,
-    //   },
-    //   {
-    //     id: true,
-    //   }
-    // );
     // No existing user found, create a new one
     // generating OTP as well which will needed
     // TODO: Will refactor later with actual create method of user service
@@ -281,7 +284,7 @@ export class UserService {
     } catch (e) {
       console.log(e);
       return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-        Constants.USER_CREATED_SUCCESS,
+        Constants.USER_CREATED_ERROR,
         {} as any,
         HttpStatus.BAD_REQUEST
       );

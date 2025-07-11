@@ -48,11 +48,11 @@ export class BaseRepository<
     data: TUpdateInput,
     select?: object
   ): Promise<TModel> {
-    return this.model.update({ where, data, ...(select && { select }) });
+    return this.model.update({ where, data, select });
   }
 
   async delete(where: TWhereUniqueInput, select?: object): Promise<TModel> {
-    return this.model.delete({ where, ...(select && { select }) });
+    return this.model.delete({ where, select });
   }
 
   async count(where?: object): Promise<number> {

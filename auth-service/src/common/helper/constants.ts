@@ -1,5 +1,8 @@
 export default class Constants {
-  public static readonly USER_CREATED_SUCCESS = "";
+  public static readonly USER_CREATED_SUCCESS =
+    "User has been created successfully.";
+  public static readonly USER_CREATED_ERROR =
+    "An error occurred while creating user.";
   public static readonly ERROR_MESSAGE =
     "There's been an error. Please try again later.";
   public static readonly USER_NOT_FOUND = "User not found";

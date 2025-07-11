@@ -119,4 +119,84 @@ export class UserController {
     // For simplicity, using query parameter. In production, consider HttpOnly cookies.
     return res.redirect(`/dashboard?token=${accessToken}`);
   }
+  /**
+   * Initiates the Facebook OAuth2 login flow.
+   * Frontend calls: GET http://localhost:3001/user/facebook?userType=3
+   * This endpoint manually constructs the Facebook OAuth URL with a 'state' parameter.
+   */
+  @Get("facebook")
+  async facebookAuth(@Req() req: Request, @Res() res: Response) {
+    console.log("--- AuthController.facebookAuth() Initial Request ---");
+    const requestWithQuery = req as any;
+    console.log("Incoming Request Query:", requestWithQuery.query);
+
+    const userType = requestWithQuery.query.userType as string;
+
+    if (!userType) {
+      console.error(
+        "User type is missing in the initial Facebook login request."
+      );
+      return res.redirect("/login?error=user_type_missing");
+    }
+
+    // Generate a state parameter that includes the userType
+    const state = encodeURIComponent(
+      JSON.stringify({
+        userType: userType,
+        csrf: Math.random().toString(36).substring(2, 15),
+      })
+    );
+
+    const clientID = this.configService.get<string>("FACEBOOK_APP_ID");
+    const callbackURL = "http://localhost:3001/user/facebook/callback"; // Must match FacebookStrategy's callbackURL
+
+    // Manually construct the Facebook OAuth URL
+    const facebookAuthUrl =
+      `https://www.facebook.com/v18.0/dialog/oauth?` + // Use a specific API version
+      `client_id=${clientID}&` +
+      `redirect_uri=${encodeURIComponent(callbackURL)}&` +
+      `response_type=code&` +
+      `scope=${encodeURIComponent("email,public_profile")}&` + // Comma-separated scopes
+      `state=${state}`; // Pass the state parameter
+
+    console.log(`--- AuthController.facebookAuth() Redirecting ---`);
+    console.log("Generated Facebook Auth URL:", facebookAuthUrl);
+    console.log("State parameter sent to Facebook:", state);
+    console.log("Request URL (before redirect):", requestWithQuery.url);
+
+    return res.redirect(facebookAuthUrl);
+  }
+
+  /**
+   * Handles the callback from Facebook after user authentication.
+   * Facebook redirects the user back to this endpoint. Passport's FacebookStrategy
+   * processes the response and populates `req.user`.
+   */
+  @Get("facebook/callback")
+  @UseGuards(AuthGuard("facebook")) // Use AuthGuard for 'facebook' strategy
+  async facebookAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const user = (req.user as any).data as SocialLoginResponseDTO;
+
+    if (!user) {
+      console.error(
+        "Facebook login failed: User object not found after strategy validation."
+      );
+      return res.redirect("/login?error=facebook_login_failed");
+    }
+
+    try {
+      // Generate your application's JWT
+      const { accessToken } = (await this.userService.login(user)).data;
+      console.log(
+        `Facebook login successful for user ID: ${user.id}. Redirecting to dashboard.`
+      );
+      return res.redirect(`/dashboard?token=${accessToken}`);
+    } catch (error) {
+      console.error(
+        "Error generating JWT or redirecting after Facebook login:",
+        error
+      );
+      return res.redirect("/login?error=jwt_generation_failed");
+    }
+  }
 }
