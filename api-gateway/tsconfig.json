@@ -1,12 +1,16 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "types": ["node", "express"],
+    "lib": ["es2020"],
     "sourceMap": true,
     "baseUrl": ".",
     "outDir": "./dist",
     "rootDir": "./src",
     "paths": {
-      "@API-Gateway/*": ["src/*"]
+      "@Config/*": ["src/config/*"],
+      "@Common/*": ["src/common/*"],
+      "@Helper/*": ["src/common/helper/*"]
     }
   },
   "include": ["src/**/*.ts"],

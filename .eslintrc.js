@@ -47,6 +47,6 @@ module.exports = {
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/no-explicit-any": "warn",
     "prettier/prettier": ["error", { endOfLine: "lf" }],
-    "no-console": "warn",
+    "no-console": ["error", { allow: ["log", "warn", "table", "error"] }], // Allows console.log, but errors on others,
   },
 };
