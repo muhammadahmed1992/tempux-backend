@@ -1,10 +1,39 @@
 import { Module } from "@nestjs/common";
-import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
+import { UserController } from "@Controllers/user.controller";
+import { UserService } from "@Services/user.service";
+import { UserRepository } from "@Repository/users.repository";
+import { PrismaClient } from "@prisma/client";
+import { PrismaService } from "@Services/prisma.service";
+import { AppController } from "@Controllers/app.controller";
+import { JwtModule } from "@nestjs/jwt";
+import { EmailService } from "@Services/email.service";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { GoogleStrategy } from "./social-login/google-strategy";
+import { FacebookStrategy } from "./social-login/facebook-strategy";
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get("JWT_SECRET") || "yourSecretKeyHere",
+        signOptions: { expiresIn: "1d" },
+      }),
+      inject: [ConfigService],
+    }),
+    ConfigModule,
+  ],
+  controllers: [AppController, UserController],
+  providers: [
+    UserService,
+    UserRepository,
+    PrismaService,
+    PrismaClient,
+    EmailService,
+    ConfigService,
+    GoogleStrategy,
+    FacebookStrategy,
+  ],
+  exports: [],
 })
 export class AppModule {}
