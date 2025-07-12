@@ -1,3 +1,4 @@
+// TOOD: Optimization required
 export class BaseRepository<
   TModel,
   TCreateInput,
@@ -8,7 +9,8 @@ export class BaseRepository<
     select?: object | null;
     include?: object | null;
   },
-  TFindManyArgs extends object
+  TFindManyArgs extends object,
+  TFindFirstArgs extends object
 > {
   constructor(
     protected readonly model: {
@@ -27,6 +29,7 @@ export class BaseRepository<
         where: TWhereUniqueInput;
         select?: object;
       }) => Promise<TModel>;
+      findFirst: (args: TFindFirstArgs) => Promise<TModel | null>;
       count: (args?: { where?: object }) => Promise<number>;
     }
   ) {}
@@ -53,6 +56,10 @@ export class BaseRepository<
 
   async delete(where: TWhereUniqueInput, select?: object): Promise<TModel> {
     return this.model.delete({ where, select });
+  }
+
+  async findFirst(args: TFindFirstArgs): Promise<TModel | null> {
+    return this.model.findFirst(args);
   }
 
   async count(where?: object): Promise<number> {

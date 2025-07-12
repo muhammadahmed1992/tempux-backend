@@ -1,37 +1,69 @@
+import bcrypt from "bcrypt";
+import {
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { Prisma } from "@prisma/client";
+
+import { UserRepository } from "@Repository/users.repository";
+import { EmailTemplateType } from "@EmailFactory/email.template.type";
+import Constants from "@Helper/constants";
+import ApiResponse from "@Helper/api-response";
+import ResponseHelper from "@Helper/response-helper";
+import { Utils } from "@Common/utils";
+import { EmailService } from "@Services/email.service";
+
+import { OTPVerificationRequestDTO } from "@DTO/otp.verification.dto";
+import { ResendOTPDTO } from "@DTO/resend.otp.dto";
+import { SocialLoginResponseDTO } from "@DTO/social-login-response.dto";
 import { CreateUserDto } from "@DTO/create.user.dto";
 import { LoginRequestDTO } from "@DTO/login-request.dto";
 import { LoginDTO } from "@DTO/login.dto";
-import { HttpStatus, Injectable } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { UserRepository } from "@Repository/users.repository";
-import ApiResponse from "@Helper/api-response";
-import Constants from "@Helper/constants";
-import ResponseHelper from "@Helper/response-helper";
-import bcrypt from "bcrypt";
-import { Utils } from "@Common/utils";
-import { OTPVerificationRequestDTO } from "@DTO/otp.verification.dto";
-import { EmailService } from "@Services/email.service";
-import { ConfigService } from "@nestjs/config";
-import { ResendOTPDTO } from "@DTO/resend.otp.dto";
-import { SocialLoginResponseDTO } from "@DTO/social-login-response.dto";
-import { Prisma } from "@prisma/client";
+import { EncryptionHelper } from "@Helper/encryption.helper";
+import { UpdatePasswordDTO } from "@DTO/update.password.dto";
 
 @Injectable()
 export class UserService {
+  private readonly SALT_ROUND: number;
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
-    private readonly configService: ConfigService
-  ) {}
+    private readonly configService: ConfigService,
+    private readonly encryptionHelper: EncryptionHelper
+  ) {
+    this.SALT_ROUND = Number(this.configService.get<number>("SALT_ROUND")!);
+    if (!this.SALT_ROUND)
+      throw new InternalServerErrorException(
+        "Please check SALT_ROUND environment variable. It is missing or invalid"
+      );
+  }
 
   async create(user: CreateUserDto): Promise<ApiResponse<boolean>> {
     try {
-      const hashedPassword = await bcrypt.hash(user.password, 10);
+      //If user already exists returns an error
+      const isExists = await this.userRepository.validateUser(
+        user.email,
+        user.userType,
+        {
+          id: true,
+        }
+      );
+      if (isExists) {
+        return ResponseHelper.CreateResponse<boolean>(
+          Constants.USER_ALREADY_EXISTS,
+          false,
+          HttpStatus.FOUND
+        );
+      }
+      const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
       const otpResponse = await this.generateOTPAndExpiry();
       const result = await this.userRepository.createUser(
         {
-          name: user.username,
+          name: user.username || user.email,
           email: user.email,
           password: hashedPassword,
           full_name: user.fullName,
@@ -48,7 +80,14 @@ export class UserService {
           id: true,
         }
       );
-      this.sendOTPInEmail(user.email, otpResponse.plainOTP);
+      this.sendOTPInEmail(
+        user.email,
+        {
+          otp: otpResponse.plainOTP,
+          resetToken: this.encryptionHelper.encrypt(user.email),
+        },
+        EmailTemplateType.OTP_VERIFICATION
+      );
       return ResponseHelper.CreateResponse<boolean>(
         Constants.USER_CREATED_SUCCESS,
         result.id ? true : false,
@@ -77,7 +116,13 @@ export class UserService {
         { accessToken: "" },
         HttpStatus.NOT_FOUND
       );
-
+    if (!user.otp_verified) {
+      return ResponseHelper.CreateResponse<LoginDTO>(
+        Constants.USER_NOT_VERIFIED,
+        { accessToken: "" },
+        HttpStatus.BAD_REQUEST
+      );
+    }
     if (request instanceof LoginRequestDTO) {
       const isPasswordValid = await bcrypt.compare(
         request.password,
@@ -108,10 +153,8 @@ export class UserService {
   async verifyOTP(
     request: OTPVerificationRequestDTO
   ): Promise<ApiResponse<boolean>> {
-    const user = await this.userRepository.validateUser(
-      request.email,
-      request.userType
-    );
+    const email = this.encryptionHelper.decrypt(request.resetToken);
+    const user = await this.userRepository.findFirstUserByEmail(email);
     if (!user)
       return ResponseHelper.CreateResponse<boolean>(
         Constants.USER_NOT_FOUND,
@@ -146,20 +189,93 @@ export class UserService {
     }
   }
 
-  async resendOTP(request: ResendOTPDTO): Promise<ApiResponse<boolean>> {
-    // TODO: Need to implement a function findFirst
-    const checkEmail = await this.userRepository.findMany({
-      where: { email: request.email },
-      select: { id: true },
-    });
-    if (Array.isArray(checkEmail) && checkEmail.length) {
+  async resendOTP(
+    request: ResendOTPDTO,
+    emailType: EmailTemplateType
+  ): Promise<ApiResponse<boolean>> {
+    const email = this.encryptionHelper.encrypt(request.email);
+    const checkEmail = await this.userRepository.findFirstUserByEmail(
+      request.email
+    );
+    if (checkEmail) {
       const otpRes = await this.generateOTPAndExpiry();
-      this.sendOTPInEmail(request.email, otpRes.plainOTP);
+
+      Promise.all([
+        this.userRepository.update(
+          {
+            id: checkEmail.id,
+          },
+          {
+            otp: otpRes.otp,
+            otp_expires_at: otpRes.otp_expiry_date_time,
+            otp_verified: false,
+          }
+        ),
+        this.sendOTPInEmail(
+          request.email,
+          { otp: otpRes.plainOTP, resetToken: email },
+          emailType
+        ),
+      ]);
+
       return ResponseHelper.CreateResponse<boolean>(
         Constants.OTP_RESEND,
         true,
         HttpStatus.ACCEPTED
       );
+    } else {
+      return ResponseHelper.CreateResponse<boolean>(
+        Constants.SOMETHING_WENT_WRONG,
+        false,
+        HttpStatus.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async resetPassword(
+    request: UpdatePasswordDTO
+  ): Promise<ApiResponse<boolean>> {
+    const email = this.encryptionHelper.decrypt(request.resetToken);
+    const user = await this.userRepository.findFirstUserByEmail(email);
+    if (user) {
+      const oldHashedPwd = await bcrypt.compare(
+        request.oldPassword,
+        user.password
+      );
+      if (oldHashedPwd) {
+        const newPassword = await bcrypt.hash(
+          request.newPassword,
+          this.SALT_ROUND
+        );
+        const result = await this.userRepository.update(
+          { id: user.id },
+          {
+            password: newPassword,
+          },
+          {
+            id: true,
+          }
+        );
+        if (result.id) {
+          return ResponseHelper.CreateResponse<boolean>(
+            Constants.PASSWORD_UPDATE_SUCCESS,
+            true,
+            HttpStatus.OK
+          );
+        } else {
+          return ResponseHelper.CreateResponse<boolean>(
+            Constants.SOMETHING_WENT_WRONG,
+            false,
+            HttpStatus.INTERNAL_SERVER_ERROR
+          );
+        }
+      } else {
+        return ResponseHelper.CreateResponse<boolean>(
+          Constants.INVALID_OLD_PASSWORD,
+          false,
+          HttpStatus.NOT_FOUND
+        );
+      }
     } else {
       return ResponseHelper.CreateResponse<boolean>(
         Constants.INVALID_EMAIL,
@@ -168,7 +284,6 @@ export class UserService {
       );
     }
   }
-
   /**
    * Validates a social user (Google/Facebook).
    * Finds an existing user by socialId, or creates a new one.
@@ -202,14 +317,14 @@ export class UserService {
       }
     );
 
-    if (Array.isArray(user) && user?.length) {
+    if (user) {
       // User found, return it
       return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-        Constants.USER_ALREADY_EXISTS,
+        Constants.USER_ALREADY_EXISTS_SOCIAL,
         {
-          id: Number(user[0].id),
-          email: user[0].email,
-          userType: user[0].user_type,
+          id: Number(user.id),
+          email: user.email,
+          userType: user.user_type,
         },
         HttpStatus.FOUND
       );
@@ -260,10 +375,14 @@ export class UserService {
     // TODO: Will refactor later with actual create method of user service
     const otpResponse = await this.generateOTPAndExpiry();
     // Construct the data object for createUser
+    const password = await bcrypt.hash(
+      "SOCIAL_LOGIN_PASSWORD_PLACEH",
+      this.SALT_ROUND
+    );
     const newUserCreateData: Prisma.usersCreateInput = {
       name: "SOCIAL_LOGIN_USER_NAME",
       email: email,
-      password: "SOCIAL_LOGIN_PASSWORD_PLACEHOLDER",
+      password: password,
       user_type_users_user_typeTouser_type: {
         connect: {
           id: userType,
@@ -283,7 +402,12 @@ export class UserService {
 
     const newUser = await this.userRepository.createUser(newUserCreateData);
 
-    this.sendOTPInEmail(email, otpResponse.plainOTP);
+    const token = this.encryptionHelper.encrypt(email);
+    this.sendOTPInEmail(
+      email,
+      { otp: otpResponse.plainOTP, resetToken: token },
+      EmailTemplateType.OTP_VERIFICATION
+    );
     return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
       Constants.USER_CREATED_SUCCESS,
       {
@@ -314,13 +438,21 @@ export class UserService {
 
   /**
    * Generate a link content will be an OTP and inside the link we have binded the email address and usertype to identify user accordingly.
-   * @param {email} This will be a unique email of the user.
-   * @param {userType} This will be a type value of user type field, which identifies its roles.
+   * @param {toEmail} This will be an email to whom we are sending.
+   * @param {data} This This is a dynamic object which contains data related to email template.
+   * @param {emailType} This will define the type of email we are sending to consumer.
    * @return {Promise<boolean>} this will shows if email has been sent successfully or not.
    */
 
-  private async sendOTPInEmail(email: string, otp: string): Promise<boolean> {
-    const result = await this.emailService.sendOtpEmail(email, otp);
+  private async sendOTPInEmail(
+    toEmail: string,
+    data: any,
+    emailType: EmailTemplateType
+  ): Promise<boolean> {
+    const result = await this.emailService.sendEmail(emailType, {
+      to: toEmail,
+      ...data,
+    });
     if (result) {
       return true;
     }
@@ -353,8 +485,7 @@ export class UserService {
    * @returns {Promise<string>} The hashed OTP.
    */
   private async hashOtp(otp: string): Promise<string> {
-    const saltRounds = 10; // Recommended salt rounds for bcrypt
-    const hashedOtp = await bcrypt.hash(otp, saltRounds);
+    const hashedOtp = await bcrypt.hash(otp, this.SALT_ROUND);
     return hashedOtp;
   }
 

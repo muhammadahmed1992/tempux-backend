@@ -1,17 +1,35 @@
-// auth-service/src/email/email.service.ts
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import * as nodemailer from "nodemailer"; // Import nodemailer
-import Mail from "nodemailer/lib/mailer"; // Import Mail for type hinting
-import { ConfigService } from "@nestjs/config"; // For accessing environment variables
+import * as nodemailer from "nodemailer";
+import Mail from "nodemailer/lib/mailer";
+import { ConfigService } from "@nestjs/config";
+import { EmailTemplateType } from "@EmailFactory/email.template.type";
+import { EmailCreator } from "@EmailFactory/email.creator";
+import Constants from "@Helper/constants";
+import { OtpEmailCreator } from "@EmailFactory/otp.email.creator";
+import { ResetPasswordEmailCreator } from "@EmailFactory/reset.password.creator";
 
 @Injectable()
 export class EmailService {
-  private transporter: Mail; // Nodemailer transporter instance
-  private OTP_Expiry = -1;
-  private applicationURL = "";
-  constructor(private configService: ConfigService) {
-    this.OTP_Expiry = this.configService.get<number>("OTP_EXPIRY_DURATION")!;
-    this.applicationURL = this.configService.get<string>("FRONTEND_URL") || "";
+  private readonly isProduction = process.env.NODE_ENV === "production";
+  private transporter: Mail;
+  private mailFrom: string;
+  private emailCreators: Map<EmailTemplateType, EmailCreator>;
+
+  constructor(
+    private configService: ConfigService,
+    private readonly otpEmailCreation: OtpEmailCreator,
+    private readonly resetPasswordEmailCreator: ResetPasswordEmailCreator
+  ) {
+    this.mailFrom = this.configService.get<string>("MAIL_FROM") || "";
+    if (!this.mailFrom || !this.mailFrom.includes("@")) {
+      console.error(
+        'ERROR: MAIL_FROM environment variable is missing or invalid. Please set it in your .env file (e.g., MAIL_FROM="Your App Name <your_email@example.com>").'
+      );
+      throw new InternalServerErrorException(
+        Constants.MAIL_FROM_MISSING_INVALID
+      );
+    }
+
     // Initialize the Nodemailer transporter with SMTP settings from environment variables
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>("MAIL_HOST"),
@@ -21,54 +39,63 @@ export class EmailService {
         user: this.configService.get<string>("MAIL_USERNAME"),
         pass: this.configService.get<string>("MAIL_PASSWORD"),
       },
-      // Optional: Add a logger for debugging nodemailer issues
-      logger: true,
-      debug: true,
     });
 
     // Verify connection configuration (optional, but good for dev)
-    this.transporter.verify((error, success) => {
-      if (error) {
-        console.error("Nodemailer transporter verification failed:", error);
-      } else {
-        console.log("Nodemailer transporter ready for messages.");
-      }
-    });
+    if (!this.isProduction) {
+      this.transporter.verify((error, success) => {
+        if (error) {
+          console.error("Nodemailer transporter verification failed:", error);
+        } else {
+          console.log("Nodemailer transporter ready for messages.");
+        }
+      });
+    }
+    // Initialize the map with all concrete email creators
+    this.emailCreators = new Map<EmailTemplateType, EmailCreator>();
+    this.emailCreators.set(
+      EmailTemplateType.OTP_VERIFICATION,
+      this.otpEmailCreation
+    );
+    this.emailCreators.set(
+      EmailTemplateType.PASSWORD_RESET,
+      this.resetPasswordEmailCreator
+    );
   }
 
   /**
-   * Sends an OTP email to the specified recipient.
-   * @param to - The recipient's email address.
-   * @param otp - The 6-digit OTP to send.
+   * Sends an email based on the specified template type and data.
+   * @param type - The type of email template to use (from EmailTemplateType enum).
+   * @param data - An object containing the necessary data for the specific template.
    * @returns {Promise<any>} A promise that resolves with the mailer response.
    */
-  async sendOtpEmail(to: string, otp: string): Promise<any> {
+  async sendEmail(type: EmailTemplateType, data: any): Promise<any> {
+    const creator = this.emailCreators.get(type);
+    if (!creator) {
+      throw new InternalServerErrorException(
+        `No email template creator found for type: ${type}.`
+      );
+    }
+
+    // Use the factory method to create the specific email message
+    const mailMessage = creator.factoryMethod(data);
+
     const mailOptions = {
-      from: this.configService.get<string>("MAIL_FROM"),
-      to: to, // List of recipients
-      subject: "Your One-Time Password (OTP)",
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <h2>One-Time Password (OTP)</h2>
-          <p>Hello,</p>
-          <p>Your One-Time Password (OTP) for verification is:</p>
-          <h1 style="color: #007bff; font-size: 24px; margin: 20px 0; padding: 10px 20px; background-color: #f0f0f0; border-radius: 5px; display: inline-block;">${otp}</h1>
-          <p>This OTP is valid for the next ${this.OTP_Expiry} minutes. Please do not share it with anyone.</p>
-          please click on this link or copy the url in your address browser ${this.applicationURL}
-          <p>If you did not request this, please ignore this email.</p>
-          <p>Best regards,<br>Your Application Team</p>
-        </div>
-      `, // HTML body
+      from: this.mailFrom,
+      to: mailMessage.to,
+      subject: mailMessage.subject,
+      html: mailMessage.body,
     };
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("Email sent: %s", info.messageId);
-      // console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info)); // Only for Ethereal Email
+      console.log(`Email of type '${type}' sent: %s`, info.messageId);
       return info;
     } catch (error) {
-      console.error("Error sending OTP email:", error);
-      throw new InternalServerErrorException("Failed to send OTP email.");
+      console.error(`Error sending email of type '${type}':`, error);
+      throw new InternalServerErrorException(
+        `Failed to send email of type '${type}'.`
+      );
     }
   }
 }

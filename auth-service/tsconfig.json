@@ -16,7 +16,8 @@
       "@Repository/*": ["src/db/*"],
       "@DTO/*": ["src/common/dto/*"],
       "@Helper/*": ["src/common/helper/*"],
-      "@Common/*": ["src/common/*"]
+      "@Common/*": ["src/common/*"],
+      "@EmailFactory/*": ["src/email-factory/*"]
     }
   },
   "include": ["src/**/*.ts"],
