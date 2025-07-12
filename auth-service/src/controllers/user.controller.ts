@@ -19,6 +19,8 @@ import { AuthGuard } from "@nestjs/passport";
 import { SocialLoginResponseDTO } from "@DTO/social-login-response.dto";
 import { ConfigService } from "@nestjs/config";
 import { Request, Response } from "express";
+import { EmailTemplateType } from "@EmailFactory/email.template.type";
+import { UpdatePasswordDTO } from "@DTO/update.password.dto";
 
 @Controller("user")
 export class UserController {
@@ -44,19 +46,32 @@ export class UserController {
     return await this.userService.verifyOTP(verify);
   }
 
-  @Post("generate-otp")
-  async generateOTP(
-    @Body() verify: OTPVerificationRequestDTO
-  ): Promise<ApiResponse<boolean>> {
-    return await this.userService.verifyOTP(verify);
-  }
-
   @Post("resend-otp")
   async resendOTP(@Body() resend: ResendOTPDTO): Promise<ApiResponse<boolean>> {
-    return await this.userService.resendOTP(resend);
+    return await this.userService.resendOTP(
+      resend,
+      EmailTemplateType.OTP_VERIFICATION
+    );
   }
 
-  // --- Google OAuth ---
+  @Post("reset/password")
+  async generatePasswordResetLink(
+    @Body() resend: ResendOTPDTO
+  ): Promise<ApiResponse<boolean>> {
+    return await this.userService.resendOTP(
+      resend,
+      EmailTemplateType.PASSWORD_RESET
+    );
+  }
+
+  @Put("password")
+  async updatePassword(
+    @Body() request: UpdatePasswordDTO
+  ): Promise<ApiResponse<boolean>> {
+    return await this.userService.resetPassword(request);
+  }
+
+  // Google Auth
   @Get("google")
   async googleAuth(@Req() req: Request, @Res() res: Response) {
     const userType = req.query?.userType as string;
@@ -65,7 +80,11 @@ export class UserController {
       console.error(
         "User type is missing in the initial Google login request."
       );
-      return res.redirect("/login?error=user_type_missing");
+      return res.redirect(
+        `${this.configService.get<string>(
+          "FRONTEND_URL"
+        )}/login?error=user_type_missing`
+      );
     }
 
     // Generate a state parameter that includes the userType
@@ -117,7 +136,11 @@ export class UserController {
 
     // Redirect to your frontend with the JWT (e.g., as a query parameter or in a cookie)
     // For simplicity, using query parameter. In production, consider HttpOnly cookies.
-    return res.redirect(`/dashboard?token=${accessToken}`);
+    return res.redirect(
+      `${this.configService.get<string>(
+        "FRONTEND_URL"
+      )}dashboard?token=${accessToken}`
+    );
   }
   /**
    * Initiates the Facebook OAuth2 login flow.
@@ -136,7 +159,11 @@ export class UserController {
       console.error(
         "User type is missing in the initial Facebook login request."
       );
-      return res.redirect("/login?error=user_type_missing");
+      return res.redirect(
+        `${this.configService.get<string>(
+          "FRONTEND_URL"
+        )}login?error=user_type_missing`
+      );
     }
 
     // Generate a state parameter that includes the userType
@@ -181,7 +208,11 @@ export class UserController {
       console.error(
         "Facebook login failed: User object not found after strategy validation."
       );
-      return res.redirect("/login?error=facebook_login_failed");
+      return res.redirect(
+        `${this.configService.get<string>(
+          "FRONTEND_URL"
+        )}login?error=facebook_login_failed`
+      );
     }
 
     try {
@@ -190,13 +221,21 @@ export class UserController {
       console.log(
         `Facebook login successful for user ID: ${user.id}. Redirecting to dashboard.`
       );
-      return res.redirect(`/dashboard?token=${accessToken}`);
+      return res.redirect(
+        `${this.configService.get<string>(
+          "FRONTEND_URL"
+        )}dashboard?token=${accessToken}`
+      );
     } catch (error) {
       console.error(
         "Error generating JWT or redirecting after Facebook login:",
         error
       );
-      return res.redirect("/login?error=jwt_generation_failed");
+      return res.redirect(
+        `${this.configService.get<string>(
+          "FRONTEND_URL"
+        )}login?error=jwt_generation_failed`
+      );
     }
   }
 }

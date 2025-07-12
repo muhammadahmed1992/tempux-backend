@@ -1,25 +1,15 @@
 import {
   IsString,
-  IsEmail,
-  MaxLength,
-  IsIn,
-  IsOptional,
   IsNotEmpty,
   MinLength,
+  MaxLength,
   Matches,
 } from "class-validator";
 
-export class CreateUserDto {
-  // TODO: User name is optional for now.
-  @IsOptional()
+export class UpdatePasswordDTO {
   @IsString()
-  @MaxLength(15)
-  username!: string;
-
-  @IsString()
-  @IsEmail()
-  @MaxLength(150)
-  email!: string;
+  @IsNotEmpty({ message: "Old password is required." })
+  oldPassword!: string;
 
   @IsString()
   @IsNotEmpty({ message: "New password is required." })
@@ -34,14 +24,9 @@ export class CreateUserDto {
         "New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
     }
   )
-  password!: string;
+  newPassword!: string;
 
-  @IsOptional()
   @IsString()
-  @MaxLength(100)
-  fullName!: string;
-
   @IsNotEmpty()
-  @IsIn([1, 2, 3, 4])
-  userType!: number;
+  resetToken!: string;
 }

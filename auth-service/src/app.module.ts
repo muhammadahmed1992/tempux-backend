@@ -10,6 +10,8 @@ import { EmailService } from "@Services/email.service";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { GoogleStrategy } from "./social-login/google-strategy";
 import { FacebookStrategy } from "./social-login/facebook-strategy";
+import { EmailModule } from "@Module/email.module";
+import { EncryptionHelper } from "@Helper/encryption.helper";
 
 @Module({
   imports: [
@@ -22,6 +24,7 @@ import { FacebookStrategy } from "./social-login/facebook-strategy";
       inject: [ConfigService],
     }),
     ConfigModule,
+    EmailModule,
   ],
   controllers: [AppController, UserController],
   providers: [
@@ -29,10 +32,10 @@ import { FacebookStrategy } from "./social-login/facebook-strategy";
     UserRepository,
     PrismaService,
     PrismaClient,
-    EmailService,
     ConfigService,
     GoogleStrategy,
     FacebookStrategy,
+    EncryptionHelper,
   ],
   exports: [],
 })

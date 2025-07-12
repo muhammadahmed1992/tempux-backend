@@ -14,9 +14,21 @@ export default class Constants {
   public static readonly EXPIRED_OTP =
     "Your OTP has been expired. Please regenerate this";
   public static readonly OTP_RESEND =
-    "OTP has been re-send. Please check your emails i.e Spam/Junk";
+    "You will recieve an email if it is found in our system. Please check your emails i.e Spam/Junk";
   public static readonly USER_ALREADY_EXISTS =
+    "User is already exists with the same email id";
+  public static readonly USER_ALREADY_EXISTS_SOCIAL =
     "User is already exists with the same social id";
   public static readonly INVALID_EMAIL =
     "Email you provided is invalid. Please try again later.";
+  public static readonly MAIL_FROM_MISSING_INVALID =
+    "Email service configuration error: MAIL_FROM is missing (or) invalid.";
+  public static readonly INVALID_OLD_PASSWORD =
+    "You've entered an invalid old password.";
+  public static readonly PASSWORD_UPDATE_SUCCESS =
+    "Password has been updated successfully.";
+  public static readonly SOMETHING_WENT_WRONG =
+    "Something went wrong while updating your password";
+  public static readonly USER_NOT_VERIFIED =
+    "You are not a verified user. Please start your verification process first";
 }
