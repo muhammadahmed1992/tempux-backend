@@ -132,7 +132,17 @@ export class UserController {
     }
 
     // Generate your application's JWT
-    const { accessToken } = (await this.userService.login(user)).data;
+    const result = await this.userService.login(user);
+
+    // TOOD: If user is created but it is not verified.
+    if (!result.data.accessToken) {
+      return res.redirect(
+        `${this.configService.get<string>(
+          "FRONTEND_URL"
+        )}dashboard?user=user_not_verified`
+      );
+    }
+    const { accessToken } = result.data;
 
     // Redirect to your frontend with the JWT (e.g., as a query parameter or in a cookie)
     // For simplicity, using query parameter. In production, consider HttpOnly cookies.
@@ -217,10 +227,21 @@ export class UserController {
 
     try {
       // Generate your application's JWT
-      const { accessToken } = (await this.userService.login(user)).data;
+      // Generate your application's JWT
+      const result = await this.userService.login(user);
+
+      // TOOD: If user is created but it is not verified.
+      if (!result.data.accessToken) {
+        return res.redirect(
+          `${this.configService.get<string>(
+            "FRONTEND_URL"
+          )}dashboard?user=user_not_verified`
+        );
+      }
       console.log(
         `Facebook login successful for user ID: ${user.id}. Redirecting to dashboard.`
       );
+      const { accessToken } = result.data;
       return res.redirect(
         `${this.configService.get<string>(
           "FRONTEND_URL"
