@@ -227,7 +227,6 @@ export class UserController {
 
     try {
       // Generate your application's JWT
-      // Generate your application's JWT
       const result = await this.userService.login(user);
 
       // TOOD: If user is created but it is not verified.
