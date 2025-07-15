@@ -312,6 +312,7 @@ model product_variants {
   image product_images[]        @relation("VariantImages")
 
   price        Decimal         @db.Decimal(10,2)
+  cost_price   Decimal         @db.Decimal(10,2)
   quantity     Int             @default(0) @db.Integer
 
   currency_id  Int             @db.Integer
