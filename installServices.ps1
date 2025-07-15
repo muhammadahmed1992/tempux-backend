@@ -1,4 +1,4 @@
-$folders = "api-gateway", "auth-service", "product-service", "buyer-service", "seller-service"
+$folders = "api-gateway", "auth-service", "product-service", "order-service", "seller-service"
 
 foreach ($folder in $folders) {
     Write-Host "Installing dependencies for $folder"
