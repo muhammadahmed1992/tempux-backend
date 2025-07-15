@@ -1,0 +1,337 @@
+//
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL_PRODUCT")
+  schemas  = ["public", "users", "product"]
+}
+
+model color {
+  id           Int         @id @default(autoincrement())
+  name         String      @db.VarChar(15)
+  colorCode    String      @db.VarChar(8)
+  description  String      @db.VarChar(15)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  variantColor product_variants[] @relation("VariantColor")
+  @@schema("product")
+}
+
+model size {
+  id           Int        @id @default(autoincrement())
+  value        String     @db.VarChar(2)
+  unit         String     @db.VarChar(2)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  variantSize product_variants[] @relation("VariantSize")
+  @@schema("product")
+}
+
+model brand {
+  id           Int        @id @default(autoincrement())
+  title        String     @db.VarChar(25)
+  order        Int?       @db.Integer
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  product product[] @relation("ProductBrand")
+  @@schema("product")
+}
+model type {
+  id           Int        @id @default(autoincrement())
+  title        String     @db.VarChar(50)
+  order        Int?       @db.Integer
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  product product[] @relation("ProductType")
+  @@schema("product")
+}
+model category {
+  id           Int        @id @default(autoincrement())
+  title        String     @db.VarChar(50)
+  order        Int?       @db.Integer
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  @@schema("product")
+  product product[] @relation("ProductCategory")
+}
+model currency_exchange {
+  id           Int        @id @default(autoincrement())
+  curr        String     @db.VarChar(5)
+  description String     @db.VarChar(25)
+  exchangeRate  Decimal  @default(1.00) @db.Decimal(15,2)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  productVariants product_variants[] @relation("VariantCurrency")
+  @@schema("product")
+}
+model tax_rule {
+  id           Int          @id @default(autoincrement())
+  taxRate  Decimal     @default(1.00) @db.Decimal(15,2)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  productVariants product_variants[] @relation("VariantTax")
+  @@schema("product")
+}
+model reviews_ratings {
+  id           Int          @id @default(autoincrement())
+  product_id   BigInt       @db.BigInt
+  product product @relation("ProductReviews", fields: [product_id], references: [id])
+  review       String       @db.VarChar(500)
+  ratings      Int          @db.SmallInt  // Check Constraint should be applied in application layer.
+  reviewedBy   BigInt       @db.BigInt
+
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+
+  created_by   BigInt       @db.BigInt
+  updated_by   BigInt?      @db.BigInt
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  @@schema("product")
+  @@unique([product_id, reviewedBy])
+}
+model favorite {
+  id           Int          @id @default(autoincrement())
+  user_id   BigInt          @db.BigInt
+  product_id   BigInt       @db.BigInt
+  product product @relation("FavoriteProducts", fields: [product_id], references: [id])
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  @@schema("product")
+  @@unique([user_id, product_id])
+}
+model tags {
+  id           Int          @id @default(autoincrement())
+  name         String       @db.VarChar(20)
+  description  String       @db.VarChar(100)
+  valid_from   DateTime?    @db.Timestamptz(6)
+  valid_to     DateTime?    @db.Timestamptz(6)
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  product_tag product_tag[] @relation("Tags")
+  @@schema("product")
+}
+model product_tag {
+  id           Int          @id @default(autoincrement())
+  product_id   BigInt       @db.BigInt
+  product product @relation("ProductTags", fields: [product_id], references: [id])
+  tag_id       Int          @db.Integer
+  tags tags @relation("Tags", fields: [tag_id], references: [id])
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+  created_by  BigInt        @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  @@schema("product")
+}
+model cart {
+  id           Int          @id @default(autoincrement())
+  product_id   BigInt       @db.BigInt
+  product product @relation("ProductCart", fields: [product_id], references: [id])
+  user_id      Int          @db.Integer
+  quantity     Int          @db.Integer
+
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?    @db.Timestamptz(6)
+  deleted_at   DateTime?    @db.Timestamptz(6)
+
+  created_by  BigInt        @db.BigInt
+  updated_by   BigInt?      @db.BigInt
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  @@schema("product")
+  @@unique([user_id, product_id])
+}
+model excel_batch_import {
+  id              Int          @id @default(autoincrement())
+  total_records   BigInt       @db.BigInt
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?       @db.Timestamptz(6)
+  deleted_at   DateTime?       @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?
+
+  deleted_by   BigInt?
+
+  is_deleted   Boolean      @default(false)
+  @@schema("product")
+}
+model product {
+  id           BigInt             @id @default(autoincrement())
+  name         String             @db.VarChar(150)
+  description  String             @db.VarChar(300)
+
+  brand_id     Int          @db.Integer
+  brand brand @relation("ProductBrand", fields: [brand_id], references: [id])
+
+  category_id  Int          @db.Integer
+  category category @relation("ProductCategory", fields: [category_id], references: [id])
+
+  type_id      Int          @db.Integer
+  type type @relation("ProductType", fields: [type_id], references: [id])
+
+
+  is_accessory Boolean         @default(false) @db.Boolean
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?       @db.Timestamptz(6)
+  deleted_at   DateTime?       @db.Timestamptz(6)
+
+  created_by   BigInt             @db.BigInt
+  updated_by   BigInt?            @db.BigInt
+  deleted_by   BigInt?            @db.BigInt
+
+  is_deleted   Boolean            @default(false)
+  approval_status_by_admin String @default("PENDING") @db.VarChar(15)
+
+  productVariants product_variants[] @relation("ProductVariants")
+  productReviews reviews_ratings[] @relation("ProductReviews")
+  productFavorite favorite[] @relation("FavoriteProducts")
+  productTags product_tag[] @relation("ProductTags")
+  productCart cart[] @relation("ProductCart")
+  @@schema("product")
+  @@unique([brand_id, category_id, type_id])
+}
+model product_images {
+  id           Int             @id @default(autoincrement())
+  img_url      String          @db.VarChar(2000)
+  alt_text     String          @db.VarChar(500)
+  order        Int             @db.Integer
+  color_id     Int             @db.Integer
+  size_id      Int             @db.Integer
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?       @db.Timestamptz(6)
+  deleted_at   DateTime?       @db.Timestamptz(6)
+  created_by   BigInt       @db.BigInt
+
+  updated_by   BigInt?      @db.BigInt
+
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  product_variant_id BigInt? @db.BigInt
+  product_variant product_variants? @relation("VariantImages", fields: [product_variant_id], references: [id])
+  @@schema("product")
+}
+model product_variants {
+  id           BigInt             @id @default(autoincrement())
+
+  product_id   BigInt          @db.BigInt
+  product product @relation("ProductVariants", fields: [product_id], references: [id])
+
+  color_id     Int             @db.Integer
+  color color @relation("VariantColor", fields: [color_id], references: [id])
+
+  size_id      Int             @db.Integer
+  size size  @relation("VariantSize", fields: [size_id], references: [id])
+
+  image product_images[]        @relation("VariantImages")
+
+  price        Decimal         @db.Decimal(10,2)
+  quantity     Int             @default(0) @db.Integer
+
+  currency_id  Int             @db.Integer
+  currency    currency_exchange  @relation("VariantCurrency", fields: [currency_id], references: [id])
+
+  tax_rule_id       Int         @db.Integer // Here we define tax rule so if someone put value inside tax rule than that will be deducted from the cost price.
+  tax         tax_rule        @relation("VariantTax", fields: [tax_rule_id], references: [id])
+
+  seller_id    BigInt?        @db.BigInt
+
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?       @db.Timestamptz(6)
+  deleted_at   DateTime?       @db.Timestamptz(6)
+
+  created_by   BigInt       @db.BigInt
+  updated_by  BigInt?       @db.BigInt
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  @@unique([product_id, color_id, size_id], map: "product_variant_unique_combination")
+
+  @@schema("product")
+}
