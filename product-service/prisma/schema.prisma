@@ -1,13 +1,11 @@
 //
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL_PRODUCT")
-  schemas  = ["public", "users", "product"]
 }
 
 model color {
@@ -29,7 +27,7 @@ model color {
   variantBraceletColor product_variants[] @relation("BraceletVariantColor")
   variantDialColor product_variants[] @relation("DialVariantColor")
 
-  @@schema("product")
+
 }
 
 model size {
@@ -49,7 +47,7 @@ model size {
 
   is_deleted   Boolean      @default(false)
   variantSize product_variants[] @relation("VariantSize")
-  @@schema("product")
+
 }
 
 model brand {
@@ -67,7 +65,7 @@ model brand {
 
   is_deleted   Boolean      @default(false)
   product product[] @relation("ProductBrand")
-  @@schema("product")
+
 }
 model type {
   id           Int        @id @default(autoincrement())
@@ -84,7 +82,7 @@ model type {
 
   is_deleted   Boolean      @default(false)
   product product[] @relation("ProductType")
-  @@schema("product")
+
 }
 model category {
   id           Int        @id @default(autoincrement())
@@ -100,7 +98,7 @@ model category {
   deleted_by   BigInt?      @db.BigInt
 
   is_deleted   Boolean      @default(false)
-  @@schema("product")
+
   product product[] @relation("ProductCategory")
 }
 model currency_exchange {
@@ -119,7 +117,7 @@ model currency_exchange {
 
   is_deleted   Boolean      @default(false)
   productVariants product_variants[] @relation("VariantCurrency")
-  @@schema("product")
+
 }
 model tax_rule {
   id           Int          @id @default(autoincrement())
@@ -136,7 +134,7 @@ model tax_rule {
 
   is_deleted   Boolean      @default(false)
   productVariants product_variants[] @relation("VariantTax")
-  @@schema("product")
+
 }
 model reviews_ratings {
   id           Int          @id @default(autoincrement())
@@ -155,7 +153,7 @@ model reviews_ratings {
   deleted_by   BigInt?      @db.BigInt
 
   is_deleted   Boolean      @default(false)
-  @@schema("product")
+
   @@unique([product_id, reviewedBy])
 }
 model favorite {
@@ -175,7 +173,7 @@ model favorite {
   deleted_by   BigInt?      @db.BigInt
 
   is_deleted   Boolean      @default(false)
-  @@schema("product")
+
   @@unique([user_id, product_id, product_variant_id])
 }
 model tags {
@@ -195,7 +193,7 @@ model tags {
 
   is_deleted   Boolean      @default(false)
   product_tag product_tag[] @relation("Tags")
-  @@schema("product")
+
 }
 model product_tag {
   id           Int          @id @default(autoincrement())
@@ -213,7 +211,7 @@ model product_tag {
   deleted_by   BigInt?      @db.BigInt
 
   is_deleted   Boolean      @default(false)
-  @@schema("product")
+
 }
 model cart {
   id           Int          @id @default(autoincrement())
@@ -231,7 +229,7 @@ model cart {
   deleted_by   BigInt?      @db.BigInt
 
   is_deleted   Boolean      @default(false)
-  @@schema("product")
+
   @@unique([user_id, product_id])
 }
 model excel_batch_import {
@@ -247,7 +245,7 @@ model excel_batch_import {
   deleted_by   BigInt?
 
   is_deleted   Boolean      @default(false)
-  @@schema("product")
+
 }
 model product {
   id           BigInt             @id @default(autoincrement())
@@ -286,7 +284,7 @@ model product {
   productCart cart[] @relation("ProductCart")
   productOwnership ownership_proof[] @relation("ProductOwnership")
   productSignOfWear sign_of_wear[] @relation("ProductSignOfWear")
-  @@schema("product")
+
   @@unique([brand_id, category_id, type_id])
 }
 model product_images {
@@ -308,7 +306,7 @@ model product_images {
   is_deleted   Boolean      @default(false)
   product_variant_id BigInt? @db.BigInt
   product_variant product_variants? @relation("VariantImages", fields: [product_variant_id], references: [id])
-  @@schema("product")
+
 }
 model product_variants {
   id           BigInt             @id @default(autoincrement())
@@ -366,7 +364,7 @@ model product_variants {
   productVariantSignOfWear sign_of_wear[] @relation("ProductVariantSignOfWear")
   @@unique([product_id, color_id, size_id], map: "product_variant_unique_combination")
 
-  @@schema("product")
+
 }
 
 model movement {
@@ -383,7 +381,7 @@ model movement {
   is_deleted   Boolean      @default(false)
   productVariants product_variants[] @relation("VariantMovement")
 
-  @@schema("product")
+
 }
 model ownership_proof {
   id           BigInt             @id @default(autoincrement())
@@ -406,7 +404,7 @@ model ownership_proof {
   is_deleted   Boolean      @default(false)
 
   @@unique([product_id, product_variant_id])
-  @@schema("product")
+
 }
 model sign_of_wear {
   id           BigInt          @id @default(autoincrement())
@@ -428,5 +426,5 @@ model sign_of_wear {
 
   is_deleted   Boolean      @default(false)
   @@unique([product_id, product_variant_id])
-  @@schema("product")
+
 }
