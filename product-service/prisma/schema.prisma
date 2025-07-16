@@ -27,7 +27,7 @@ model color {
   variantBraceletColor product_variants[] @relation("BraceletVariantColor")
   variantDialColor product_variants[] @relation("DialVariantColor")
 
-
+@@unique([name])
 }
 
 model size {
@@ -47,13 +47,14 @@ model size {
 
   is_deleted   Boolean      @default(false)
   variantSize product_variants[] @relation("VariantSize")
-
+  @@unique([value, height])
 }
 
 model brand {
   id           Int        @id @default(autoincrement())
   title        String     @db.VarChar(25)
   order        Int?       @db.Integer
+  image_url    String?      @db.VarChar(1000)
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
   updated_at   DateTime?    @db.Timestamptz(6)
   deleted_at   DateTime?    @db.Timestamptz(6)
@@ -65,12 +66,13 @@ model brand {
 
   is_deleted   Boolean      @default(false)
   product product[] @relation("ProductBrand")
-
+  @@unique([title])
 }
 model type {
   id           Int        @id @default(autoincrement())
   title        String     @db.VarChar(50)
   order        Int?       @db.Integer
+  image_url    String?      @db.VarChar(1000)
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
   updated_at   DateTime?    @db.Timestamptz(6)
   deleted_at   DateTime?    @db.Timestamptz(6)
@@ -82,12 +84,13 @@ model type {
 
   is_deleted   Boolean      @default(false)
   product product[] @relation("ProductType")
-
+  @@unique([title])
 }
 model category {
   id           Int        @id @default(autoincrement())
   title        String     @db.VarChar(50)
   order        Int?       @db.Integer
+  image_url    String?      @db.VarChar(1000)
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
   updated_at   DateTime?    @db.Timestamptz(6)
   deleted_at   DateTime?    @db.Timestamptz(6)
@@ -100,6 +103,7 @@ model category {
   is_deleted   Boolean      @default(false)
 
   product product[] @relation("ProductCategory")
+  @@unique([title])
 }
 model currency_exchange {
   id           Int        @id @default(autoincrement())

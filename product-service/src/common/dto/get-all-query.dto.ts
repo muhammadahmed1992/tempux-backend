@@ -11,16 +11,12 @@ export class GetAllQueryDTO {
   pageSize = 20;
 
   @IsOptional()
-  @IsString()
-  sortBy = "createdAt";
-
-  @IsOptional()
-  @IsIn(["asc", "desc"])
-  sortDir: "asc" | "desc" = "asc";
+  @IsObject()
+  orderBy?: object;
 
   @IsOptional()
   @IsObject()
-  filter?: object;
+  where?: object;
 
   @IsOptional()
   select?: object;

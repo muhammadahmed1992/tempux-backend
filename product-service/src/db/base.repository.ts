@@ -1,8 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+// TODO: Optimization Required...
 
-// TOOD: Optimization required
+import { PrismaClient } from "@prisma/client";
 export class BaseRepository<
-  TModel extends { is_deleted?: boolean },
+  TModel extends { is_deleted: boolean },
   TCreateInput,
   TUpdateInput,
   TWhereUniqueInput,
@@ -37,15 +37,6 @@ export class BaseRepository<
       }) => Promise<TModel>;
       findFirst: (args: TFindFirstArgs) => Promise<TModel | null>;
       count: (args?: { where?: object }) => Promise<number>;
-      findManyPaginated: (
-        page: number,
-        pageSize: number,
-        options: {
-          where?: TWhereInput;
-          select?: object;
-          order?: object;
-        }
-      ) => Promise<{ data: TModel[]; totalCount: number }>;
     }
   ) {
     this.prismaClient = prismaClient;
@@ -115,13 +106,11 @@ export class BaseRepository<
   async findManyPaginated(
     page: number,
     pageSize: number,
-    options: {
-      where?: TWhereInput;
-      select?: object;
-      order?: object;
-    }
+    where?: TWhereInput,
+    select?: object,
+    order?: object
   ): Promise<{ data: TModel[]; totalCount: number }> {
-    const filteredWhere = this.applyIsDeletedFilter(options.where as any);
+    const filteredWhere = this.applyIsDeletedFilter(where as any);
     // if pagenumer is undefined then default page is 1
     if (!page) page = 1;
     if (!pageSize) pageSize = Number.MAX_VALUE;
@@ -129,18 +118,23 @@ export class BaseRepository<
 
     // Prisma's findMany can return both the data and the count in a single query
     // by using the _count aggregate.
-    const [data, totalCount] = await this.prismaClient.$transaction([
-      this.model.findMany({
-        skip,
-        take: pageSize,
-        where: filteredWhere as any,
-        select: options.elect,
-        orderBy: options.order as any,
-      }),
-      this.model.count({
-        where: filteredWhere as any,
-      }),
-    ]);
+    const [data, totalCount] = await this.prismaClient.$transaction(
+      [
+        this.model.findMany({
+          skip,
+          take: pageSize,
+          where: filteredWhere as any,
+          select: select,
+          orderBy: order as any,
+        } as any),
+        this.model.count({
+          where: filteredWhere as any,
+        }) as any,
+      ],
+      {
+        isolationLevel: "ReadCommitted",
+      }
+    );
 
     return { data, totalCount };
   }

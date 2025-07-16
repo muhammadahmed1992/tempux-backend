@@ -1,15 +1,15 @@
 import { GetAllQueryDTO } from "@DTO/get-all-query.dto";
 import { Controller, Get, Query } from "@nestjs/common";
-import { BrandService } from "@Services/brand.service";
+import { CategoryService } from "@Services/category.service";
 
-@Controller("brand")
-export class BrandController {
-  constructor(private readonly brandService: BrandService) {}
+@Controller("category")
+export class CategoryController {
+  constructor(private readonly categoryService: CategoryService) {}
 
   @Get()
   async getAll(@Query() query: GetAllQueryDTO) {
     const { page, pageSize, orderBy, where, select } = query;
-    return this.brandService.getAllPagedData(
+    return this.categoryService.getAllPagedData(
       page,
       pageSize,
       orderBy,

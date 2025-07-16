@@ -48,7 +48,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     // Log the full exception for debugging purposes (in development)
-    console.error("--- Auth Service Global Exception Caught ---");
+    console.error("--- Product Service Global Exception Caught ---");
     console.error("Path:", request.url);
     console.error("Status:", status);
     console.error("Exception Type:", (exception as any).name || "Unknown");

@@ -1,12 +1,12 @@
 import { HttpStatus, Injectable } from "@nestjs/common";
-import { BrandRepository } from "@Repository/brand.repository";
 import ApiResponse from "@Helper/api-response";
 import { SetupListingDTO } from "@DTO/setup-listing.dto";
 import ResponseHelper from "@Helper/response-helper";
 import Constants from "@Helper/constants";
+import { CategoryRepository } from "@Repository/category.repository";
 @Injectable()
-export class BrandService {
-  constructor(private readonly repository: BrandRepository) {}
+export class CategoryService {
+  constructor(private readonly repository: CategoryRepository) {}
   async getAllPagedData(
     pageNumber: number,
     pageSize: number,
