@@ -2,7 +2,17 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "baseUrl": "./",
+    "paths": {
+      "@Module/*": ["src/modules/*"],
+      "@Controllers/*": ["src/controllers/*"],
+      "@Services/*": ["src/services/*"],
+      "@Repository/*": ["src/db/*"],
+      "@DTO/*": ["src/common/dto/*"],
+      "@Helper/*": ["src/common/helper/*"],
+      "@Common/*": ["src/common/*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

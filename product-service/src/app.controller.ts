@@ -9,8 +9,8 @@ export class AppController {
   home() {
     return { message: "Product service home" };
   }
-  @Get("/ping")
-  ping() {
+  @Get("/health")
+  health() {
     return { message: "Product service is alive" };
   }
 }

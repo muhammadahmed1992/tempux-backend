@@ -3,4 +3,5 @@ export default class Constants {
     "Service not found. Please make request with correct path.";
   public static readonly PROXY_ERROR =
     "There is an error while making a request to target server. Please contact support.";
+  public static readonly DATA_SUCCESS = "Data has been retrieved successfully";
 }
