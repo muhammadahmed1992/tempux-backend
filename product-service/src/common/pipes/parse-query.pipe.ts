@@ -95,7 +95,7 @@ export class ParseQueryPipe
 
     const transformed: TransformedQuery = {
       page: parseInt(page || "1", 10), // Default to page 1
-      pageSize: parseInt(pageSize || "10", 10), // Default to pageSize 10
+      pageSize: parseInt(pageSize || "1000000", 10), // Default to pageSize 100000
     };
 
     // 1. Parse and transform 'orderBy'

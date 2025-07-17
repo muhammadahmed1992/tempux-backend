@@ -1,21 +1,12 @@
 class ReviewUser {
-  email: string!;
-  name: string!;
-  fullName: string!;
+  email = "";
+  name = "";
+  fullName = "";
 }
 
 export class EnrichedReviewResponseDto {
-  id: number; // Assuming review ID is Int
-
-  product_id: number;
-
-  review: string;
-
-  ratings: number;
-
-  reviewedBy: number; // Original reviewedBy ID
-
-  user: ReviewUser; // Enriched user object
-
-  created_at: Date;
+  review = "";
+  ratings = -1;
+  user: ReviewUser = {} as any; // Enriched user object
+  created_at: Date = new Date();
 }

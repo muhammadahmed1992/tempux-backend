@@ -6,7 +6,6 @@ import { AxiosError } from "axios";
 
 // Define a simple interface for the user data you expect from the User Service
 export interface UserDetails {
-  id: number;
   email: string;
   name: string;
   fullName: string;
@@ -46,8 +45,8 @@ export class UserProxyService {
     const response = await firstValueFrom(
       this.httpService
         .post<UserDetails[]>(
-          `${this.userSvcUrl}/users/details-by-ids`,
-          { ids: uniqueUserIds.map((id) => id) }, // Convert BigInt to string for JSON payload
+          `${this.userSvcUrl}/user/details-by-ids`,
+          { ids: uniqueUserIds.map((id) => Number(id)) },
           {
             // You might add an internal API key or mTLS for inter-service security here
             // headers: { 'X-Internal-API-Key': 'your-secret-key' }

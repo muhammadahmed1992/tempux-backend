@@ -4,10 +4,7 @@ import {
   UserDetails,
   UserProxyService,
 } from "@Proxy/user-proxy/user-proxy.service"; // Import the proxy service
-import {
-  EnrichedReviewResponseDto,
-  ReviewUser,
-} from "@DTO/enriched-review.response.dto";
+import { EnrichedReviewResponseDto } from "@DTO/enriched-review.response.dto";
 import { ReviewsRepository } from "@Repository/reviews.repository";
 import ApiResponse from "@Helper/api-response";
 import ResponseHelper from "@Helper/response-helper";
@@ -49,7 +46,10 @@ export class ReviewsService {
       const users = await this.userProxyService.getUsersDetailsByIds(
         uniqueUserIds
       );
-      users.forEach((user) => userDetailsMap.set(user.id, user));
+      // TODO: will fix later
+      (users as any).data.forEach((user: any) =>
+        userDetailsMap.set(user.id, user)
+      );
     } catch (error) {
       console.error("Failed to fetch user details for reviews:", error);
       // Decide how to handle this: return reviews without user data, throw error, etc.
@@ -61,17 +61,13 @@ export class ReviewsService {
 
     // Enrich reviews with user details
     const enrichedReviews: EnrichedReviewResponseDto[] = data.map((review) => ({
-      id: review.id,
-      product_id: Number(review.product_id),
       review: review.review,
       ratings: review.ratings,
-      reviewedBy: Number(review.reviewedBy),
       user: userDetailsMap.get(Number(review.reviewedBy)) || {
-        id: Number(review.reviewedBy),
         email: "unknown@example.com",
         name: "Unknown User",
         fullName: "Unknow User - Full Name",
-      }, // Provide a fallback
+      },
       created_at: review.created_at,
     }));
 

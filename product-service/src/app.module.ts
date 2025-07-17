@@ -14,9 +14,11 @@ import { CategoryService } from "@Services/category.service";
 import { ColorService } from "@Services/color.service";
 import { SizeService } from "@Services/size.service";
 import { AuthModule } from "@Module/auth.module";
+import { ReviewsController } from "@Controllers/reviews.controller";
+import { ReviewsModule } from "@Module/reviews.module";
 
 @Module({
-  imports: [RepositoryModule, AuthModule],
+  imports: [RepositoryModule, AuthModule, ReviewsModule],
   controllers: [
     AppController,
     BrandController,
@@ -27,7 +29,6 @@ import { AuthModule } from "@Module/auth.module";
   ],
   providers: [
     AppService,
-    PrismaService,
     BrandService,
     TypesService,
     CategoryService,
