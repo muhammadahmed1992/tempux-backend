@@ -14,8 +14,9 @@ import { CategoryService } from "@Services/category.service";
 import { ColorService } from "@Services/color.service";
 import { SizeService } from "@Services/size.service";
 import { AuthModule } from "@Module/auth.module";
-import { ReviewsController } from "@Controllers/reviews.controller";
 import { ReviewsModule } from "@Module/reviews.module";
+import { ProductService } from "@Services/product.service";
+import { ProductController } from "@Controllers/product.controller";
 
 @Module({
   imports: [RepositoryModule, AuthModule, ReviewsModule],
@@ -26,6 +27,7 @@ import { ReviewsModule } from "@Module/reviews.module";
     CategoryController,
     SizeController,
     ColorController,
+    ProductController,
   ],
   providers: [
     AppService,
@@ -34,6 +36,7 @@ import { ReviewsModule } from "@Module/reviews.module";
     CategoryService,
     ColorService,
     SizeService,
+    ProductService,
   ],
 })
 export class AppModule {}

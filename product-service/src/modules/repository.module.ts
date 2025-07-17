@@ -4,6 +4,7 @@ import { BaseRepository } from "@Repository/base.repository";
 import { BrandRepository } from "@Repository/brand.repository";
 import { CategoryRepository } from "@Repository/category.repository";
 import { ColorRepository } from "@Repository/color.repository";
+import { ProductRepository } from "@Repository/product.repository";
 import { SizeRepository } from "@Repository/size.repository";
 import { TypeRepository } from "@Repository/types.repository";
 @Module({
@@ -24,6 +25,7 @@ import { TypeRepository } from "@Repository/types.repository";
     ColorRepository,
     SizeRepository,
     TypeRepository,
+    ProductRepository,
   ],
 })
 export class RepositoryModule {}

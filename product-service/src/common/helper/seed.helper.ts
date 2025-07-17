@@ -800,6 +800,15 @@ export default class SeedHelper {
 
         if (variantPrice < 50) variantPrice = 50;
 
+        // Generate a simple placeholder image URL for the variant
+        const baseImageUrl = `https://example.com/images/${brand.title
+          .toLowerCase()
+          .replace(/\s/g, "-")}-${category.title
+          .toLowerCase()
+          .replace(/\s/g, "-")}-${mainColor.name
+          .toLowerCase()
+          .replace(/\s/g, "-")}.jpg`;
+
         try {
           await tx.product_variants.upsert({
             where: {
@@ -812,6 +821,7 @@ export default class SeedHelper {
             update: {
               updated_by: creatorId,
               quantity: getRandomInt(1, 20),
+              base_image_url: baseImageUrl, // Add base_image_url to update
             },
             create: {
               product_id: createdProduct.id,
@@ -835,6 +845,7 @@ export default class SeedHelper {
                   ? luxuryTax.id
                   : standardTax.id,
               created_by: creatorId,
+              base_image_url: baseImageUrl, // Add base_image_url to create
             },
           });
         } catch (error) {
