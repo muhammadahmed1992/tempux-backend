@@ -433,7 +433,7 @@ export class UserService {
       return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
         "",
         [],
-        HttpStatus.BAD_GATEWAY
+        HttpStatus.BAD_REQUEST
       );
     }
 
@@ -447,15 +447,19 @@ export class UserService {
         },
       },
       select: {
-        id: true,
         email: true,
         name: true,
+        full_name: true,
       },
     });
 
     return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
       Constants.DATA_RETRIEVED_SUCCESSFULLY,
-      users,
+      users.map((user) => ({
+        name: user.name,
+        fullName: user.full_name || "",
+        email: user.email,
+      })),
       HttpStatus.OK
     );
   }
