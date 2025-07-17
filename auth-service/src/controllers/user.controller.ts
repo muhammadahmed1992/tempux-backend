@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  ParseArrayPipe,
   Post,
   Put,
   Req,
@@ -257,5 +258,10 @@ export class UserController {
         )}login?error=jwt_generation_failed`
       );
     }
+  }
+  @Post("details-by-ids")
+  async getUsersDetailsByIdsPost(@Body("ids") userIds: number[]) {
+    // This is generally preferred for a large number of IDs.
+    return this.userService.findUsersByIds(userIds);
   }
 }

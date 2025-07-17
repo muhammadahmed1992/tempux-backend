@@ -59,6 +59,22 @@ $ npm run test:cov
 
 ## Query Filters
 
+# Request Format
+
+# GET /users?page=1&pageSize=10
+
+# &sortBy=createdAt
+
+# &sortDir=desc
+
+# &filter[isActive]=true
+
+# &filter[role][in]=admin,editor
+
+# &filter[createdAt][gte]=2025-01-01
+
+# &select=id,name,email
+
 ✅ 1️⃣ Basic equality
 GET /brands?filter[title][eq]=Hamilton
 // Prisma equivalent:

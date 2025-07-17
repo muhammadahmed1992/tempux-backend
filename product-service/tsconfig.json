@@ -11,7 +11,9 @@
       "@Repository/*": ["src/db/*"],
       "@DTO/*": ["src/common/dto/*"],
       "@Helper/*": ["src/common/helper/*"],
-      "@Common/*": ["src/common/*"]
+      "@Common/*": ["src/common/*"],
+      "@Auth/*": ["src/auth/*"],
+      "@Proxy/*": ["src/proxy/*"]
     }
   },
   "include": ["src/**/*.ts"],

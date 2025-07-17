@@ -13,9 +13,10 @@ import { TypesService } from "@Services/types.service";
 import { CategoryService } from "@Services/category.service";
 import { ColorService } from "@Services/color.service";
 import { SizeService } from "@Services/size.service";
+import { AuthModule } from "@Module/auth.module";
 
 @Module({
-  imports: [RepositoryModule],
+  imports: [RepositoryModule, AuthModule],
   controllers: [
     AppController,
     BrandController,

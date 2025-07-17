@@ -5,35 +5,29 @@ import { AllExceptionsFilter } from "./filters/global.exception.filter";
 import { ValidationPipe } from "@nestjs/common";
 import { BigIntInterceptor } from "./interceptor/big.int.interceptor";
 import { ParseQueryPipe } from "@Common/pipes/parse-query.pipe";
+import { ConfigService } from "@nestjs/config";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
   app.useGlobalPipes(new ParseQueryPipe());
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // Strips properties not defined in the DTO
+      // Strips properties not defined in the DTO
+      whitelist: true,
       transform: true,
       transformOptions: {
-        enableImplicitConversion: true, // Allows automatic type conversion (e.g., "1" to 1 for numbers)
+        // Allows automatic type conversion (e.g., "1" to 1 for numbers)
+        enableImplicitConversion: true,
       },
-      // disableErrorMessages: true, // Optional: Disable error messages in production
+      disableErrorMessages: process.env.NODE_ENV === "production", // Optional: Disable error messages in production
     })
   );
 
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalInterceptors(new BigIntInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
-  await app.listen(process.env.PORT ?? 3003);
+  const port = configService.get<number>("PORT") || 3003;
+  await app.listen(port);
 }
 bootstrap();
-
-/**
- * Request Format
- * GET /users?page=1&pageSize=10
-  &sortBy=createdAt
-  &sortDir=desc
-  &filter[isActive]=true
-  &filter[role][in]=admin,editor
-  &filter[createdAt][gte]=2025-01-01
-  &select=id,name,email
- */
