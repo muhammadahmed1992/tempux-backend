@@ -57,6 +57,159 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Query Filters
+
+✅ 1️⃣ Basic equality
+GET /brands?filter[title][eq]=Hamilton
+// Prisma equivalent:
+{
+title: "Hamilton"
+}
+
+✅ 2️⃣ Case-insensitive equality
+GET /brands?filter[title][eq][in]=hamilton
+// Prisma equivalent:
+{
+title: { equals: "hamilton", mode: "insensitive" }
+}
+
+✅ 3️⃣ IN condition
+GET /brands?filter[title][in]=Hamilton,Omega,Rolex
+
+// Prisma equivalent:
+{
+title: { in: ["Hamilton", "Omega", "Rolex"] }
+}
+✅ 4️⃣ Greater than
+GET /brands?filter[price][gt]=500
+// Prisma equivalent:
+{
+price: { gt: 500 }
+}
+✅ 5️⃣ AND group
+GET /brands?filter[and][0][price][gt]=500&filter[and][1][stock][gt]=0
+// Prisma equivalent:
+{
+AND: [
+{ price: { gt: 500 } },
+{ stock: { gt: 0 } }
+]
+}
+✅ 6️⃣ OR group
+GET /brands?filter[or][0][title][eq]=Hamilton&filter[or][1][title][eq]=Omega
+// Prisma equivalent:
+{
+OR: [
+{ title: "Hamilton" },
+{ title: "Omega" }
+]
+}
+✅ 7️⃣ OR + base filter
+GET /brands?filter[or][0][title][eq]=Hamilton&filter[or][1][title][eq]=Omega&filter[is_deleted][eq]=false
+{
+OR: [
+{ title: "Hamilton" },
+{ title: "Omega" }
+],
+is_deleted: false
+}
+✅ 8️⃣ Nested (OR) and (AND)
+GET /brands?filter[or][0][title][eq]=Hamilton
+&filter[or][1][and][0][price][gt]=500
+&filter[or][1][and][1][stock][gt]=0
+// Prisma equivalent:
+{
+OR: [
+{ title: "Hamilton" },
+{
+AND: [
+{ price: { gt: 500 } },
+{ stock: { gt: 0 } }
+]
+}
+]
+}
+→ Finds brands where (title = "Hamilton") OR (price > 500 AND stock > 0`)
+✅ 9️⃣ Triple nesting: (A) OR (B AND (C OR D))
+GET /brands?filter[or][0][title][eq]=Hamilton
+&filter[or][1][and][0][price][gt]=500
+&filter[or][1][and][1][or][0][stock][eq]=0
+&filter[or][1][and][1][or][1][status][eq]=inactive
+// Prisma equivalent:
+{
+OR: [
+{ title: "Hamilton" },
+{
+AND: [
+{ price: { gt: 500 } },
+{
+OR: [
+{ stock: 0 },
+{ status: "inactive" }
+]
+}
+]
+}
+]
+}
+→ Finds brands where (title = "Hamilton") OR (price > 500 AND (stock = 0 OR status = "inactive"))
+✅ 🔟 Full combo: (OR A) OR (AND B AND (OR C))
+GET /brands?filter[or][0][title][contains][in]=hamilton
+&filter[or][1][and][0][price][gt]=1000
+&filter[or][1][and][1][category][eq]=luxury
+&filter[or][1][and][2][or][0][stock][eq]=0
+&filter[or][1][and][2][or][1][status][eq]=soldout
+&filter[is_deleted][eq]=false
+// Prisma equivalent:
+{
+OR: [
+{
+title: { contains: "hamilton", mode: "insensitive" }
+},
+{
+AND: [
+{ price: { gt: 1000 } },
+{ category: "luxury" },
+{
+OR: [
+{ stock: 0 },
+{ status: "soldout" }
+]
+}
+]
+}
+],
+is_deleted: false
+}
+→ Finds brands that are not deleted AND (title contains "hamilton" case-insensitive OR (price > 1000 AND category = "luxury" AND (stock = 0 OR status = "soldout")))
+✅ 🚦 How grouping works
+filter[field][op] → simple filter
+
+[in] → case-insensitive (where supported)
+
+[se] → strict
+
+filter[or][0] → OR group
+
+filter[and][0] → AND group
+
+Nest and or or inside each other for complex trees
+
+If no group is used → conditions combine with AND by default
+✅ 🎉 Supported operators
+URL Operator Prisma Equivalent
+eq equals
+ne not
+gt gt
+gte gte
+lt lt
+lte lte
+contains contains
+startsWith startsWith
+endsWith endsWith
+in in
+notIn notIn
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.

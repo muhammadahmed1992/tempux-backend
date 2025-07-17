@@ -8,7 +8,7 @@ import { ParseQueryPipe } from "@Common/pipes/parse-query.pipe";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  // Enable the ValidationPipe globally
+  app.useGlobalPipes(new ParseQueryPipe());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true, // Strips properties not defined in the DTO
@@ -19,8 +19,8 @@ async function bootstrap() {
       // disableErrorMessages: true, // Optional: Disable error messages in production
     })
   );
+
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
-  app.useGlobalPipes(new ParseQueryPipe());
   app.useGlobalInterceptors(new BigIntInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
   await app.listen(process.env.PORT ?? 3003);
