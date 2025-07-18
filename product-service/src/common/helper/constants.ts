@@ -4,4 +4,5 @@ export default class Constants {
   public static readonly PROXY_ERROR =
     "There is an error while making a request to target server. Please contact support.";
   public static readonly DATA_SUCCESS = "Data has been retrieved successfully";
+  public static readonly MAX_PAGE_SIZE = 10000000;
 }

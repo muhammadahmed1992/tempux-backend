@@ -1,5 +1,6 @@
 import { IsOptional, IsString, IsIn, IsObject } from "class-validator";
 import { Type } from "class-transformer";
+import { CustomFilter } from "@Common/enums/custom-filter.enum";
 
 export class GetAllQueryDTO {
   @IsOptional()
@@ -20,4 +21,7 @@ export class GetAllQueryDTO {
 
   @IsOptional()
   select?: object;
+
+  @IsOptional()
+  customCategoryExpression?: CustomFilter;
 }

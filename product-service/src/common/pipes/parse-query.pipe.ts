@@ -1,3 +1,5 @@
+import { CustomFilter } from "@Common/enums/custom-filter.enum";
+import Constants from "@Helper/constants";
 import {
   PipeTransform,
   Injectable,
@@ -16,8 +18,8 @@ interface RawQueryParams {
   sortDir?: "asc" | "desc"; // Assuming sort direction is strictly 'asc' or 'desc'
   select?: string;
   filter?: string | object; // Filter can come as a string (JSON) or already parsed object
-  // Add other raw query parameters as needed
-  [key: string]: any; // Allow for other arbitrary query parameters
+  // NEW: Specific parameter for custom category expressions
+  expression?: CustomFilter;
 }
 
 /**
@@ -29,6 +31,7 @@ export interface TransformedQuery {
   orderBy?: { [key: string]: "asc" | "desc" };
   select?: { [key: string]: boolean };
   where?: any; // Using 'any' for flexibility with complex filter structures
+  customCategoryExpression?: CustomFilter; // The parsed custom filter from the new 'expression' parameter
 }
 type PrismaOperator =
   | "equals"
@@ -74,7 +77,6 @@ const operatorMap: Record<string, PrismaOperator> = {
  * - Transforming 'select' (comma-separated string) into a Prisma-compatible select object.
  * - Transforming 'filter' (JSON string or object) including:
  * - Converting "true"/"false" strings to booleans.
- * - Splitting comma-separated strings in nested `in` clauses (e.g., `role.in`).
  */
 @Injectable()
 export class ParseQueryPipe
@@ -91,11 +93,12 @@ export class ParseQueryPipe
       return value as any; // Cast to any to satisfy return type, though this scenario should be avoided
     }
 
-    const { page, pageSize, sortBy, sortDir, select, ...filter } = value;
+    const { page, pageSize, sortBy, sortDir, select, expression, ...filter } =
+      value;
 
     const transformed: TransformedQuery = {
       page: parseInt(page || "1", 10), // Default to page 1
-      pageSize: parseInt(pageSize || "1000000", 10), // Default to pageSize 100000
+      pageSize: Number(pageSize) || Constants.MAX_PAGE_SIZE,
     };
 
     // 1. Parse and transform 'orderBy'
@@ -148,110 +151,24 @@ export class ParseQueryPipe
           "Validation failed: Filter parameter must be a JSON string or an object."
         );
       }
-
-      // // Apply transformations to the parsed filter object
-      // // Convert "true"/"false" strings to booleans
-      // if (typeof parsedFilter.is_deleted === "string") {
-      //   if (parsedFilter.is_deleted === "true") {
-      //     parsedFilter.is_deleted = true;
-      //   } else if (parsedFilter.is_deleted === "false") {
-      //     parsedFilter.is_deleted = false;
-      //   } else {
-      //     // Optional: throw error for invalid boolean string
-      //     // throw new BadRequestException('Validation failed: isActive must be "true" or "false".');
-      //   }
-      // }
-
-      // // Split comma-separated strings in 'role.in'
-      // // This assumes a structure like { role: { in: "admin,user" } }
-      // if (parsedFilter.role && typeof parsedFilter.role.in === "string") {
-      //   parsedFilter.role.in = parsedFilter.role.in
-      //     .split(",")
-      //     .map((s: string) => s.trim());
-      // }
-      // Add more specific filter transformations here as needed for your models
-      // Example: if you have `priceRange: "100-200"`
-      // if (typeof parsedFilter.priceRange === 'string') {
-      //   const [min, max] = parsedFilter.priceRange.split('-').map(Number);
-      //   parsedFilter.price = { gte: min, lte: max };
-      //   delete parsedFilter.priceRange;
-      // }
     }
-    transformed.where = parsedFilter; // Assign the transformed filter to 'where'
-
+    // Assign the transformed filter to 'where'
+    transformed.where = parsedFilter;
+    if (expression) {
+      if (!Object.values(CustomFilter).includes(expression)) {
+        throw new BadRequestException(
+          `Validation failed: Invalid custom expression "${expression}". Allowed values are: ${Object.values(
+            CustomFilter
+          ).join(", ")}`
+        );
+      }
+      transformed.customCategoryExpression = expression;
+    }
     // You can also include any other remaining query parameters if needed
     // transformed.extraParams = rest;
 
     return transformed;
   }
-
-  // transformFilter(flatFilter: Record<string, any>): Record<string, any> {
-  //   const prismaWhere: Record<string, any> = {};
-  //   const AND: any[] = [];
-  //   const OR: any[] = [];
-
-  //   for (const [key, value] of Object.entries(flatFilter)) {
-  //     // New: filter[or][0][title][eq][in] → groups: or, 0, title, eq, mode
-  //     const match = key.match(
-  //       /filter\[(or|and)?\](?:\[(\d+)\])?\[(.+?)\]\[(.+?)\](?:\[(.+?)\])?/
-  //     );
-
-  //     if (!match) continue;
-
-  //     const [, logic, idx, field, op, modeSuffix] = match;
-  //     const index = Number(idx);
-  //     const prismaOp = operatorMap[op];
-  //     if (!prismaOp) continue;
-
-  //     let mode: "insensitive" | "default" | undefined;
-
-  //     if (modeSuffix === "in") {
-  //       mode = "insensitive";
-  //     } else if (modeSuffix === "se") {
-  //       mode = "default";
-  //     }
-
-  //     const parsedValue = this.parseValue(value);
-
-  //     const condition: any = {
-  //       [field]: {
-  //         [prismaOp]:
-  //           prismaOp === "in" || prismaOp === "notIn"
-  //             ? parsedValue.split(",").map((v: string) => this.parseValue(v))
-  //             : parsedValue,
-  //       },
-  //     };
-
-  //     if (
-  //       mode === "insensitive" &&
-  //       ["equals", "contains", "startsWith", "endsWith"].includes(prismaOp)
-  //     ) {
-  //       condition[field].mode = "insensitive";
-  //     }
-
-  //     if (logic === "or") {
-  //       OR[index] = condition;
-  //     } else if (logic === "and") {
-  //       AND[index] = condition;
-  //     } else {
-  //       prismaWhere[field] = prismaWhere[field] || {};
-  //       prismaWhere[field][prismaOp] = condition[field][prismaOp];
-  //       if (condition[field].mode) {
-  //         prismaWhere[field].mode = condition[field].mode;
-  //       }
-  //     }
-  //   }
-
-  //   const final: Record<string, any> = {};
-
-  //   if (Object.keys(prismaWhere).length > 0) {
-  //     Object.assign(final, prismaWhere);
-  //   }
-  //   if (AND.length > 0) final.AND = AND.filter(Boolean);
-  //   if (OR.length > 0) final.OR = OR.filter(Boolean);
-
-  //   return final;
-  // }
 
   parseValue(val: string): any {
     if (val === "true") return true;

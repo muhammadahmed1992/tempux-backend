@@ -108,7 +108,8 @@ export class BaseRepository<
     pageSize: number,
     where?: TWhereInput,
     select?: object,
-    order?: object
+    order?: object,
+    include?: object
   ): Promise<{ data: TModel[]; totalCount: number }> {
     const filteredWhere = this.applyIsDeletedFilter(where as any);
     // if pagenumer is undefined then default page is 1
@@ -118,23 +119,19 @@ export class BaseRepository<
 
     // Prisma's findMany can return both the data and the count in a single query
     // by using the _count aggregate.
-    const [data, totalCount] = await this.prismaClient.$transaction(
-      [
-        this.model.findMany({
-          skip,
-          take: pageSize,
-          where: filteredWhere as any,
-          select: select,
-          orderBy: order as any,
-        } as any),
-        this.model.count({
-          where: filteredWhere as any,
-        }) as any,
-      ],
-      {
-        isolationLevel: "ReadCommitted",
-      }
-    );
+    const [data, totalCount] = await this.prismaClient.$transaction([
+      this.model.findMany({
+        skip,
+        take: pageSize,
+        where: filteredWhere as any,
+        select: select,
+        orderBy: order as any,
+        include: include,
+      } as any),
+      this.model.count({
+        where: filteredWhere as any,
+      }) as any,
+    ]);
 
     return { data, totalCount };
   }

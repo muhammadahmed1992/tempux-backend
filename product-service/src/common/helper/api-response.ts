@@ -24,4 +24,8 @@ export default class ApiResponse<T> {
   private message: string | string[];
   private success: boolean;
   private meta?: Meta;
+
+  getMeta(): Meta {
+    return this.meta!;
+  }
 }

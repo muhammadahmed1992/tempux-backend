@@ -17,6 +17,9 @@ import { AuthModule } from "@Module/auth.module";
 import { ReviewsModule } from "@Module/reviews.module";
 import { ProductService } from "@Services/product.service";
 import { ProductController } from "@Controllers/product.controller";
+import { ProductVariantService } from "@Services/product-variant.service";
+import { CustomFilterConfiguratorService } from "@Services/custom-filter-configurator.service";
+import { CustomProductVariantCategoryService } from "@Services/custom-product-category.service";
 
 @Module({
   imports: [RepositoryModule, AuthModule, ReviewsModule],
@@ -37,6 +40,9 @@ import { ProductController } from "@Controllers/product.controller";
     ColorService,
     SizeService,
     ProductService,
+    ProductVariantService,
+    CustomFilterConfiguratorService,
+    CustomProductVariantCategoryService,
   ],
 })
 export class AppModule {}

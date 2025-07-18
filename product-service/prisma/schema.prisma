@@ -330,6 +330,9 @@ model product_variants {
 
   image product_images[]        @relation("VariantImages")
 
+  // New relation to CustomProductCategory (one-to-many, as a variant can be in multiple custom categories)
+  custom_product_categories CustomProductCategory[]
+
   price        Decimal         @db.Decimal(10,2)
   cost_price   Decimal         @db.Decimal(10,2)
   quantity     Int             @default(0) @db.Integer
@@ -353,6 +356,8 @@ model product_variants {
 
   seller_id    BigInt?        @db.BigInt
   base_image_url  String      @db.VarChar(1000)
+  sku             String      @unique @db.VarChar(20)
+
   created_at   DateTime        @default(now()) @db.Timestamptz(6)
   updated_at   DateTime?       @db.Timestamptz(6)
   deleted_at   DateTime?       @db.Timestamptz(6)
@@ -366,9 +371,6 @@ model product_variants {
   productVariantFavorite favorite[] @relation("FavoriteProductVariants")
   productVariantOwnership ownership_proof[] @relation("ProductVariantOwnership")
   productVariantSignOfWear sign_of_wear[] @relation("ProductVariantSignOfWear")
-  @@unique([product_id, color_id, size_id], map: "product_variant_unique_combination")
-
-
 }
 
 model movement {
@@ -431,4 +433,47 @@ model sign_of_wear {
   is_deleted   Boolean      @default(false)
   @@unique([product_id, product_variant_id])
 
+}
+
+// New model for global configurations/thresholds
+// e.g., 'TOP_SELLER_RANK_THRESHOLD', 'POPULAR_SALES_COUNT_THRESHOLD'
+model CustomFilterConfigurator {
+  id          BigInt    @id @default(autoincrement())
+  key         String    @unique @db.VarChar(255)
+  value       String    @db.VarChar(255)   // e.g., '100', '500'
+  description String?   @db.Text
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?       @db.Timestamptz(6)
+  deleted_at   DateTime?       @db.Timestamptz(6)
+
+  created_by   BigInt       @db.BigInt
+  updated_by  BigInt?       @db.BigInt
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+
+  @@map("configurator")
+}
+// New model to store pre-computed custom categories for product variants
+// e.g., 'TOP_SELLER', 'BEST_SELLER', 'POPULAR', 'PROMOTIONAL'
+// A variant can be in one type of custom category (e.g., one
+model CustomProductCategory {
+  id                 BigInt             @id @default(autoincrement())
+  product_variant_id BigInt
+  custom_filter_configuration_id  BigInt             @db.BigInt
+  valid_from         DateTime           @default(now()) @db.Timestamptz(6)
+  valid_to           DateTime?          @db.Timestamptz(6) // Optional: for time-bound categorizations
+
+  productVariant   product_variants   @relation(fields: [product_variant_id], references: [id])
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?       @db.Timestamptz(6)
+  deleted_at   DateTime?       @db.Timestamptz(6)
+
+  created_by   BigInt?       @db.BigInt
+  updated_by  BigInt?       @db.BigInt
+  deleted_by   BigInt?      @db.BigInt
+
+  is_deleted   Boolean      @default(false)
+  @@unique([product_variant_id, custom_filter_configuration_id])
+  @@map("custom_product_category")
 }
