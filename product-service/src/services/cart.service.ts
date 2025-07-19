@@ -11,6 +11,7 @@ export class CartService {
   /**
    * This method will add user's product to the cart.
    * @param cart it is typeof AddToCartRequestDTO which contains userId, productId, product_variant_id, quantity
+   * @returns newly marked cart id
    */
   async addProductToCart(
     cart: AddToCartRequestDTO
@@ -26,6 +27,7 @@ export class CartService {
   /**
    * This method is removing item from cart.
    * @param cart it is typeof RemoveCartItemRequestDTO which contains userId, productId, product_variant_id
+   * @returns currently removed item from cart
    */
   async removeFromCart(
     cart: RemoveCartItemRequestDTO

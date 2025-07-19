@@ -13,7 +13,8 @@ export class BaseRepository<
     include?: object | null;
   },
   TFindManyArgs extends object,
-  TFindFirstArgs extends object
+  TFindFirstArgs extends object,
+  TPagedArgs extends object
 > {
   protected readonly prismaClient: PrismaClient;
 
@@ -37,6 +38,14 @@ export class BaseRepository<
       }) => Promise<TModel>;
       findFirst: (args: TFindFirstArgs) => Promise<TModel | null>;
       count: (args?: { where?: object }) => Promise<number>;
+      findManyPaginated: (
+        page: number,
+        pageSize: number,
+        where?: TWhereInput,
+        select?: object,
+        order?: object,
+        include?: object
+      ) => Promise<{ data: TModel[]; totalCount: number }>;
     }
   ) {
     this.prismaClient = prismaClient;

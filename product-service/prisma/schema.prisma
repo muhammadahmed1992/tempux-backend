@@ -144,7 +144,7 @@ model reviews_ratings {
   id           Int          @id @default(autoincrement())
   product_id   BigInt       @db.BigInt
   product product @relation("ProductReviews", fields: [product_id], references: [id])
-  review       String       @db.VarChar(500)
+  review       String?       @db.VarChar(500)
   ratings      Int          @db.SmallInt  // Check Constraint should be applied in application layer.
   reviewedBy   BigInt       @db.BigInt
 

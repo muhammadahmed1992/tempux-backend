@@ -15,4 +15,6 @@ export default class Constants {
     "Item has been added in the cart successfully";
   public static readonly PROBLEM_ADD_CART =
     "There is a problem while adding a product in the cart";
+  public static readonly REVIEW_MARKED_SUCCESSFULLy =
+    "Review has been marked successfully!";
 }

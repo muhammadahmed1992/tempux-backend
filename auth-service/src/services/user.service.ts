@@ -447,6 +447,7 @@ export class UserService {
         },
       },
       select: {
+        id: true,
         email: true,
         name: true,
         full_name: true,
@@ -456,6 +457,7 @@ export class UserService {
     return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
       Constants.DATA_RETRIEVED_SUCCESSFULLY,
       users.map((user) => ({
+        id: user.id,
         name: user.name,
         fullName: user.full_name || "",
         email: user.email,
