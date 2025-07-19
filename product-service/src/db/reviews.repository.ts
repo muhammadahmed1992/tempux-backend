@@ -112,6 +112,8 @@ export class ReviewsRepository extends BaseRepository<
       // 4. 'select' clause: What to return from the operation.
       select: {
         id: true,
+        created_at: true,
+        updated_at: true,
       },
     });
   }

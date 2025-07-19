@@ -153,11 +153,16 @@ export class ReviewsService {
     userId: bigint,
     review: ProductRatingReviewDTO
   ): Promise<ApiResponse<number>> {
-    const id = (await this.repository.review(userId, review)).id;
+    const result = await this.repository.review(userId, review);
+    const isCreated =
+      result.updated_at === null ||
+      (result.updated_at &&
+        result.created_at &&
+        result.updated_at.getTime() - result.created_at.getTime() < 1000);
     return ResponseHelper.CreateResponse<number>(
       Constants.REVIEW_MARKED_SUCCESSFULLy,
-      id,
-      HttpStatus.CREATED
+      result.id,
+      isCreated ? HttpStatus.CREATED : HttpStatus.NO_CONTENT
     );
   }
 
