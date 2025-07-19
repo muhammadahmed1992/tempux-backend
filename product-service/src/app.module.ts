@@ -20,6 +20,8 @@ import { ProductController } from "@Controllers/product.controller";
 import { ProductVariantService } from "@Services/product-variant.service";
 import { CustomFilterConfiguratorService } from "@Services/custom-filter-configurator.service";
 import { CustomProductVariantCategoryService } from "@Services/custom-product-category.service";
+import { FavoriteService } from "@Services/favorite.service";
+import { CartService } from "@Services/cart.service";
 
 @Module({
   imports: [RepositoryModule, AuthModule, ReviewsModule],
@@ -43,6 +45,8 @@ import { CustomProductVariantCategoryService } from "@Services/custom-product-ca
     ProductVariantService,
     CustomFilterConfiguratorService,
     CustomProductVariantCategoryService,
+    FavoriteService,
+    CartService,
   ],
 })
 export class AppModule {}

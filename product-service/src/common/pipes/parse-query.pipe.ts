@@ -152,8 +152,8 @@ export class ParseQueryPipe
         );
       }
     }
-    // Assign the transformed filter to 'where'
-    transformed.where = parsedFilter;
+    // Assign the transformed filter to 'where'. Also appending is_deleted: false by default.
+    transformed.where = { ...parsedFilter, is_deleted: false };
     if (expression) {
       if (!Object.values(CustomFilter).includes(expression)) {
         throw new BadRequestException(

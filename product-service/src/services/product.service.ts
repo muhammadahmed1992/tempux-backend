@@ -31,6 +31,7 @@ export class ProductService {
   async getProductListingFiltered(
     pageNumber: number,
     pageSize: number,
+    isAccessory: boolean,
     order?: object,
     where?: object,
     select?: object,
@@ -39,7 +40,8 @@ export class ProductService {
     let finalWhere: any;
     finalWhere = {
       product: {
-        is_accessory: false,
+        is_deleted: false,
+        is_accessory: isAccessory,
       },
       ...where,
       currency: {
@@ -69,11 +71,10 @@ export class ProductService {
           const configEntry = configuratorData.get(customCategoryExpression);
           if (!configEntry) {
             console.warn(
-              `Configurator entry not found for custom category type: ${customCategoryExpression}.`
+              ` ${Constants.NO_CONFIGURATION_FOUND_FOR_CUSTOM_FILTER_CATEGORY} ${customCategoryExpression}.`
             );
-            throw new NotFoundException(
-              "No data found on such criteria/filter"
-            );
+            console.warn(Constants.NO_ASSIGNMENT_FOR_SPECIAL_FILTERS_CATEGORY);
+            throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
           }
           const customConfigId = configEntry.id;
           // TODO: Will update this criteria to match real requirement.
@@ -91,10 +92,9 @@ export class ProductService {
           const filteredVariantIds = customCategoryEntries.map(
             (entry: any) => entry.product_variant_id
           );
+          console.warn(Constants.NO_ASSIGNMENT_FOR_SPECIAL_FILTERS_CATEGORY);
           if (filteredVariantIds.length === 0) {
-            throw new NotFoundException(
-              "No data found on such criteria/filter"
-            );
+            throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
           }
           finalWhere = {
             AND: [finalWhere, { id: { in: filteredVariantIds } }],
@@ -109,7 +109,7 @@ export class ProductService {
       base_image_url: true,
       price: true,
       product: {
-        select,
+        select: { id: true, ...select },
       },
       currency: {
         select: {
@@ -118,7 +118,7 @@ export class ProductService {
         },
       },
     };
-    // --- USE THE NEW ProductVariantsService HERE ---
+
     const response = await this.productVariantService.getAllPagedData(
       pageNumber,
       pageSize,
@@ -126,20 +126,25 @@ export class ProductService {
       finalWhere,
       selectOptions
     );
-    // --- END USE OF ProductVariantsService ---
 
     if (!response.data || response.data?.length === 0) {
-      throw new NotFoundException("No data found on such criteria/filter");
+      throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
     }
     const result = response.data.map(
       (pv: {
         id: bigint;
         base_image_url: string;
-        product: { name: string; description: string; Title: string };
+        product: {
+          id: bigint;
+          name: string;
+          description: string;
+          Title: string;
+        };
         price: number;
         currency: { curr: string };
       }) => ({
         product_variant_id: pv.id,
+        id: pv.product.id,
         name: pv.product.name,
         title: pv.product.Title,
         currencySymbol: pv.currency.curr,

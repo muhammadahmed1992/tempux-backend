@@ -13,7 +13,8 @@
       "@Helper/*": ["src/common/helper/*"],
       "@Common/*": ["src/common/*"],
       "@Auth/*": ["src/auth/*"],
-      "@Proxy/*": ["src/proxy/*"]
+      "@Proxy/*": ["src/proxy/*"],
+      "@Decorators/*": ["src/common/helper/decorators/*"]
     }
   },
   "include": ["src/**/*.ts"],

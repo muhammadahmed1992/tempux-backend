@@ -221,7 +221,9 @@ model cart {
   id           Int          @id @default(autoincrement())
   product_id   BigInt       @db.BigInt
   product product @relation("ProductCart", fields: [product_id], references: [id])
-  user_id      Int          @db.Integer
+  product_variant_id BigInt @db.BigInt
+  product_variant product_variants @relation("ProductVariantCart", fields: [product_variant_id], references: [id])
+  user_id      BigInt          @db.BigInt
   quantity     Int          @db.Integer
 
   created_at   DateTime     @default(now()) @db.Timestamptz(6)
@@ -234,7 +236,7 @@ model cart {
 
   is_deleted   Boolean      @default(false)
 
-  @@unique([user_id, product_id])
+  @@unique([user_id, product_id, product_variant_id])
 }
 model excel_batch_import {
   id              Int          @id @default(autoincrement())
@@ -255,7 +257,7 @@ model product {
   id           BigInt             @id @default(autoincrement())
   name         String             @db.VarChar(150)
   description  String             @db.VarChar(300)
-  Title        String?            @db.VarChar(150)
+  title        String?            @db.VarChar(150)
   brand_id     Int          @db.Integer
   brand brand @relation("ProductBrand", fields: [brand_id], references: [id])
 
@@ -371,6 +373,7 @@ model product_variants {
   productVariantFavorite favorite[] @relation("FavoriteProductVariants")
   productVariantOwnership ownership_proof[] @relation("ProductVariantOwnership")
   productVariantSignOfWear sign_of_wear[] @relation("ProductVariantSignOfWear")
+  productVariantCart cart[] @relation("ProductVariantCart")
 }
 
 model movement {

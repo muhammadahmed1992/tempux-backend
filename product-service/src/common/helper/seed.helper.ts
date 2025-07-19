@@ -837,7 +837,7 @@ export default class SeedHelper {
             updated_by: creatorId,
             name: productName,
             description: productDescription,
-            Title: productTitle,
+            title: productTitle,
             brand_id: brand.id,
             category_id: category.id,
             type_id: type.id,
@@ -847,7 +847,7 @@ export default class SeedHelper {
           create: {
             name: productName,
             description: productDescription,
-            Title: productTitle,
+            title: productTitle,
             brand_id: brand.id,
             category_id: category.id,
             type_id: type.id,
