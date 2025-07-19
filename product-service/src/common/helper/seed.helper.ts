@@ -616,7 +616,7 @@ export default class SeedHelper {
     const allMovements = await tx.movement.findMany();
     const allTypes = await tx.type.findMany();
     const defaultCurrency = await tx.currency_exchange.findUnique({
-      where: { curr: "USD" },
+      where: { curr: "$" },
     });
     const standardTax = await tx.tax_rule.findUnique({
       where: { description: "Standard Sales Tax (10%)" },

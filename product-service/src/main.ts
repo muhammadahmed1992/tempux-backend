@@ -9,6 +9,16 @@ import { ConfigService } from "@nestjs/config";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // // Add this temporary middleware for debugging headers
+  // app.use((req: any, res: any, next: any) => {
+  //   console.log("Incoming Request Headers:");
+  //   for (const key in req.headers) {
+  //     if (req.headers.hasOwnProperty(key)) {
+  //       console.log(`  ${key}: ${req.headers[key]}`);
+  //     }
+  //   }
+  //   next();
+  // });
   const configService = app.get(ConfigService);
   app.useGlobalPipes(new ParseQueryPipe());
   app.useGlobalPipes(

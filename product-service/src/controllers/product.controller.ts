@@ -1,12 +1,22 @@
 import { GetAllQueryDTO } from "@DTO/get-all-query.dto";
 import { UserId } from "@Decorators/userId.decorator";
-import { Body, Controller, Get, Param, Post, Put, Query } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from "@nestjs/common";
 import { ProductService } from "@Services/product.service";
 import { FavoriteService } from "@Services/favorite.service";
 import { AddToCartRequestDTO } from "@DTO/add.to.cart.request.dto";
 import { CartService } from "@Services/cart.service";
 import { RemoveCartItemRequestDTO } from "@DTO/remove.cart.request.dto";
 import { ProductType } from "@Common/enums/product.type.enum";
+import { JwtAuthGuard } from "@Auth/jwt-auth.guard";
 
 @Controller("product")
 export class ProductController {
@@ -41,6 +51,7 @@ export class ProductController {
     );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("favorite/:productId/:itemId")
   async favorite(
     @UserId() userId: bigint,
@@ -54,6 +65,7 @@ export class ProductController {
     );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put("favorite/:productId/:itemId")
   async UnFavorite(
     @UserId() userId: bigint,
@@ -67,6 +79,7 @@ export class ProductController {
     );
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post("cart")
   async addToCart(@UserId() userId: bigint, @Body() cart: AddToCartRequestDTO) {
     // Adding userId
@@ -74,6 +87,7 @@ export class ProductController {
     return this.cartService.addProductToCart(cart);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put("cart")
   async removeFromCart(
     @UserId() userId: bigint,

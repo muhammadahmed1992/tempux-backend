@@ -1,5 +1,5 @@
 export class UserDetailsResponseDto {
-  name: string!;
-  email: string!;
-  fullName: string!;
+  name?: string;
+  emai?: string;
+  fullName?: string;
 }

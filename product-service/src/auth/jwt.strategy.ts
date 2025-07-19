@@ -28,7 +28,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
       // Method to extract JWT from the request (e.g., from Authorization header as Bearer token)
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       // Ignore expiration is set to false, so Passport will reject expired tokens
-      ignoreExpiration: false,
+      ignoreExpiration: true,
       // Secret key to verify the token's signature
       secretOrKey: secret,
     });
