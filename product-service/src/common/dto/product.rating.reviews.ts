@@ -18,7 +18,7 @@ export type ProductRatingReviewsDTO = {
 
 export type ProductRatingReviewsUserDTO = {
   ratings: number;
-  review: string;
+  review: string | null;
   reviewedBy: string;
   created_at: Date;
 };

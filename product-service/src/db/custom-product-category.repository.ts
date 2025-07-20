@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma, PrismaClient, CustomProductCategory } from "@prisma/client";
 import { BaseRepository } from "./base.repository";
+import { PrismaService } from "@Services/prisma.service";
 
 @Injectable()
 export class CustomProductVariantCategoryRepository extends BaseRepository<
@@ -13,7 +14,7 @@ export class CustomProductVariantCategoryRepository extends BaseRepository<
   Prisma.CustomProductCategoryFindManyArgs,
   Prisma.CustomProductCategoryFindFirstArgs
 > {
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     super(prisma, prisma.customProductCategory);
   }
 }

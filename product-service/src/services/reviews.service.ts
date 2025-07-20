@@ -94,7 +94,7 @@ export class ReviewsService {
    * @param productId The ID of the product (BigInt).
    * @returns An object containing the product ID and a list of detailed reviews including their rating.
    */
-  async getProductReviewsAndAverageRating(
+  async getProductReviewsAndRatingByUser(
     productId: bigint,
     page: number,
     pageSize: number,

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma, PrismaClient, CustomFilterConfigurator } from "@prisma/client";
 import { BaseRepository } from "./base.repository";
+import { PrismaService } from "@Services/prisma.service";
 
 @Injectable()
 export class CustomFilterConfiguratorRepository extends BaseRepository<
@@ -13,7 +14,7 @@ export class CustomFilterConfiguratorRepository extends BaseRepository<
   Prisma.CustomFilterConfiguratorFindManyArgs,
   Prisma.CustomFilterConfiguratorFindFirstArgs
 > {
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     super(prisma, prisma.customFilterConfigurator);
   }
 }

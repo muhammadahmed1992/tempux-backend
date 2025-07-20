@@ -1,5 +1,4 @@
 import { Module } from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
 import { BaseRepository } from "@Repository/base.repository";
 import { BrandRepository } from "@Repository/brand.repository";
 import { CartRepository } from "@Repository/cart.repository";
@@ -12,10 +11,11 @@ import { ProductVariantRepository } from "@Repository/product-variant.repository
 import { ProductRepository } from "@Repository/product.repository";
 import { SizeRepository } from "@Repository/size.repository";
 import { TypeRepository } from "@Repository/types.repository";
+import { PrismaService } from "@Services/prisma.service";
 @Module({
   imports: [],
   providers: [
-    PrismaClient,
+    PrismaService,
     BaseRepository,
     BrandRepository,
     CategoryRepository,
@@ -30,6 +30,7 @@ import { TypeRepository } from "@Repository/types.repository";
     CartRepository,
   ],
   exports: [
+    PrismaService,
     BaseRepository,
     BrandRepository,
     CategoryRepository,

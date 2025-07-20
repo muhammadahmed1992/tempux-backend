@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Prisma, PrismaClient, category } from "@prisma/client";
 
 import { BaseRepository } from "./base.repository";
+import { PrismaService } from "@Services/prisma.service";
 
 @Injectable()
 export class CategoryRepository extends BaseRepository<
@@ -14,7 +15,7 @@ export class CategoryRepository extends BaseRepository<
   Prisma.categoryFindManyArgs,
   Prisma.categoryFindFirstArgs
 > {
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     super(prisma, prisma.category);
   }
 }

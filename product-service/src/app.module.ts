@@ -22,6 +22,7 @@ import { CustomFilterConfiguratorService } from "@Services/custom-filter-configu
 import { CustomProductVariantCategoryService } from "@Services/custom-product-category.service";
 import { FavoriteService } from "@Services/favorite.service";
 import { CartService } from "@Services/cart.service";
+import { CartController } from "@Controllers/cart.controller";
 
 @Module({
   imports: [RepositoryModule, AuthModule, ReviewsModule],
@@ -33,6 +34,7 @@ import { CartService } from "@Services/cart.service";
     SizeController,
     ColorController,
     ProductController,
+    CartController,
   ],
   providers: [
     AppService,

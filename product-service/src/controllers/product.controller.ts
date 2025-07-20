@@ -1,6 +1,7 @@
 import { GetAllQueryDTO } from "@DTO/get-all-query.dto";
 import { UserId } from "@Decorators/userId.decorator";
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -17,6 +18,8 @@ import { CartService } from "@Services/cart.service";
 import { RemoveCartItemRequestDTO } from "@DTO/remove.cart.request.dto";
 import { ProductType } from "@Common/enums/product.type.enum";
 import { JwtAuthGuard } from "@Auth/jwt-auth.guard";
+import Utils from "@Common/utils";
+import Constants from "@Helper/constants";
 
 @Controller("product")
 export class ProductController {
@@ -37,6 +40,8 @@ export class ProductController {
     @Query() query: GetAllQueryDTO,
     @Param("p") productType: ProductType
   ) {
+    if (!Utils.IsEnumValue(ProductType, productType))
+      throw new BadRequestException(Constants.INVALID_PRODUCT_PARAMETER);
     const pType = ProductType.Accessory === productType;
     const { page, pageSize, orderBy, where, select, customCategoryExpression } =
       query;

@@ -5,6 +5,7 @@ import {
   ProductRatingReviewDTO,
   ProductRatingReviewsDTO,
 } from "@DTO/product.rating.reviews";
+import { PrismaService } from "@Services/prisma.service";
 
 @Injectable()
 export class ReviewsRepository extends BaseRepository<
@@ -15,12 +16,11 @@ export class ReviewsRepository extends BaseRepository<
   Prisma.reviews_ratingsWhereInput,
   Prisma.reviews_ratingsFindUniqueArgs,
   Prisma.reviews_ratingsFindManyArgs,
-  Prisma.reviews_ratingsFindFirstArgs,
-  { data: reviews_ratings[]; totalCount: number } // For paginated records.
+  Prisma.reviews_ratingsFindFirstArgs
 > {
   // TODO: Will appropriate solution late regarding as any
-  constructor(private readonly prisma: PrismaClient) {
-    super(prisma, prisma.reviews_ratings as any);
+  constructor(private readonly prisma: PrismaService) {
+    super(prisma, prisma.reviews_ratings);
   }
 
   /**
@@ -57,7 +57,7 @@ export class ReviewsRepository extends BaseRepository<
     order?: object
   ): Promise<{ data: ProductRatingReviewsDTO[]; totalCount: number }> {
     // Fetch all relevant reviews for the product
-    const { data, totalCount } = await this.model.findManyPaginated(
+    const { data, totalCount } = await this.findManyPaginated(
       page,
       pageSize,
       {

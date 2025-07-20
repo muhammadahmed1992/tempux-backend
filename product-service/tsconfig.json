@@ -17,6 +17,6 @@
       "@Decorators/*": ["src/common/helper/decorators/*"]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts", "node_modules/@prisma/client"],
+  "exclude": ["dist"]
 }

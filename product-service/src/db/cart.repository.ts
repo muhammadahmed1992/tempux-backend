@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma, PrismaClient, cart } from "@prisma/client";
+import { Prisma, cart } from "@prisma/client";
 import { BaseRepository } from "./base.repository";
 import { AddToCartRequestDTO } from "@DTO/add.to.cart.request.dto";
 import { RemoveCartItemRequestDTO } from "@DTO/remove.cart.request.dto";
+import { PrismaService } from "../services/prisma.service";
 
 @Injectable()
 export class CartRepository extends BaseRepository<
@@ -15,7 +16,7 @@ export class CartRepository extends BaseRepository<
   Prisma.cartFindManyArgs,
   Prisma.cartFindFirstArgs
 > {
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     super(prisma, prisma.cart);
   }
   /**
@@ -72,5 +73,63 @@ export class CartRepository extends BaseRepository<
         id: true,
       },
     });
+  }
+
+  /**
+   * Fetches cart detailed information of a user..
+   *
+   * @param userId The ID of the user (BigInt).
+   * @param page This is the current page number and by default it is 1
+   * @param pageSize This is the current pageSize by default it is 100000
+   * @returns The Product Title, Name, Reference Color Size Quantity, Price, CartId to remove if needed.
+   */
+  async getCartDetailedInfomration(
+    userId: bigint,
+    page: number,
+    pageSize: number,
+    where?: object,
+    select?: object,
+    order?: object
+  ): Promise<{ data: any[]; totalCount: number }> {
+    // Fetch all cart information for the user
+
+    const { data, totalCount } = await this.findManyPaginated(
+      page,
+      pageSize,
+      {
+        user_id: userId,
+        is_deleted: false,
+      },
+      {
+        id: true,
+        quantity: true,
+        product_variant: {
+          select: {
+            id: true,
+            price: true,
+            color: {
+              select: {
+                name: true,
+              },
+            },
+            size: {
+              select: {
+                value: true,
+              },
+            },
+            product: {
+              select: {
+                id: true,
+                name: true,
+                title: true,
+                reference_number: true,
+              },
+            },
+          },
+        },
+      },
+      order
+    );
+    return { data, totalCount };
   }
 }

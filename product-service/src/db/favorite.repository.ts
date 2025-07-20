@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma, PrismaClient, favorite } from "@prisma/client";
 import { BaseRepository } from "./base.repository";
+import { PrismaService } from "@Services/prisma.service";
 
 @Injectable()
 export class FavoriteRepository extends BaseRepository<
@@ -13,7 +14,7 @@ export class FavoriteRepository extends BaseRepository<
   Prisma.favoriteFindManyArgs,
   Prisma.favoriteFindFirstArgs
 > {
-  constructor(private readonly prisma: PrismaClient) {
+  constructor(private readonly prisma: PrismaService) {
     super(prisma, prisma.favorite);
   }
   /**

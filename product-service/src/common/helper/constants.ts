@@ -17,4 +17,7 @@ export default class Constants {
     "There is a problem while adding a product in the cart";
   public static readonly REVIEW_MARKED_SUCCESSFULLy =
     "Review has been marked successfully!";
+  public static readonly NO_CART_DATA_FOUND = "Data is not found for this user";
+  public static readonly INVALID_PRODUCT_PARAMETER =
+    "Invalid parameter, it must be either p or a.";
 }

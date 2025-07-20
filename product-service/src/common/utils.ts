@@ -6,4 +6,10 @@ export default class Utils {
     const routeRegex = new RegExp(pattern);
     return routeRegex;
   }
+  public static IsEnumValue<T extends Record<string, string | number>>(
+    enumObj: T,
+    value: unknown
+  ): value is T[keyof T] {
+    return Object.values(enumObj).includes(value as any);
+  }
 }

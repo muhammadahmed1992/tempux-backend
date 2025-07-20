@@ -22,29 +22,27 @@ export class ReviewsController {
 
   /**
    * @param productId this is the product id to retrieve the average rating
+   * @returns APIResponse<ProductRatingReviewsUserDTO>
+   */
+  @Get("/product/rating")
+  async productReviewRatings(@Query() query: GetAllQueryDTO) {
+    const { page, pageSize, where, select, orderBy } = query;
+    return this.reviewService.getAllPagedProductReviewsDataByUser(
+      page,
+      pageSize,
+      orderBy,
+      where,
+      select
+    );
+  }
+
+  /**
+   * @param productId this is the product id to retrieve the average rating
    * @returns <APIResponse<AverageProductRating>>
    */
   @Get("/product/:productId")
   async productAverageRatings(@Param("productId") productId: bigint) {
     return this.reviewService.fetchAverageRatingByProduct(productId);
-  }
-
-  /**
-   * @param productId this is the product id to retrieve the average rating
-   * @returns APIResponse<ProductRatingReviewsUserDTO>
-   */
-  @Get("/product/rating/:productId")
-  async productReviewRatings(
-    @Param("productId") productId: bigint,
-    @Query() query: GetAllQueryDTO
-  ) {
-    const { page, pageSize, orderBy } = query;
-    return this.reviewService.getProductReviewsAndAverageRating(
-      productId,
-      page,
-      pageSize,
-      orderBy
-    );
   }
 
   /**

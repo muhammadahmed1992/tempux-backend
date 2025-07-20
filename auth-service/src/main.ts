@@ -20,6 +20,7 @@ async function bootstrap() {
   );
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
-  await app.listen(process.env.PORT ?? 3001);
+  console.log(`running port of auth is : ${process.env.PORT}`);
+  await app.listen(3001);
 }
 bootstrap();
