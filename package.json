@@ -23,7 +23,7 @@
     "debug:order-service": "npm --prefix order-service run start:debug",
     "debug:seller-service": "npm --prefix seller-service run start:debug",
     "debug:all": "concurrently -n gateway,auth,product,order,seller -c blue,green,magenta,cyan,red \"npm run debug:api-gateway\" \"npm run debug:auth-service\" \"npm run debug:product-service\" \"npm run debug:order-service\" \"npm run debug:seller-service\"",
-    "prepare": "husky install"
+    "prepare": "tsx ./scripts/prepare.ts"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
@@ -42,14 +42,15 @@
     "prettier": "^2.8.8",
     "prisma": "^6.11.1",
     "ts-node": "^10.9.2",
-    "tsconfig-paths": "^4.2.0"
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.20.3"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
       "npx eslint --fix",
       "npx prettier --write"
     ],
-    "*.{json,css,md}": [
+    "*.{json}": [
       "npx prettier --write"
     ]
   },
