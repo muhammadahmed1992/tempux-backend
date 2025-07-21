@@ -36,5 +36,8 @@
   },
   "dependencies": {
     "http-proxy-middleware": "^3.0.5"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.7"
   }
 }
