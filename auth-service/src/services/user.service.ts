@@ -24,6 +24,7 @@ import { LoginRequestDTO } from "@DTO/login-request.dto";
 import { LoginDTO } from "@DTO/login.dto";
 import { EncryptionHelper } from "@Helper/encryption.helper";
 import { UpdatePasswordDTO } from "@DTO/update.password.dto";
+import { UserDetailsResponseDto } from "@DTO/user.details.response.dto";
 
 @Injectable()
 export class UserService {
@@ -419,6 +420,51 @@ export class UserService {
     );
   }
 
+  /**
+   * Finds multiple users by their number IDs and returns their basic details.
+   * This method is intended for internal service-to-service communication.
+   * @param userIds An array of user IDs (number).
+   * @returns A promise that resolves to an array of UserDetailsResponseDto.
+   */
+  async findUsersByIds(
+    userIds: number[]
+  ): Promise<ApiResponse<UserDetailsResponseDto[]>> {
+    if (!userIds || userIds.length === 0) {
+      return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
+        "",
+        [],
+        HttpStatus.BAD_REQUEST
+      );
+    }
+
+    // Ensure unique IDs to avoid redundant queries
+    const uniqueUserIds = [...new Set(userIds)];
+
+    const users = await this.userRepository.findMany({
+      where: {
+        id: {
+          in: uniqueUserIds,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        full_name: true,
+      },
+    });
+
+    return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
+      Constants.DATA_RETRIEVED_SUCCESSFULLY,
+      users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        fullName: user.full_name || "",
+        email: user.email,
+      })),
+      HttpStatus.OK
+    );
+  }
   /**
    * Private helper function which actually returns the newly generated OTP and its expiry
    */

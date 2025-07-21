@@ -15,6 +15,6 @@ async function bootstrap() {
   app.use(pattern, new ProxyMiddleware().use);
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(3000);
 }
 bootstrap();

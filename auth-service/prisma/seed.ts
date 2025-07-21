@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
@@ -31,10 +32,67 @@ async function main() {
   }
 
   console.log("✅ Default user types seeded!");
+
+  const superAdmin = {
+    name: "sahmed1992",
+    email: "muhammed_hm@hotmail.com",
+    password: bcrypt.hashSync("abc123", Number(process.env.SALT_ROUND) || 10),
+    userType: 1,
+    otp: bcrypt.hashSync("123456", Number(process.env.SALT_ROUND) || 10),
+  };
+
+  const admin = {
+    name: "mahmed1992",
+    email: "muhammed_hm@hotmail.com",
+    password: bcrypt.hashSync("abc123", Number(process.env.SALT_ROUND) || 10),
+    userType: 2,
+    otp: bcrypt.hashSync("123456", Number(process.env.SALT_ROUND) || 10),
+  };
+  try {
+    await prisma.users.upsert({
+      where: {
+        email_user_type: {
+          // Use the generated compound unique key
+          email: superAdmin.email,
+          user_type: superAdmin.userType,
+        },
+      },
+      update: { name: superAdmin.name },
+      create: {
+        name: superAdmin.name,
+        email: superAdmin.email,
+        password: superAdmin.password,
+        otp: superAdmin.otp,
+        user_type: superAdmin.userType,
+      },
+    });
+
+    await prisma.users.upsert({
+      where: {
+        email_user_type: {
+          // Use the generated compound unique key
+          email: admin.email,
+          user_type: admin.userType,
+        },
+      },
+      update: { name: admin.name },
+      create: {
+        name: admin.name,
+        email: admin.email,
+        password: admin.password,
+        otp: admin.otp,
+        user_type: admin.userType,
+      },
+    });
+  } catch (e) {
+    console.error("Error while adding seed user");
+    console.error(e);
+  }
 }
 
 main()
   .catch((e) => {
+    console.error("Exception occured while seeding data: Auth-Service");
     console.error(e);
     process.exit(1);
   })

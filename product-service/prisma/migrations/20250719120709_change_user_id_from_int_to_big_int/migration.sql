@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "cart" ALTER COLUMN "user_id" SET DATA TYPE BIGINT;

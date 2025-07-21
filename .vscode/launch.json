@@ -39,7 +39,7 @@
       "name": "Debug Buyer Service",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start:debug"],
-      "cwd": "${workspaceFolder}/buyer-service",
+      "cwd": "${workspaceFolder}/order-service",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"
     },

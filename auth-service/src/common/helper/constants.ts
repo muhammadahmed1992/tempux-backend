@@ -31,4 +31,6 @@ export default class Constants {
     "Something went wrong while updating your password";
   public static readonly USER_NOT_VERIFIED =
     "You are not a verified user. Please start your verification process first";
+  public static readonly DATA_RETRIEVED_SUCCESSFULLY =
+    "Data has been retrieved successfully!";
 }

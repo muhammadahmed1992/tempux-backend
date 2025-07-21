@@ -2,8 +2,21 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "baseUrl": "./",
+    "paths": {
+      "@Module/*": ["src/modules/*"],
+      "@Controllers/*": ["src/controllers/*"],
+      "@Services/*": ["src/services/*"],
+      "@Repository/*": ["src/db/*"],
+      "@DTO/*": ["src/common/dto/*"],
+      "@Helper/*": ["src/common/helper/*"],
+      "@Common/*": ["src/common/*"],
+      "@Auth/*": ["src/auth/*"],
+      "@Proxy/*": ["src/proxy/*"],
+      "@Decorators/*": ["src/common/helper/decorators/*"]
+    }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts", "node_modules/@prisma/client"],
+  "exclude": ["dist"]
 }

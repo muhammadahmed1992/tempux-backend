@@ -4,7 +4,7 @@
   "workspaces": [
     "api-gateway",
     "auth-service",
-    "buyer-service",
+    "order-service",
     "product-service",
     "seller-service"
   ],
@@ -14,20 +14,21 @@
     "start:api-gateway": "npm --prefix api-gateway run start:dev",
     "start:auth-service": "npm --prefix auth-service run start:dev",
     "start:product-service": "npm --prefix product-service run start:dev",
-    "start:buyer-service": "npm --prefix buyer-service run start:dev",
+    "start:order-service": "npm --prefix order-service run start:dev",
     "start:seller-service": "npm --prefix seller-service run start:dev",
-    "start:all": "concurrently -n gateway,auth,product,buyer,seller -c blue,green,magenta,cyan,red \"npm run start:api-gateway\" \"npm run start:auth-service\" \"npm run start:product-service\" \"npm run start:buyer-service\" \"npm run start:seller-service\"",
+    "start:all": "concurrently -n gateway,auth,product,order,seller -c blue,green,magenta,cyan,red \"npm run start:api-gateway\" \"npm run start:auth-service\" \"npm run start:product-service\" \"npm run start:order-service\" \"npm run start:seller-service\"",
     "debug:api-gateway": "npm --prefix api-gateway run start:debug",
     "debug:auth-service": "npm --prefix auth-service run start:debug",
     "debug:product-service": "npm --prefix product-service run start:debug",
-    "debug:buyer-service": "npm --prefix buyer-service run start:debug",
+    "debug:order-service": "npm --prefix order-service run start:debug",
     "debug:seller-service": "npm --prefix seller-service run start:debug",
-    "debug:all": "concurrently -n gateway,auth,product,buyer,seller -c blue,green,magenta,cyan,red \"npm run debug:api-gateway\" \"npm run debug:auth-service\" \"npm run debug:product-service\" \"npm run debug:buyer-service\" \"npm run debug:seller-service\"",
+    "debug:all": "concurrently -n gateway,auth,product,order,seller -c blue,green,magenta,cyan,red \"npm run debug:api-gateway\" \"npm run debug:auth-service\" \"npm run debug:product-service\" \"npm run debug:order-service\" \"npm run debug:seller-service\"",
     "prepare": "husky install"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.0",
+    "@types/passport-jwt": "^4.0.1",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "concurrently": "^9.1.2",
@@ -53,6 +54,7 @@
     ]
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.1.3",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.3",
