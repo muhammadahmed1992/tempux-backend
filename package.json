@@ -50,7 +50,7 @@
       "npx eslint --fix",
       "npx prettier --write"
     ],
-    "*.{json}": [
+    "*.json": [
       "npx prettier --write"
     ]
   },
