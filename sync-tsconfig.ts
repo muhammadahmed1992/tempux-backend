@@ -8,7 +8,7 @@ const projects = [
   "api-gateway",
   "auth-service",
   "product-service",
-  "buyer-service",
+  "order-service",
   "seller-service",
 ];
 

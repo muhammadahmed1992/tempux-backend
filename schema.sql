@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS payments.payment_transactions (
     payment_mode_id SMALLINT NOT NULL REFERENCES payments.payment_modes(id),
     transaction_id VARCHAR(100),
     amount DECIMAL(10,2) NOT NULL,
-    currency VARCHAR(5) DEFAULT 'USD',
+    currency VARCHAR(5) DEFAULT '$',
     status VARCHAR(20) NOT NULL,
     paid_at TIMESTAMPTZ,
     is_refunded BOOLEAN DEFAULT false,
