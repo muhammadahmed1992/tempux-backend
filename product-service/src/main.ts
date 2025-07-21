@@ -38,6 +38,6 @@ async function bootstrap() {
   app.useGlobalInterceptors(new BigIntInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
   const port = configService.get<number>("PORT") || 3003;
-  await app.listen(port);
+  await app.listen(3003);
 }
 bootstrap();
