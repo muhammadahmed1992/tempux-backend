@@ -153,6 +153,7 @@ export class UserController {
       )}dashboard?token=${accessToken}`
     );
   }
+
   /**
    * Initiates the Facebook OAuth2 login flow.
    * Frontend calls: GET http://localhost:3001/user/facebook?userType=3

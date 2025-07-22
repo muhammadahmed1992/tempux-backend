@@ -21,6 +21,19 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
   console.log(`running port of auth is : ${process.env.PORT}`);
+  app.enableCors({
+    origin: (origin: any, callback: any) => {
+      // This function dynamically reflects the origin, effectively allowing all.
+      // It satisfies the CORS specification requirement for 'credentials: true'
+      // by not using the '*' wildcard for the 'Access-Control-Allow-Origin' header,
+      // but instead setting it to the actual requesting origin.
+      callback(null, true);
+    },
+    methods: "*", // Explicitly allow all common HTTP methods
+    allowedHeaders:
+      "Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key", // Explicitly list headers
+    credentials: true, // Allow cookies and authorization headers to be sent
+  });
   await app.listen(3001);
 }
 bootstrap();

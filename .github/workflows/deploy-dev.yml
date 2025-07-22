@@ -1,0 +1,48 @@
+name: Deploy Dev Environment
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL_AUTH: ${{ secrets.DATABASE_URL_AUTH_DEV }}
+      DATABASE_URL_PRODUCT: ${{ secrets.DATABASE_URL_PRODUCT_DEV }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: SSH Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "👉 Pull latest code"
+            cd /home/ubuntu/tempux-backend
+            git pull origin dev
+
+            echo "👉 Install dependencies for all services"
+            cd api-gateway && npm install && cd ..
+            cd auth-service && npm install && cd ..
+            cd product-service && npm install && cd ..
+
+            echo "👉 Run Prisma migrate + seed for auth-service"
+            cd auth-service && DATABASE_URL=${{ env.DATABASE_URL_AUTH }} npx prisma migrate deploy && npx prisma db seed && cd ..
+
+            echo "👉 Run Prisma migrate + seed for product-service"
+            cd product-service && DATABASE_URL=${{ env.DATABASE_URL_PRODUCT }} npx prisma migrate deploy && npx prisma db seed && cd ..
+
+            echo "👉 Reload PM2"
+            pm2 reload ecosystem.config.ts --interpreter tsx --env production
