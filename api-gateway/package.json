@@ -36,5 +36,8 @@
   },
   "dependencies": {
     "http-proxy-middleware": "^3.0.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19"
   }
 }
