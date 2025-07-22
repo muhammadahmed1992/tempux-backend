@@ -41,6 +41,7 @@ module.exports = {
     "**/node_modules/**",
     "**/build/**",
     ".eslintrc.js",
+    "ecosystem.config.ts",
   ],
   rules: {
     "@typescript-eslint/no-var-requires": "error",
