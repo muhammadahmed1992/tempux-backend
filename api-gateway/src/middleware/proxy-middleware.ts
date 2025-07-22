@@ -1,9 +1,4 @@
-import {
-  HttpException,
-  HttpStatus,
-  Injectable,
-  NestMiddleware,
-} from "@nestjs/common";
+import { HttpStatus, Injectable, NestMiddleware } from "@nestjs/common";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { Request, Response, NextFunction } from "express";
 import { IncomingMessage } from "http";
@@ -42,6 +37,7 @@ export class ProxyMiddleware implements NestMiddleware {
           // might not be fully type-safe without custom type augmentations.
           const expressReq = req as express.Request &
             IncomingMessage & { readableBuffer?: Buffer };
+          console.log(`Logging the incoming request method: ${req.method}`);
           if (
             expressReq.body &&
             Object.keys(expressReq.body).length &&
@@ -52,7 +48,7 @@ export class ProxyMiddleware implements NestMiddleware {
             proxyReq.setHeader("Content-Type", "application/json");
             proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
             proxyReq.write(bodyData);
-            proxyReq.end();
+            //proxyReq.end();
             // --- Debugging Logs (Outgoing Proxy Request) ---
             console.log(
               "--- Outgoing ProxyReq Headers (after body processing) ---"
@@ -83,12 +79,6 @@ export class ProxyMiddleware implements NestMiddleware {
                 "ProxyReq Finished (all data written to target server)"
               );
             });
-          } else if (
-            expressReq.method === "GET" ||
-            expressReq.method === "HEAD"
-          ) {
-            // For GET/HEAD requests, no body is expected
-            //proxyReq.cl(); // End the proxy request
           } else {
             // For other methods or if body is unexpectedly missing,
             // you might want to log a warning or handle differently.
@@ -97,11 +87,13 @@ export class ProxyMiddleware implements NestMiddleware {
             );
           }
         },
-        proxyRes(proxyReq, req: Request, res: Response) {
+        proxyRes(proxyRes, req: Request, res: Response) {
           // proxyRes, req, res
           // TODO: Will investigate later
-          // console.log(res.loca);
           console.log("API Gateway proxy response");
+          console.log(proxyRes.originalUrl);
+          console.log(req.url);
+          console.log(res.statusCode);
         },
         error(error, request, response: any, target: any) {
           console.error(`Incoming Request: ${request.originalUrl}`);
