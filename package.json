@@ -23,7 +23,9 @@
     "debug:order-service": "npm --prefix order-service run start:debug",
     "debug:seller-service": "npm --prefix seller-service run start:debug",
     "debug:all": "concurrently -n gateway,auth,product,order,seller -c blue,green,magenta,cyan,red \"npm run debug:api-gateway\" \"npm run debug:auth-service\" \"npm run debug:product-service\" \"npm run debug:order-service\" \"npm run debug:seller-service\"",
-    "prepare": "tsx ./scripts/prepare.ts"
+    "prepare": "tsx ./scripts/prepare.ts",
+    "build:all": "npm --prefix ./api-gateway run build && npm --prefix ./auth-service run build && npm --prefix ./product-service run build",
+    "deploy:all": "npm run build:all && pm2 delete all || true && pm2 start ecosystem.config.js && pm2 save && ngrok http 3000"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
@@ -50,7 +52,7 @@
       "npx eslint --fix",
       "npx prettier --write"
     ],
-    "*.{json}": [
+    "*.json": [
       "npx prettier --write"
     ]
   },

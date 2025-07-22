@@ -17,8 +17,14 @@ export class ServiceResolver {
         if (!url)
           throw new Error(`Service "${serviceKey}" not found in local config`);
         return url;
+      } else {
+        // TODO: Maybe move this to cloudMap or something.
+        const url = this.staticMap[serviceKey];
+        console.log(`request is redirecting to the url: ${url}`);
+        if (!url)
+          throw new Error(`Service "${serviceKey}" not found in local config`);
+        return url;
       }
-      throw new Error(`Production is not setup yet`);
     } catch (e) {
       console.error(e);
     }

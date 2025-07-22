@@ -6,7 +6,6 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaService } from "@Services/prisma.service";
 import { AppController } from "@Controllers/app.controller";
 import { JwtModule } from "@nestjs/jwt";
-import { EmailService } from "@Services/email.service";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { GoogleStrategy } from "./social-login/google-strategy";
 import { FacebookStrategy } from "./social-login/facebook-strategy";
@@ -19,7 +18,7 @@ import { EncryptionHelper } from "@Helper/encryption.helper";
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get("JWT_SECRET") || "yourSecretKeyHere",
-        signOptions: { expiresIn: "1d" },
+        signOptions: { expiresIn: "180d" },
       }),
       inject: [ConfigService],
     }),
