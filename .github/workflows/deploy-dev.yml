@@ -129,7 +129,8 @@ jobs:
 
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
-            npx prisma generate && npm run build
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma generate
+            npm run build
             cd "$PROJECT_DIR" # Return to project root
 
 
@@ -137,9 +138,10 @@ jobs:
             cd "$PROJECT_DIR/product-service" || { echo "Error: Could not change to product-service directory. Exiting."; exit 1; }
             # For Prisma commands, you still need to pass the DB URL directly as an env var
             # because PM2 hasn't reloaded the ecosystem file yet for the running processes.
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
-            npx prisma generate && npm run build
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for product-service. Exiting."; exit 1; }
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for product-service. Exiting."; exit 1; }
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma generate
+            npm run build
             cd "$PROJECT_DIR" # Return to project root
 
             echo "path before running pm2 start $PROJECT_DIR "
