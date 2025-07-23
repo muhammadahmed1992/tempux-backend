@@ -29,25 +29,76 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # --- Navigate to your project root on EC2 ---
+            PROJECT_DIR="/home/ubuntu/tempux-backend"
+
             echo "👉 Pull latest code"
-            cd /home/ubuntu/tempux-backend
+
+            cd "$PROJECT_DIR" || { echo "Error: Could not change to project directory. Exiting."; exit 1; }
+
             git fetch origin
             git checkout develop
             git pull origin develop
+
+
 
             echo " Install tsx "
             sudo npm install -g tsx
 
             echo "👉 Install dependencies for all services"
-            cd api-gateway && npm install && cd ..
-            cd auth-service && npm install && cd ..
-            cd product-service && npm install && cd ..
+            # Navigate into each service directory, install, then go back to root
+            cd "$PROJECT_DIR/api-gateway" && npm install || { echo "Error: npm install failed for api-gateway. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: npm install failed for auth-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/product-service" && npm install || { echo "Error: npm install failed for product-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR" # Return to project root after all installs
+            # --- Inject Secrets into ecosystem.config.ts ---
+            echo "👉 Injecting environment variables into ecosystem.config.ts"
+
+            sed -i "s#OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" ecosystem.config.ts
+            sed -i "s#MAIL_HOST#${{ secrets.MAIL_HOST }}#g" ecosystem.config.ts
+
+            sed -i "s#MAIL_PORT#${{ secrets.MAIL_PORT }}#g" ecosystem.config.ts
+            sed -i "s#MAIL_USERNAME#${{ secrets.MAIL_USERNAME }}#g" ecosystem.config.ts
+
+            sed -i "s#MAIL_PASSWORD#${{ secrets.MAIL_PASSWORD }}#g" ecosystem.config.ts
+            sed -i "s#MAIL_FROM#${{ secrets.MAIL_FROM }}#g" ecosystem.config.ts
+
+            sed -i "s#FRONTEND_URL#${{ secrets.FRONTEND_URL }}#g" ecosystem.config.ts
+            sed -i "s#GOOGLE_CLIENT_ID#${{ secrets.GOOGLE_CLIENT_ID }}#g" ecosystem.config.ts
+            sed -i "s#GOOGLE_CLIENT_SECRET#${{ secrets.GOOGLE_CLIENT_SECRET }}#g" ecosystem.config.ts
+            sed -i "s#GOOGLE_CALLBACK_URL#${{ secrets.GOOGLE_CALLBACK_URL }}#g" ecosystem.config.ts
+
+            sed -i "s#FACEBOOK_APP_ID#${{ secrets.FACEBOOK_APP_ID }}#g" ecosystem.config.ts
+            sed -i "s#FACEBOOK_APP_SECRET#${{ secrets.FACEBOOK_APP_SECRET }}#g" ecosystem.config.ts
+
+            sed -i "s#FACEBOOK_CALLBACK_URL#${{ secrets.FACEBOOK_CALLBACK_URL }}#g" ecosystem.config.ts
+            sed -i "s#EMAIL_ENCRYPTION_KEY#${{ secrets.EMAIL_ENCRYPTION_KEY }}#g" ecosystem.config.ts
+
+            sed -i "s#SALT_ROUND#${{ secrets.SALT_ROUND }}#g" ecosystem.config.ts
+            sed -i "s#PORT#${{ secrets.AUTH_PORT }}#g" ecosystem.config.ts
+            sed -i "s#PORT#${{ secrets.AUTH_PORT }}#g" ecosystem.config.ts
+            sed -i "s#USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" ecosystem.config.ts
 
             echo "👉 Run Prisma migrate + seed for auth-service"
-            cd auth-service && DATABASE_URL_DEV_USERS=${{ secrets.DATABASE_URL_DEV_USERS }} npx prisma migrate deploy && npx prisma db seed && cd ..
+            cd "$PROJECT_DIR/auth-service" || { echo "Error: Could not change to auth-service directory. Exiting."; exit 1; }
+            # For Prisma commands, you still need to pass the DB URL directly as an env var
+            # because PM2 hasn't reloaded the ecosystem file yet for the running processes.
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR" # Return to project root
+
 
             echo "👉 Run Prisma migrate + seed for product-service"
-            cd product-service && DATABASE_URL_DEV_PRODUCT=${{ env.DATABASE_URL_DEV_PRODUCT }} npx prisma migrate deploy && npx prisma db seed && cd ..
+            cd "$PROJECT_DIR/product-service" || { echo "Error: Could not change to product-service directory. Exiting."; exit 1; }
+            # For Prisma commands, you still need to pass the DB URL directly as an env var
+            # because PM2 hasn't reloaded the ecosystem file yet for the running processes.
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR" # Return to project root
 
-            echo "👉 Reload PM2"
-            pm2 reload ecosystem.config.ts --interpreter tsx
+            echo "👉 Reload PM2 processes"
+            # PM2 will now read the updated ecosystem.config.ts with the actual secret values
+            # It will pick up the 'env_production' block automatically when no --env is specified
+            pm2 reload ecosystem.config.ts --interpreter tsx || { echo "Error: PM2 reload failed. Exiting."; exit 1; }
+
+            echo "====== Deployment ENDED ======"
