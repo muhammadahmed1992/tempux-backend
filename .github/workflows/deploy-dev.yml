@@ -64,6 +64,7 @@ jobs:
             # Use a variable for the filename to avoid potential parsing issues
             ECOSYSTEM_FILE="ecosystem.config.ts"
 
+            sed -i.bak "s#INJECT_JWT_SECRET#${{ secrets.JWT_SECRET }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_MAIL_HOST#${{ secrets.MAIL_HOST }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_MAIL_PORT#${{ secrets.MAIL_PORT }}#g" "$ECOSYSTEM_FILE"
