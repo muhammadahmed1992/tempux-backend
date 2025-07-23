@@ -46,6 +46,12 @@ jobs:
             sudo npm install -g tsx
 
             export CI=true
+            # --- Stop and Delete Existing PM2 Processes ---
+            echo "👉 Stopping and deleting existing PM2 processes..."
+            # Use 'pm2 delete all' to remove all processes managed by PM2.
+            # Use '|| true' to prevent script from failing if no processes are found.
+            pm2 delete all || true
+            echo "PM2 processes stopped/deleted."
 
             echo "👉 Install dependencies for all services"
             # Navigate into each service directory, install, then go back to root
