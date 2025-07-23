@@ -1,13 +1,15 @@
 {
   "name": "backend-monorepo",
   "private": true,
-  "workspaces": [
-    "api-gateway",
-    "auth-service",
-    "order-service",
-    "product-service",
-    "seller-service"
-  ],
+  "workspaces": {
+    "packages": [
+      "api-gateway",
+      "auth-service",
+      "order-service",
+      "product-service",
+      "seller-service"
+    ]
+  },
   "scripts": {
     "lint": "eslint '*/src/**/*.{ts,tsx,js,jsx}' --fix",
     "format": "prettier --write '*/src/**/*.{ts,tsx,js,jsx,json,css,md}'",
@@ -25,7 +27,7 @@
     "debug:all": "concurrently -n gateway,auth,product,order,seller -c blue,green,magenta,cyan,red \"npm run debug:api-gateway\" \"npm run debug:auth-service\" \"npm run debug:product-service\" \"npm run debug:order-service\" \"npm run debug:seller-service\"",
     "prepare": "tsx ./scripts/prepare.ts",
     "build:all": "npm --prefix ./api-gateway run build && npm --prefix ./auth-service run build && npm --prefix ./product-service run build",
-    "deploy:all": "npm run build:all && pm2 delete all || true && pm2 start ecosystem.config.js && pm2 save && ngrok http 3000"
+    "deploy:all": "npm run build:all && pm2 delete all || true && pm2 start ecosystem.config.js && pm2 save &&"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
