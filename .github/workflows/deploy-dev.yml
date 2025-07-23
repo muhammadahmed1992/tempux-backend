@@ -144,4 +144,4 @@ jobs:
             echo "👉 Start/Reload PM2 processes" # Changed message
             # Use 'pm2 start' which handles both initial start and updates/reloads.
             # '--update-env' ensures new environment variables from sed are picked up.
-            pm2 start $ECOSYSTEM_FILE --update-env || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
+            pm2 start $ECOSYSTEM_FILE --update-env --env production || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
