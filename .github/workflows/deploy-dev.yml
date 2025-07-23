@@ -42,8 +42,16 @@ jobs:
             git checkout develop
             git pull origin develop
 
+            echo "👉 Configure npm permissions for the ubuntu user"
+            # Set npm's global installation directory to a user-owned path
+            npm config set prefix '~/.npm-global'
+
+            # Add this directory to the PATH environment variable for the current session
+            # This ensures that globally installed executables (like tsx and nest) are found
+            export PATH=~/.npm-global/bin:$PATH
+
             echo " Install tsx "
-            sudo npm install -g tsx
+            npm install -g tsx @nestjs/cli || { echo "Error: Global npm install failed. Exiting."; exit 1; }
 
             export CI=true
             # --- Stop and Delete Existing PM2 Processes ---
@@ -52,7 +60,8 @@ jobs:
             # Use '|| true' to prevent script from failing if no processes are found.
             pm2 delete all || true
             echo "PM2 processes stopped/deleted."
-
+            echo " Install centralized dependencies for all services "
+            npm install
             echo "👉 Install dependencies for all services"
             # Navigate into each service directory, install, then go back to root
             cd "$PROJECT_DIR/api-gateway" && npm install && npm run build|| { echo "Error: npm install failed for api-gateway. Exiting."; exit 1; }
