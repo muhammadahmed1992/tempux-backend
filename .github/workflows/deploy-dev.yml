@@ -36,7 +36,7 @@ jobs:
             git pull origin develop
 
             echo " Install tsx "
-            npm install -g tsx
+            sudo npm install -g tsx
 
             echo "👉 Install dependencies for all services"
             cd api-gateway && npm install && cd ..
