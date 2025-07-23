@@ -54,6 +54,7 @@ module.exports = {
 
         SALT_ROUND: "INJECT_SALT_ROUND",
         PORT: "INJECT_AUTH_PORT",
+        DATABASE_URL_DEV_USERS: "INJECT_DATABASE_URL_DEV_USERS",
       },
     },
     {
@@ -70,6 +71,7 @@ module.exports = {
         JWT_SECRET: "INJECT_JWT_SECRET",
         USER_SERVICE_URL: "INJECT_USER_SERVICE_URL",
         PORT: "INJECT_PRODUCT_PORT",
+        DATABASE_URL_DEV_PRODUCT: "INJECT_DATABASE_URL_DEV_PRODUCT",
       },
     },
   ],

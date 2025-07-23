@@ -103,6 +103,8 @@ jobs:
             sed -i.bak "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_PRODUCT_PORT#${{ secrets.PRODUCT_PORT }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_GATEWAY_PORT#${{ secrets.GATEWAY_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_DATABASE_URL_DEV_USERS#${{ secrets.DATABASE_URL_DEV_USERS }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_DATABASE_URL_DEV_PRODUCT#${{ secrets.DATABASE_URL_DEV_PRODUCT }}#g" "$ECOSYSTEM_FILE"
 
             # --- Move the .bak file out of the repository ---
             BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
