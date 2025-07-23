@@ -61,30 +61,32 @@ jobs:
             cd "$PROJECT_DIR" # Return to project root after all installs
             # --- Inject Secrets into ecosystem.config.ts ---
             echo "👉 Injecting environment variables into ecosystem.config.ts"
+            # Use a variable for the filename to avoid potential parsing issues
+            ECOSYSTEM_FILE="ecosystem.config.ts"
 
-            sed -i "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_MAIL_HOST#${{ secrets.MAIL_HOST }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_MAIL_PORT#${{ secrets.MAIL_PORT }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_MAIL_USERNAME#${{ secrets.MAIL_USERNAME }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_MAIL_PASSWORD#${{ secrets.MAIL_PASSWORD }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_MAIL_FROM#${{ secrets.MAIL_FROM }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_FRONTEND_URL#${{ secrets.FRONTEND_URL }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_GOOGLE_CLIENT_ID#${{ secrets.GOOGLE_CLIENT_ID }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_GOOGLE_CLIENT_SECRET#${{ secrets.GOOGLE_CLIENT_SECRET }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_GOOGLE_CALLBACK_URL#${{ secrets.GOOGLE_CALLBACK_URL }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_FACEBOOK_APP_ID#${{ secrets.FACEBOOK_APP_ID }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_FACEBOOK_APP_SECRET#${{ secrets.FACEBOOK_APP_SECRET }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_FACEBOOK_CALLBACK_URL#${{ secrets.FACEBOOK_CALLBACK_URL }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_EMAIL_ENCRYPTION_KEY#${{ secrets.EMAIL_ENCRYPTION_KEY }}#g" ecosystem.conINJECT_fig.ts
-            sed -i "s#INJECT_SALT_ROUND#${{ secrets.SALT_ROUND }}#g" ecosystem.config.tsINJECT_
-            sed -i "s#INJECT_PORT#${{ secrets.AUTH_PORT }}#g" ecosystem.config.tsINJECT_
-            sed -i "s#INJECT_PORT#${{ secrets.AUTH_PORT }}#g" ecosystem.config.tsINJECT_
-            sed -i "s#INJECT_USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" ecosystem.config.tsINJECT_
-            sed -i "s#INJECT_AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" ecosystem.config.ts
-            sed -i "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" ecosystem.config.ts
+            sed -i "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_MAIL_HOST#${{ secrets.MAIL_HOST }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_MAIL_PORT#${{ secrets.MAIL_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_MAIL_USERNAME#${{ secrets.MAIL_USERNAME }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_MAIL_PASSWORD#${{ secrets.MAIL_PASSWORD }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_MAIL_FROM#${{ secrets.MAIL_FROM }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_FRONTEND_URL#${{ secrets.FRONTEND_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_GOOGLE_CLIENT_ID#${{ secrets.GOOGLE_CLIENT_ID }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_GOOGLE_CLIENT_SECRET#${{ secrets.GOOGLE_CLIENT_SECRET }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_GOOGLE_CALLBACK_URL#${{ secrets.GOOGLE_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_FACEBOOK_APP_ID#${{ secrets.FACEBOOK_APP_ID }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_FACEBOOK_APP_SECRET#${{ secrets.FACEBOOK_APP_SECRET }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_FACEBOOK_CALLBACK_URL#${{ secrets.FACEBOOK_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_EMAIL_ENCRYPTION_KEY#${{ secrets.EMAIL_ENCRYPTION_KEY }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_SALT_ROUND#${{ secrets.SALT_ROUND }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_PORT#${{ secrets.AUTH_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_PORT#${{ secrets.AUTH_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
 
             echo "👉 Displaying ecosystem.config.ts after secret injection for debugging:"
-            cat ecosystem.config.ts # <--- ADDED THIS LINE FOR DEBUGGING
+            cat "$ECOSYSTEM_FILE" # <--- ADDED THIS LINE FOR DEBUGGING
 
             echo "👉 Run Prisma migrate + seed for auth-service"
             cd "$PROJECT_DIR/auth-service" || { echo "Error: Could not change to auth-service directory. Exiting."; exit 1; }
