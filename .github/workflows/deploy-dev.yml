@@ -31,7 +31,12 @@ jobs:
           script: |
             echo "👉 Pull latest code"
             cd /home/ubuntu/tempux-backend
-            git pull origin dev
+            git fetch origin
+            git checkout develop
+            git pull origin develop
+
+            echo " Install tsx "
+            npm install -g tsx
 
             echo "👉 Install dependencies for all services"
             cd api-gateway && npm install && cd ..
