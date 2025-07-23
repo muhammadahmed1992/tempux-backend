@@ -63,6 +63,14 @@ jobs:
             echo "👉 Injecting environment variables into ecosystem.config.ts"
             # Use a variable for the filename to avoid potential parsing issues
             ECOSYSTEM_FILE="ecosystem.config.ts"
+            BACKUP_DIR="/home/ubuntu/pm2_config_backups" # Define a dedicated backup directory outside the repo
+            # Create the backup directory if it doesn't exist
+            mkdir -p "$BACKUP_DIR"
+            # Clean up old backups (e.g., keep only the last 5)
+            echo "👉 Cleaning up old PM2 config backups in $BACKUP_DIR..."
+            ls -tp "$BACKUP_DIR" | grep -v '/$' | tail -n +6 | xargs -I {} rm -- "$BACKUP_DIR/{}" || true
+            echo "Old backups cleaned."
+
 
             sed -i.bak "s#INJECT_JWT_SECRET#${{ secrets.JWT_SECRET }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" "$ECOSYSTEM_FILE"
@@ -84,6 +92,19 @@ jobs:
             sed -i.bak "s#INJECT_USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
+
+            # --- Move the .bak file out of the repository ---
+            BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
+            TIMESTAMP=$(date +%Y%m%d%H%M%S) # Get current timestamp
+            TARGET_BACKUP_PATH="${BACKUP_DIR}/${ECOSYSTEM_FILE}.${TIMESTAMP}.bak"
+
+            if [ -f "$BACKUP_FILENAME" ]; then
+              echo "👉 Moving $BACKUP_FILENAME to $TARGET_BACKUP_PATH..."
+              mv "$BACKUP_FILENAME" "$TARGET_BACKUP_PATH" || { echo "Error: Failed to move backup file. Exiting."; exit 1; }
+              echo "Backup moved successfully."
+            else
+              echo "No .bak file found to move. This might be normal if sed didn't make changes."
+            fi
 
             echo "👉 Displaying ecosystem.config.ts after secret injection for debugging:"
             cat "$ECOSYSTEM_FILE" # <--- ADDED THIS LINE FOR DEBUGGING
