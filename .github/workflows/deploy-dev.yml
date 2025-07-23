@@ -60,9 +60,15 @@ jobs:
             npm install -g pnpm || { echo "Failed to install pnpm globally. Exiting."; exit 1; }
 
             # Ensure PNPM_HOME is set up
-            pnpm setup
+            pnpm setup --global
 
             # Reload shell to get PNPM_HOME in PATH
+            # Make sure PNPM_HOME is set:
+            export PNPM_HOME="$HOME/.pnpm-global"
+            mkdir -p "$PNPM_HOME"
+            echo "export PNPM_HOME=\"$PNPM_HOME\"" >> ~/.bashrc
+            echo "export PATH=\"$PNPM_HOME:$PATH\"" >> ~/.bashrc
+            export PATH="$PNPM_HOME:$PATH"
             source ~/.bashrc
 
             echo "👉 Install nestjs cli + tsx globally"
