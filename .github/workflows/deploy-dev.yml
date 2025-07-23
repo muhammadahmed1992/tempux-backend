@@ -35,6 +35,7 @@ jobs:
       GATEWAY_PORT: ${{ secrets.GATEWAY_PORT }}
       AUTH_PORT: ${{ secrets.AUTH_PORT }}
       PRODUCT_PORT: ${{ secrets.PRODUCT_PORT }}
+      CI: true
 
     steps:
       - name: Checkout Repository
@@ -76,6 +77,7 @@ jobs:
             GATEWAY_PORT
             AUTH_PORT
             PRODUCT_PORT
+            CI
           script: |
             set -e
 
@@ -109,6 +111,33 @@ jobs:
 
             echo "👉 Install dependencies"
             pnpm install
+            # Before prisma runs, and before pm2 start:
+            export DATABASE_URL_DEV_USERS
+            export DATABASE_URL_DEV_PRODUCT
+            export JWT_SECRET
+            export OTP_EXPIRY_DURATION
+            export MAIL_HOST
+            export MAIL_PORT
+            export MAIL_USERNAME
+            export MAIL_PASSWORD
+            export MAIL_FROM
+            export FRONTEND_URL
+            export GOOGLE_CLIENT_ID
+            export GOOGLE_CLIENT_SECRET
+            export GOOGLE_CALLBACK_URL
+            export FACEBOOK_APP_ID
+            export FACEBOOK_APP_SECRET
+            export FACEBOOK_CALLBACK_URL
+            export EMAIL_ENCRYPTION_KEY
+            export SALT_ROUND
+            export AUTH_SERVICE_BASE_URL
+            export PRODUCT_SERVICE_BASE_URL
+            export USER_SERVICE_URL
+            export GATEWAY_PORT
+            export AUTH_PORT
+            export PRODUCT_PORT
+
+            echo "✅ Env vars exported for PM2"
 
             echo "👉 Migrate + seed for auth-service"
             cd "$PROJECT_DIR/auth-service"
