@@ -65,8 +65,8 @@ jobs:
             echo "👉 Install dependencies for all services"
             # Navigate into each service directory, install, then go back to root
             cd "$PROJECT_DIR/api-gateway" && npm install && npm run build|| { echo "Error: npm install failed for api-gateway. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/auth-service" && npm install && npm run build || { echo "Error: npm install failed for auth-service. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/product-service" && npm install  && npm run build || { echo "Error: npm install failed for product-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: npm install failed for auth-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/product-service" && npm install || { echo "Error: npm install failed for product-service. Exiting."; exit 1; }
             cd "$PROJECT_DIR" # Return to project root after all installs
             # --- Inject Secrets into ecosystem.config.ts ---
             echo "👉 Injecting environment variables into ecosystem.config.ts"
@@ -127,6 +127,7 @@ jobs:
 
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
+            npx prisma generate && npm run build
             cd "$PROJECT_DIR" # Return to project root
 
 
@@ -136,6 +137,7 @@ jobs:
             # because PM2 hasn't reloaded the ecosystem file yet for the running processes.
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
+            npx prisma generate && npm run build
             cd "$PROJECT_DIR" # Return to project root
 
             echo "👉 Start/Reload PM2 processes" # Changed message
