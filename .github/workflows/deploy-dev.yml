@@ -71,7 +71,7 @@ jobs:
             # --- Inject Secrets into ecosystem.config.ts ---
             echo "👉 Injecting environment variables into ecosystem.config.ts"
             # Use a variable for the filename to avoid potential parsing issues
-            ECOSYSTEM_FILE="ecosystem.config.ts"
+            ECOSYSTEM_FILE="ecosystem.config.js"
             BACKUP_DIR="/home/ubuntu/pm2_config_backups" # Define a dedicated backup directory outside the repo
             # Create the backup directory if it doesn't exist
             mkdir -p "$BACKUP_DIR"
@@ -144,4 +144,4 @@ jobs:
             echo "👉 Start/Reload PM2 processes" # Changed message
             # Use 'pm2 start' which handles both initial start and updates/reloads.
             # '--update-env' ensures new environment variables from sed are picked up.
-            pm2 start ecosystem.config.js --update-env || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
+            pm2 start $ECOSYSTEM_FILE --update-env || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
