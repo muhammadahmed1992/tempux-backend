@@ -97,7 +97,8 @@ export class UserController {
     );
 
     const clientID = this.configService.get<string>("GOOGLE_CLIENT_ID");
-    const callbackURL = "http://localhost:3001/user/google/callback"; // Must match GoogleStrategy's callbackURL
+    const callbackURL = this.configService.get<string>("GOOGLE_CALLBACK_URL")!; // Must match GoogleStrategy's callbackURL
+    //"http://localhost:3001/user/google/callback";
 
     // Manually construct the Google OAuth URL
     const googleAuthUrl =
@@ -187,7 +188,10 @@ export class UserController {
     );
 
     const clientID = this.configService.get<string>("FACEBOOK_APP_ID");
-    const callbackURL = "http://localhost:3001/user/facebook/callback"; // Must match FacebookStrategy's callbackURL
+    const callbackURL = this.configService.get<string>(
+      "FACEBOOK_CALLBACK_URL"
+    )!;
+    //"http://localhost:3001/user/facebook/callback"; // Must match FacebookStrategy's callbackURL
 
     // Manually construct the Facebook OAuth URL
     const facebookAuthUrl =

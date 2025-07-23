@@ -12,9 +12,9 @@ export class FacebookStrategy extends PassportStrategy(Strategy, "facebook") {
     private userService: UserService
   ) {
     super({
-      clientID: "608817385173388",
-      clientSecret: "04058d365a03a0f599c5020cf2b5f408",
-      callbackURL: "http://localhost:3001/user/facebook/callback", // Must match Facebook Developer settings
+      clientID: configService.get<string>("FACEBOOK_APP_ID")!,
+      clientSecret: configService.get<string>("FACEBOOK_APP_SECRET")!,
+      callbackURL: configService.get<string>("FACEBOOK_CALLBACK_URL")!, // Must match Facebook Developer settings
       profileFields: ["id", "emails", "name", "displayName"], // Request necessary profile fields
       scope: ["email", "public_profile"], // Request email and public profile access
       passReqToCallback: true, // IMPORTANT: Pass the request object to the validate callback
