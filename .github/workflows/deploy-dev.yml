@@ -87,6 +87,9 @@ jobs:
             cd "$PROJECT_DIR/auth-service" || { echo "Error: Could not change to auth-service directory. Exiting."; exit 1; }
             # For Prisma commands, you still need to pass the DB URL directly as an env var
             # because PM2 hasn't reloaded the ecosystem file yet for the running processes.
+            # adding temporarily.
+            echo ${{ secrets.DATABASE_URL_DEV_USERS }}
+            echo ${{ secrets.DATABASE_URL_DEV_PRODUCT }}
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || { echo "Error: Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
             cd "$PROJECT_DIR" # Return to project root
