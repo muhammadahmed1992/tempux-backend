@@ -36,12 +36,11 @@ jobs:
 
             cd "$PROJECT_DIR" || { echo "Error: Could not change to project directory. Exiting."; exit 1; }
 
+            git reset --hard HEAD # Discard any local changes and reset to last commit
+            git clean -df       # Remove untracked files and directories
             git fetch origin
             git checkout develop
             git pull origin develop
-            git reset --hard HEAD # Discard any local changes and reset to last commit
-            git clean -df       # Remove untracked files and directories
-
 
             echo " Install tsx "
             sudo npm install -g tsx
