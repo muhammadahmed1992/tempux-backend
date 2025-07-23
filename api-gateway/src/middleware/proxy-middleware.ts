@@ -8,10 +8,11 @@ import ResponseHelper from "@Common/helper/response-helper";
 import Constants from "@Common/helper/constants";
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
+  constructor(private readonly serviceResolver: ServiceResolver) {}
   use(req: Request, res: Response, next: NextFunction) {
     // Parse first path segment: /auth/register => auth
     const [, serviceKey, ...restSegments] = req.originalUrl.split("/");
-    const target = ServiceResolver.getServiceUrl(serviceKey);
+    const target = this.serviceResolver.getServiceUrl(serviceKey);
     const newPath = "/" + restSegments.join("/");
 
     if (!target) {

@@ -9,7 +9,18 @@ export default {
       autorestart: true,
       env: {
         NODE_ENV: "development",
+        AUTH_SERVICE_BASE_URL: "http://localhost:3001",
+        ORDER_SERVICE_BASE_URL: "http://localhost:3002",
+        PRODUCT_SERVICE_BASE_URL: "http://localhost:3003",
+        SELLER_SERVICE_BASE_URL: "http://localhost:3004",
         PORT: 3000,
+      },
+      env_production: {
+        NODE_ENV: "production",
+        AUTH_SERVICE_BASE_URL: "AUTH_SERVICE_BASE_URL",
+        ORDER_SERVICE_BASE_URL: "ORDER_SERVICE_BASE_URL",
+        PRODUCT_SERVICE_BASE_URL: "PRODUCT_SERVICE_BASE_URL",
+        SELLER_SERVICE_BASE_URL: "SELLER_SERVICE_BASE_URL",
       },
     },
     {

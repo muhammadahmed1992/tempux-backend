@@ -45,6 +45,8 @@ jobs:
             echo " Install tsx "
             sudo npm install -g tsx
 
+            export CI=true
+
             echo "👉 Install dependencies for all services"
             # Navigate into each service directory, install, then go back to root
             cd "$PROJECT_DIR/api-gateway" && npm install || { echo "Error: npm install failed for api-gateway. Exiting."; exit 1; }
@@ -78,6 +80,8 @@ jobs:
             sed -i "s#PORT#${{ secrets.AUTH_PORT }}#g" ecosystem.config.ts
             sed -i "s#PORT#${{ secrets.AUTH_PORT }}#g" ecosystem.config.ts
             sed -i "s#USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" ecosystem.config.ts
+            sed -i "s#AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" ecosystem.config.ts
+            sed -i "s#PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" ecosystem.config.ts
 
             echo "👉 Run Prisma migrate + seed for auth-service"
             cd "$PROJECT_DIR/auth-service" || { echo "Error: Could not change to auth-service directory. Exiting."; exit 1; }
