@@ -19,6 +19,7 @@ export default {
         NODE_ENV: "production",
         AUTH_SERVICE_BASE_URL: "INJECT_AUTH_SERVICE_BASE_URL",
         PRODUCT_SERVICE_BASE_URL: "INJECT_PRODUCT_SERVICE_BASE_URL",
+        PORT: 3000,
       },
     },
     {
@@ -68,6 +69,7 @@ export default {
         NODE_ENV: "production",
         JWT_SECRET: "INJECT_JWT_SECRET",
         USER_SERVICE_URL: "INJECT_USER_SERVICE_URL",
+        PORT: "INJECT_PRODUCT_PORT",
       },
     },
   ],
