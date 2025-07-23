@@ -44,10 +44,10 @@ jobs:
             cd product-service && npm install && cd ..
 
             echo "👉 Run Prisma migrate + seed for auth-service"
-            cd auth-service && DATABASE_URL=${{ env.DATABASE_URL_AUTH }} npx prisma migrate deploy && npx prisma db seed && cd ..
+            cd auth-service && DATABASE_URL_DEV_USERS=${{ secrets.DATABASE_URL_DEV_USERS }} npx prisma migrate deploy && npx prisma db seed && cd ..
 
             echo "👉 Run Prisma migrate + seed for product-service"
-            cd product-service && DATABASE_URL=${{ env.DATABASE_URL_PRODUCT }} npx prisma migrate deploy && npx prisma db seed && cd ..
+            cd product-service && DATABASE_URL_DEV_PRODUCT=${{ env.DATABASE_URL_DEV_PRODUCT }} npx prisma migrate deploy && npx prisma db seed && cd ..
 
             echo "👉 Reload PM2"
-            pm2 reload ecosystem.config.ts --interpreter tsx --env production
+            pm2 reload ecosystem.config.ts --interpreter tsx
