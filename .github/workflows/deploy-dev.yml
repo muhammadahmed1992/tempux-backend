@@ -103,9 +103,7 @@ jobs:
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || { echo "Error: Prisma db seed failed for auth-service. Exiting."; exit 1; }
             cd "$PROJECT_DIR" # Return to project root
 
-            echo "👉 Reload PM2 processes"
-            # PM2 will now read the updated ecosystem.config.ts with the actual secret values
-            # It will pick up the 'env_production' block automatically when no --env is specified
-            pm2 reload ecosystem.config.ts --interpreter tsx || { echo "Error: PM2 reload failed. Exiting."; exit 1; }
-
-            echo "====== Deployment ENDED ======"
+            echo "👉 Start/Reload PM2 processes" # Changed message
+            # Use 'pm2 start' which handles both initial start and updates/reloads.
+            # '--update-env' ensures new environment variables from sed are picked up.
+            pm2 start ecosystem.config.ts --interpreter tsx --update-env || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
