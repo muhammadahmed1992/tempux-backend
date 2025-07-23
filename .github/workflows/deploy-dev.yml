@@ -42,13 +42,19 @@ jobs:
             git checkout develop
             git pull origin develop
 
-            echo "👉 Configure npm permissions for the ubuntu user"
-            # Set npm's global installation directory to a user-owned path
+            echo "👉 Ensuring .npm-global/bin is in PATH"
+
+            # Ensure the global npm prefix is set
             npm config set prefix '~/.npm-global'
 
-            # Add this directory to the PATH environment variable for the current session
-            # This ensures that globally installed executables (like tsx and nest) are found
-            export PATH=~/.npm-global/bin:$PATH
+            # Add ~/.npm-global/bin to PATH for this session
+            export PATH="$PATH:/home/ubuntu/.npm-global/bin"
+
+            # Ensure it persists for future SSH sessions too
+            echo 'export PATH="$PATH:/home/ubuntu/.npm-global/bin"' >> ~/.bashrc
+
+            # Reload bashrc (so next lines in script see the PATH)
+            source ~/.bashrc
 
             echo "👉 Installing pnpm globally..."
             npm install -g pnpm || { echo "Failed to install pnpm globally. Exiting."; exit 1; }
