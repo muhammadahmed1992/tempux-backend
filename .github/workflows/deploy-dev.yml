@@ -140,6 +140,7 @@ jobs:
             npx prisma generate && npm run build
             cd "$PROJECT_DIR" # Return to project root
 
+            echo "path before running pm2 start $PROJECT_DIR "
             echo "👉 Start/Reload PM2 processes" # Changed message
             # Use 'pm2 start' which handles both initial start and updates/reloads.
             # '--update-env' ensures new environment variables from sed are picked up.
