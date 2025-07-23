@@ -80,7 +80,6 @@ jobs:
             sed -i.bak "s#INJECT_EMAIL_ENCRYPTION_KEY#${{ secrets.EMAIL_ENCRYPTION_KEY }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_SALT_ROUND#${{ secrets.SALT_ROUND }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_PORT#${{ secrets.AUTH_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_PORT#${{ secrets.AUTH_PORT }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
