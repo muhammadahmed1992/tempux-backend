@@ -1,6 +1,6 @@
 // ecosystem.config.ts
 
-export default {
+module.exports = {
   apps: [
     {
       name: "api-gateway",

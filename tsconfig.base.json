@@ -21,5 +21,6 @@
     },
     "incremental": true,
     "outDir": "./dist"
-  }
+  },
+  "exclude": ["ecosystem.config.js"]
 }

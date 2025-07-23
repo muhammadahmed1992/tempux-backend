@@ -50,8 +50,8 @@ jobs:
             # This ensures that globally installed executables (like tsx and nest) are found
             export PATH=~/.npm-global/bin:$PATH
 
-            echo " Install tsx "
-            npm install -g tsx @nestjs/cli || { echo "Error: Global npm install failed. Exiting."; exit 1; }
+            echo " Install nestjs cli globally "
+            npm install -g @nestjs/cli || { echo "Error: Global npm install failed. Exiting."; exit 1; }
 
             export CI=true
             # --- Stop and Delete Existing PM2 Processes ---
@@ -144,4 +144,4 @@ jobs:
             echo "👉 Start/Reload PM2 processes" # Changed message
             # Use 'pm2 start' which handles both initial start and updates/reloads.
             # '--update-env' ensures new environment variables from sed are picked up.
-            pm2 start ecosystem.config.ts --interpreter tsx --update-env || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
+            pm2 start ecosystem.config.js --update-env || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
