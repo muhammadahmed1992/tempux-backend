@@ -51,7 +51,7 @@ jobs:
             export PATH=~/.npm-global/bin:$PATH
 
             echo " Install nestjs cli globally "
-            npm install -g @nestjs/cli || { echo "Error: Global npm install failed. Exiting."; exit 1; }
+            npm install -g tsx @nestjs/cli || { echo "Error: Global npm install failed. Exiting."; exit 1; }
 
             export CI=true
             # --- Stop and Delete Existing PM2 Processes ---
