@@ -10,8 +10,31 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL_AUTH: ${{ secrets.DATABASE_URL_AUTH_DEV }}
-      DATABASE_URL_PRODUCT: ${{ secrets.DATABASE_URL_PRODUCT_DEV }}
+      # These are **passed through** to SSH so PM2 sees them.
+      DATABASE_URL_DEV_USERS: ${{ secrets.DATABASE_URL_AUTH_DEV }}
+      DATABASE_URL_DEV_PRODUCT: ${{ secrets.DATABASE_URL_PRODUCT_DEV }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      OTP_EXPIRY_DURATION: ${{ secrets.OTP_EXPIRY_DURATION }}
+      MAIL_HOST: ${{ secrets.MAIL_HOST }}
+      MAIL_PORT: ${{ secrets.MAIL_PORT }}
+      MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+      MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
+      FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
+      FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
+      FACEBOOK_CALLBACK_URL: ${{ secrets.FACEBOOK_CALLBACK_URL }}
+      EMAIL_ENCRYPTION_KEY: ${{ secrets.EMAIL_ENCRYPTION_KEY }}
+      SALT_ROUND: ${{ secrets.SALT_ROUND }}
+      AUTH_SERVICE_BASE_URL: ${{ secrets.AUTH_SERVICE_BASE_URL }}
+      PRODUCT_SERVICE_BASE_URL: ${{ secrets.PRODUCT_SERVICE_BASE_URL }}
+      USER_SERVICE_URL: ${{ secrets.USER_SERVICE_URL }}
+      GATEWAY_PORT: ${{ secrets.GATEWAY_PORT }}
+      AUTH_PORT: ${{ secrets.AUTH_PORT }}
+      PRODUCT_PORT: ${{ secrets.PRODUCT_PORT }}
 
     steps:
       - name: Checkout Repository
@@ -28,145 +51,82 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: |
+            DATABASE_URL_DEV_USERS
+            DATABASE_URL_DEV_PRODUCT
+            JWT_SECRET
+            OTP_EXPIRY_DURATION
+            MAIL_HOST
+            MAIL_PORT
+            MAIL_USERNAME
+            MAIL_PASSWORD
+            MAIL_FROM
+            FRONTEND_URL
+            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_SECRET
+            GOOGLE_CALLBACK_URL
+            FACEBOOK_APP_ID
+            FACEBOOK_APP_SECRET
+            FACEBOOK_CALLBACK_URL
+            EMAIL_ENCRYPTION_KEY
+            SALT_ROUND
+            AUTH_SERVICE_BASE_URL
+            PRODUCT_SERVICE_BASE_URL
+            USER_SERVICE_URL
+            GATEWAY_PORT
+            AUTH_PORT
+            PRODUCT_PORT
           script: |
-            # --- Navigate to your project root on EC2 ---
+            set -e
+
             PROJECT_DIR="/home/ubuntu/tempux-backend"
-
             echo "👉 Pull latest code"
-
-            cd "$PROJECT_DIR" || { echo "Error: Could not change to project directory. Exiting."; exit 1; }
-
-            git reset --hard HEAD # Discard any local changes and reset to last commit
-            git clean -df       # Remove untracked files and directories
+            cd "$PROJECT_DIR"
+            git reset --hard HEAD
+            git clean -df
             git fetch origin
             git checkout develop
             git pull origin develop
 
-            echo "👉 Ensuring .npm-global/bin is in PATH"
+            echo "👉 Ensure pnpm installed"
+            npm config set prefix "$HOME/.npm-global"
+            export PATH="$HOME/.npm-global/bin:$PATH"
+            echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
 
-            # Ensure the global npm prefix is set
-            npm config set prefix '~/.npm-global'
-
-            # Add ~/.npm-global/bin to PATH for this session
-            export PATH="$PATH:/home/ubuntu/.npm-global/bin"
-
-            # Ensure it persists for future SSH sessions too
-            echo 'export PATH="$PATH:/home/ubuntu/.npm-global/bin"' >> ~/.bashrc
-
-            # Reload bashrc (so next lines in script see the PATH)
-            source ~/.bashrc
-
-            echo "👉 Installing pnpm globally..."
-            npm install -g pnpm || { echo "Failed to install pnpm globally. Exiting."; exit 1; }
-
-            # Ensure PNPM_HOME is set up
-            pnpm setup --global
-
-            # Reload shell to get PNPM_HOME in PATH
-            # Make sure PNPM_HOME is set:
+            npm install -g pnpm || true
+            pnpm setup || true
             export PNPM_HOME="$HOME/.pnpm-global"
-            mkdir -p "$PNPM_HOME"
-            echo "export PNPM_HOME=\"$PNPM_HOME\"" >> ~/.bashrc
-            echo "export PATH=\"$PNPM_HOME:$PATH\"" >> ~/.bashrc
             export PATH="$PNPM_HOME:$PATH"
+            echo "export PNPM_HOME=\"$PNPM_HOME\"" >> ~/.bashrc
+            echo "export PATH=\"$PNPM_HOME:\$PATH\"" >> ~/.bashrc
             source ~/.bashrc
 
-            echo "👉 Install nestjs cli + tsx globally"
-            pnpm add -g tsx @nestjs/cli || { echo "Global pnpm install failed. Exiting."; exit 1; }
+            echo "👉 Install NestJS CLI + tsx"
+            pnpm add -g tsx @nestjs/cli
 
-            export CI=true
-            # --- Stop and Delete Existing PM2 Processes ---
-            echo "👉 Stopping and deleting existing PM2 processes..."
-            # Use 'pm2 delete all' to remove all processes managed by PM2.
-            # Use '|| true' to prevent script from failing if no processes are found.
+            echo "👉 Stop old PM2 processes"
             pm2 delete all || true
-            echo "PM2 processes stopped/deleted."
-            echo " Install centralized dependencies for all services "
-            npm install
-            echo "👉 Install dependencies for all services"
-            # Navigate into each service directory, install, then go back to root
-            cd "$PROJECT_DIR/api-gateway" && npm install && npm run build|| { echo "Error: npm install failed for api-gateway. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: npm install failed for auth-service. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/product-service" && npm install || { echo "Error: npm install failed for product-service. Exiting."; exit 1; }
-            cd "$PROJECT_DIR" # Return to project root after all installs
-            # --- Inject Secrets into ecosystem.config.ts ---
-            echo "👉 Injecting environment variables into ecosystem.config.ts"
-            # Use a variable for the filename to avoid potential parsing issues
-            ECOSYSTEM_FILE="ecosystem.config.js"
-            BACKUP_DIR="/home/ubuntu/pm2_config_backups" # Define a dedicated backup directory outside the repo
-            # Create the backup directory if it doesn't exist
-            mkdir -p "$BACKUP_DIR"
-            # Clean up old backups (e.g., keep only the last 5)
-            echo "👉 Cleaning up old PM2 config backups in $BACKUP_DIR..."
-            ls -tp "$BACKUP_DIR" | grep -v '/$' | tail -n +6 | xargs -I {} rm -- "$BACKUP_DIR/{}" || true
-            echo "Old backups cleaned."
 
+            echo "👉 Install dependencies"
+            pnpm install
 
-            sed -i.bak "s#INJECT_JWT_SECRET#${{ secrets.JWT_SECRET }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_HOST#${{ secrets.MAIL_HOST }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_PORT#${{ secrets.MAIL_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_USERNAME#${{ secrets.MAIL_USERNAME }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_PASSWORD#${{ secrets.MAIL_PASSWORD }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_FROM#${{ secrets.MAIL_FROM }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FRONTEND_URL#${{ secrets.FRONTEND_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GOOGLE_CLIENT_ID#${{ secrets.GOOGLE_CLIENT_ID }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GOOGLE_CLIENT_SECRET#${{ secrets.GOOGLE_CLIENT_SECRET }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GOOGLE_CALLBACK_URL#${{ secrets.GOOGLE_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FACEBOOK_APP_ID#${{ secrets.FACEBOOK_APP_ID }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FACEBOOK_APP_SECRET#${{ secrets.FACEBOOK_APP_SECRET }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FACEBOOK_CALLBACK_URL#${{ secrets.FACEBOOK_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_EMAIL_ENCRYPTION_KEY#${{ secrets.EMAIL_ENCRYPTION_KEY }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_SALT_ROUND#${{ secrets.SALT_ROUND }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_AUTH_PORT#${{ secrets.AUTH_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_PRODUCT_PORT#${{ secrets.PRODUCT_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GATEWAY_PORT#${{ secrets.GATEWAY_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_DATABASE_URL_DEV_USERS#${{ secrets.DATABASE_URL_DEV_USERS }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_DATABASE_URL_DEV_PRODUCT#${{ secrets.DATABASE_URL_DEV_PRODUCT }}#g" "$ECOSYSTEM_FILE"
-
-            # --- Move the .bak file out of the repository ---
-            BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
-            TIMESTAMP=$(date +%Y%m%d%H%M%S) # Get current timestamp
-            TARGET_BACKUP_PATH="${BACKUP_DIR}/${ECOSYSTEM_FILE}.${TIMESTAMP}.bak"
-
-            if [ -f "$BACKUP_FILENAME" ]; then
-              echo "👉 Moving $BACKUP_FILENAME to $TARGET_BACKUP_PATH..."
-              mv "$BACKUP_FILENAME" "$TARGET_BACKUP_PATH" || { echo "Error: Failed to move backup file. Exiting."; exit 1; }
-              echo "Backup moved successfully."
-            else
-              echo "No .bak file found to move. This might be normal if sed didn't make changes."
-            fi
-
-            echo "👉 Displaying ecosystem.config.ts after secret injection for debugging:"
-            cat "$ECOSYSTEM_FILE" # <--- ADDED THIS LINE FOR DEBUGGING
-
-            echo "👉 Run Prisma migrate + seed for auth-service"
-            cd "$PROJECT_DIR/auth-service" || { echo "Error: Could not change to auth-service directory. Exiting."; exit 1; }
-            # For Prisma commands, you still need to pass the DB URL directly as an env var
-            # because PM2 hasn't reloaded the ecosystem file yet for the running processes.
-
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || { echo "Prisma migrate deploy failed for auth-service. Exiting.";
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma db seed --schema prisma/schema.prisma || { echo "Prisma seed failed for auth-service. Exiting."; exit 1; }
-            pnpm exec prisma generate --schema prisma/schema.prisma || { echo "Prisma generate failed for auth-service. Exiting."; exit 1; }
+            echo "👉 Migrate + seed for auth-service"
+            cd "$PROJECT_DIR/auth-service"
+            pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+            pnpm exec prisma db seed --schema prisma/schema.prisma
+            pnpm exec prisma generate
             pnpm run build
-            cd "$PROJECT_DIR" # Return to project root
 
-
-            echo "👉 Run Prisma migrate + seed for product-service"
-            cd "$PROJECT_DIR/product-service" || { echo "Error: Could not change to product-service directory. Exiting."; exit 1; }
-            # For Prisma commands, you still need to pass the DB URL directly as an env var
-            # because PM2 hasn't reloaded the ecosystem file yet for the running processes.
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || { echo "Prisma migrate deploy failed for product-service. Exiting."; exit 1; }
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma db seed --schema prisma/schema.prisma || { echo "Prisma seed failed for product-service. Exiting."; exit 1; }
-            pnpm exec prisma generate --schema prisma/schema.prisma || { echo "Prisma generate failed for product-service. Exiting."; exit 1; }
+            echo "👉 Migrate + seed for product-service"
+            cd "$PROJECT_DIR/product-service"
+            pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+            pnpm exec prisma db seed --schema prisma/schema.prisma
+            pnpm exec prisma generate
             pnpm run build
-            cd "$PROJECT_DIR" # Return to project root
 
-            echo "path before running pm2 start $PROJECT_DIR "
-            echo "👉 Start/Reload PM2 processes" # Changed message
-            # Use 'pm2 start' which handles both initial start and updates/reloads.
-            # '--update-env' ensures new environment variables from sed are picked up.
-            pm2 start $ECOSYSTEM_FILE --update-env --env production || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR"
+
+            echo "👉 Start PM2 with production env"
+            pm2 start ecosystem.config.ts --env production --update-env
+
+            echo "✅ Done"
