@@ -168,9 +168,18 @@ importers:
 
   product-service:
     dependencies:
+      '@nestjs/jwt':
+        specifier: ^11.0.0
+        version: 11.0.0(@nestjs/common@11.1.5(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))
+      '@nestjs/passport':
+        specifier: ^11.0.5
+        version: 11.0.5(@nestjs/common@11.1.5(class-transformer@0.5.1)(class-validator@0.14.2)(reflect-metadata@0.2.2)(rxjs@7.8.2))(passport@0.7.0)
       '@prisma/client':
         specifier: ^6.12.0
         version: 6.12.0(prisma@6.12.0(typescript@5.8.3))(typescript@5.8.3)
+      axios:
+        specifier: ^1.11.0
+        version: 1.11.0
     devDependencies:
       prisma:
         specifier: ^6.12.0
