@@ -84,14 +84,14 @@ jobs:
             pm2 delete all || true
             echo "PM2 processes stopped/deleted."
             echo " Install centralized dependencies for all services "
-            npm install
+            pnpm install
             echo "👉 Install dependencies for all services"
 
             # Navigate into each service directory, install, then go back to root
-            cd "$PROJECT_DIR/api-gateway" && npm install && npm run build|| { echo "Error: npm install failed for api-gateway. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/api-gateway" && pnpm install && pnpm run build|| { echo "Error: pnpm install failed for api-gateway. Exiting."; exit 1; }
 
-            cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: npm install failed for auth-service. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/product-service" && npm install || { echo "Error: npm install failed for product-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/auth-service" && pnpm install || { echo "Error: pnpm install failed for auth-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/product-service" && pnpm install || { echo "Error: pnpm install failed for product-service. Exiting."; exit 1; }
             cd "$PROJECT_DIR" # Return to project root after all installs
             # --- Inject Secrets into ecosystem.config.ts ---
             echo "👉 Injecting environment variables into ecosystem.config.ts"
