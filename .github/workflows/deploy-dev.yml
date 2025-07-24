@@ -53,7 +53,7 @@ jobs:
           script: |
             PROJECT_DIR="/home/ubuntu/tempux-backend"
             export CI=true
-            echo " $AHMED ()""
+            echo " $AHMED ()"
             echo "👉 Pull latest code"
             cd "$PROJECT_DIR" || { echo "Error: Could not change to project directory. Exiting."; exit 1; }
 
