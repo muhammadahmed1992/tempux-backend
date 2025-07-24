@@ -18,7 +18,7 @@ jobs:
           node-version: 20
 
       - name: SSH Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
@@ -53,4 +53,5 @@ jobs:
           script: |
             PROJECT_DIR="/home/ubuntu/tempux-backend"
             export CI=true
-            echo " $AHMED and ${{secrets.AHMED}} ()"
+            test=${{secrets.AHMED}}
+            echo " $AHMED and $test ()"
