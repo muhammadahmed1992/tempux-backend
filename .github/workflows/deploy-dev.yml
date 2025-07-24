@@ -25,6 +25,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             PROJECT_DIR=/home/ubuntu/tempux-backend
+            export CI=true
             echo "👉 Pull latest code"
             cd "$PROJECT_DIR" || { echo "Error: Could not change to project directory. Exiting."; exit 1; }
 
@@ -69,7 +70,7 @@ jobs:
             BACKUP_DIR="/home/ubuntu/pm2_config_backups"
             mkdir -p "$BACKUP_DIR"
             ls -tp "$BACKUP_DIR" | grep -v '/$' | tail -n +6 | xargs -I {} rm -- "$BACKUP_DIR/{}" || true
-            echo "jwt testing: ${{ secrets.JWT_SECRET }}" >.ahmed
+
             sed -i.bak "s#INJECT_JWT_SECRET#${{ secrets.JWT_SECRET }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_MAIL_HOST#${{ secrets.MAIL_HOST }}#g" "$ECOSYSTEM_FILE"
@@ -112,16 +113,16 @@ jobs:
 
             echo "👉 Prisma migrate + seed for auth-service"
             cd "$PROJECT_DIR/auth-service"
-            DATABASE_URL_DEV_USERS="$DATABASE_URL_DEV_USERS" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_USERS="$DATABASE_URL_DEV_USERS" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
             pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
             pnpm run build
             cd "$PROJECT_DIR"
 
             echo "👉 Prisma migrate + seed for product-service"
             cd "$PROJECT_DIR/product-service"
-            DATABASE_URL_DEV_PRODUCT="$DATABASE_URL_DEV_PRODUCT" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_PRODUCT="$DATABASE_URL_DEV_PRODUCT" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
             pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
             pnpm run build
             cd "$PROJECT_DIR"
