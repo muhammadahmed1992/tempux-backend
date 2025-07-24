@@ -119,7 +119,7 @@ jobs:
             echo "👉 Prisma migrate + seed for product-service"
             cd "$PROJECT_DIR/product-service"
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}"pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
             pnpm run build
             cd "$PROJECT_DIR"
