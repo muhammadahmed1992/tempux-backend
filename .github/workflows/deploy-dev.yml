@@ -8,7 +8,31 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      OTP_EXPIRY_DURATION: ${{ secrets.OTP_EXPIRY_DURATION }}
+      MAIL_HOST: ${{ secrets.MAIL_HOST }}
+      MAIL_PORT: ${{ secrets.MAIL_PORT }}
+      MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+      MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+      MAIL_FROM: ${{ secrets.MAIL_FROM }}
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
+      FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
+      FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
+      FACEBOOK_CALLBACK_URL: ${{ secrets.FACEBOOK_CALLBACK_URL }}
+      EMAIL_ENCRYPTION_KEY: ${{ secrets.EMAIL_ENCRYPTION_KEY }}
+      SALT_ROUND: ${{ secrets.SALT_ROUND }}
+      AUTH_PORT: ${{ secrets.AUTH_PORT }}
+      USER_SERVICE_URL: ${{ secrets.USER_SERVICE_URL }}
+      AUTH_SERVICE_BASE_URL: ${{ secrets.AUTH_SERVICE_BASE_URL }}
+      PRODUCT_SERVICE_BASE_URL: ${{ secrets.PRODUCT_SERVICE_BASE_URL }}
+      PRODUCT_PORT: ${{ secrets.PRODUCT_PORT }}
+      GATEWAY_PORT: ${{ secrets.GATEWAY_PORT }}
+      DATABASE_URL_DEV_USERS: ${{ secrets.DATABASE_URL_DEV_USERS }}
+      DATABASE_URL_DEV_PRODUCT: ${{ secrets.DATABASE_URL_DEV_PRODUCT }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -49,31 +73,6 @@ jobs:
             GATEWAY_PORT
             DATABASE_URL_DEV_USERS
             DATABASE_URL_DEV_PRODUCT
-            env:
-              JWT_SECRET: ${{ secrets.JWT_SECRET }}
-              OTP_EXPIRY_DURATION: ${{ secrets.OTP_EXPIRY_DURATION }}
-              MAIL_HOST: ${{ secrets.MAIL_HOST }}
-              MAIL_PORT: ${{ secrets.MAIL_PORT }}
-              MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-              MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-              MAIL_FROM: ${{ secrets.MAIL_FROM }}
-              FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-              GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-              GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-              GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
-              FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
-              FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
-              FACEBOOK_CALLBACK_URL: ${{ secrets.FACEBOOK_CALLBACK_URL }}
-              EMAIL_ENCRYPTION_KEY: ${{ secrets.EMAIL_ENCRYPTION_KEY }}
-              SALT_ROUND: ${{ secrets.SALT_ROUND }}
-              AUTH_PORT: ${{ secrets.AUTH_PORT }}
-              USER_SERVICE_URL: ${{ secrets.USER_SERVICE_URL }}
-              AUTH_SERVICE_BASE_URL: ${{ secrets.AUTH_SERVICE_BASE_URL }}
-              PRODUCT_SERVICE_BASE_URL: ${{ secrets.PRODUCT_SERVICE_BASE_URL }}
-              PRODUCT_PORT: ${{ secrets.PRODUCT_PORT }}
-              GATEWAY_PORT: ${{ secrets.GATEWAY_PORT }}
-              DATABASE_URL_DEV_USERS: ${{ secrets.DATABASE_URL_DEV_USERS }}
-              DATABASE_URL_DEV_PRODUCT: ${{ secrets.DATABASE_URL_DEV_PRODUCT }}
 
           script: |
             PROJECT_DIR="/home/ubuntu/tempux-backend"
