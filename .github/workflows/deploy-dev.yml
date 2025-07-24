@@ -53,6 +53,5 @@ jobs:
           script: |
             PROJECT_DIR="/home/ubuntu/tempux-backend"
             export CI=true
-            test=${{secrets.AHMED}}
             echo " $AHMED and $test ()"
-            echo " $AHMED and $test ()" > .ahmed
+            echo " $AHMED and ${{secrets.AHMED}} ()" > .ahmed
