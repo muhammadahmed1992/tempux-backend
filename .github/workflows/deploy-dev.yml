@@ -92,7 +92,39 @@ jobs:
 
             cd "$PROJECT_DIR/auth-service" && pnpm install || { echo "Error: pnpm install failed for auth-service. Exiting."; exit 1; }
             cd "$PROJECT_DIR/product-service" && pnpm install || { echo "Error: pnpm install failed for product-service. Exiting."; exit 1; }
+
             cd "$PROJECT_DIR" # Return to project root after all installs
+
+            echo "👉 DEBUG: Listing all injected secrets..."
+
+            echo "DATABASE_URL_DEV_USERS=$DATABASE_URL_DEV_USERS"
+            echo "DATABASE_URL_DEV_PRODUCT=$DATABASE_URL_DEV_PRODUCT"
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "OTP_EXPIRY_DURATION=$OTP_EXPIRY_DURATION"
+            echo "MAIL_HOST=$MAIL_HOST"
+            echo "MAIL_PORT=$MAIL_PORT"
+            echo "MAIL_USERNAME=$MAIL_USERNAME"
+            echo "MAIL_PASSWORD=$MAIL_PASSWORD"
+            echo "MAIL_FROM=$MAIL_FROM"
+            echo "FRONTEND_URL=$FRONTEND_URL"
+            echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID"
+            echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET"
+            echo "GOOGLE_CALLBACK_URL=$GOOGLE_CALLBACK_URL"
+            echo "FACEBOOK_APP_ID=$FACEBOOK_APP_ID"
+            echo "FACEBOOK_APP_SECRET=$FACEBOOK_APP_SECRET"
+            echo "FACEBOOK_CALLBACK_URL=$FACEBOOK_CALLBACK_URL"
+            echo "EMAIL_ENCRYPTION_KEY=$EMAIL_ENCRYPTION_KEY"
+            echo "SALT_ROUND=$SALT_ROUND"
+            echo "AUTH_SERVICE_BASE_URL=$AUTH_SERVICE_BASE_URL"
+            echo "PRODUCT_SERVICE_BASE_URL=$PRODUCT_SERVICE_BASE_URL"
+            echo "USER_SERVICE_URL=$USER_SERVICE_URL"
+            echo "GATEWAY_PORT=$GATEWAY_PORT"
+            echo "AUTH_PORT=$AUTH_PORT"
+            echo "PRODUCT_PORT=$PRODUCT_PORT"
+            echo "CI=$CI"
+
+            echo "👉 DEBUG: Env secrets echoed."
+
             # --- Inject Secrets into ecosystem.config.ts ---
             echo "👉 Injecting environment variables into ecosystem.config.ts"
             # Use a variable for the filename to avoid potential parsing issues
