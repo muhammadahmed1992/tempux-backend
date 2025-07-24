@@ -24,6 +24,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            PROJECT_DIR=/home/ubuntu/tempux-backend
             echo "👉 Pull latest code"
             cd "$PROJECT_DIR" || { echo "Error: Could not change to project directory. Exiting."; exit 1; }
 
