@@ -90,13 +90,12 @@ importers:
 
   api-gateway:
     dependencies:
+      express:
+        specifier: ^5.1.0
+        version: 5.1.0
       http-proxy-middleware:
         specifier: ^3.0.5
         version: 3.0.5
-    devDependencies:
-      '@types/cors':
-        specifier: ^2.8.19
-        version: 2.8.19
 
   auth-service:
     dependencies:
@@ -180,6 +179,9 @@ importers:
       axios:
         specifier: ^1.11.0
         version: 1.11.0
+      passport-jwt:
+        specifier: ^4.0.1
+        version: 4.0.1
     devDependencies:
       prisma:
         specifier: ^6.12.0
