@@ -24,6 +24,57 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: |
+            JWT_SECRET
+            OTP_EXPIRY_DURATION
+            MAIL_HOST
+            MAIL_PORT
+            MAIL_USERNAME
+            MAIL_PASSWORD
+            MAIL_FROM
+            FRONTEND_URL
+            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_SECRET
+            GOOGLE_CALLBACK_URL
+            FACEBOOK_APP_ID
+            FACEBOOK_APP_SECRET
+            FACEBOOK_CALLBACK_URL
+            EMAIL_ENCRYPTION_KEY
+            SALT_ROUND
+            AUTH_PORT
+            USER_SERVICE_URL
+            AUTH_SERVICE_BASE_URL
+            PRODUCT_SERVICE_BASE_URL
+            PRODUCT_PORT
+            GATEWAY_PORT
+            DATABASE_URL_DEV_USERS
+            DATABASE_URL_DEV_PRODUCT
+          env:
+            JWT_SECRET: ${{ secrets.JWT_SECRET }}
+            OTP_EXPIRY_DURATION: ${{ secrets.OTP_EXPIRY_DURATION }}
+            MAIL_HOST: ${{ secrets.MAIL_HOST }}
+            MAIL_PORT: ${{ secrets.MAIL_PORT }}
+            MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+            MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+            MAIL_FROM: ${{ secrets.MAIL_FROM }}
+            FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+            GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
+            FACEBOOK_APP_ID: ${{ secrets.FACEBOOK_APP_ID }}
+            FACEBOOK_APP_SECRET: ${{ secrets.FACEBOOK_APP_SECRET }}
+            FACEBOOK_CALLBACK_URL: ${{ secrets.FACEBOOK_CALLBACK_URL }}
+            EMAIL_ENCRYPTION_KEY: ${{ secrets.EMAIL_ENCRYPTION_KEY }}
+            SALT_ROUND: ${{ secrets.SALT_ROUND }}
+            AUTH_PORT: ${{ secrets.AUTH_PORT }}
+            USER_SERVICE_URL: ${{ secrets.USER_SERVICE_URL }}
+            AUTH_SERVICE_BASE_URL: ${{ secrets.AUTH_SERVICE_BASE_URL }}
+            PRODUCT_SERVICE_BASE_URL: ${{ secrets.PRODUCT_SERVICE_BASE_URL }}
+            PRODUCT_PORT: ${{ secrets.PRODUCT_PORT }}
+            GATEWAY_PORT: ${{ secrets.GATEWAY_PORT }}
+            DATABASE_URL_DEV_USERS: ${{ secrets.DATABASE_URL_DEV_USERS }}
+            DATABASE_URL_DEV_PRODUCT: ${{ secrets.DATABASE_URL_DEV_PRODUCT }}
+
           script: |
             PROJECT_DIR="/home/ubuntu/tempux-backend"
             export CI=true
@@ -57,74 +108,72 @@ jobs:
             echo "👉 Install nestjs cli + tsx globally"
             pnpm add -g tsx @nestjs/cli || { echo "Global pnpm install failed. Exiting."; exit 1; }
 
-            export CI=true
             echo "👉 Stopping and deleting existing PM2 processes..."
             pm2 delete all || true
 
-            echo " Install centralized dependencies for all services "
+            echo "👉 Install dependencies"
             pnpm install
 
-            echo "👉 Install dependencies for all services"
-            cd "$PROJECT_DIR/api-gateway" && pnpm install && pnpm run build || { echo "Error: pnpm install failed for api-gateway. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/auth-service" && pnpm install || { echo "Error: pnpm install failed for auth-service. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/product-service" && pnpm install || { echo "Error: pnpm install failed for product-service. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/api-gateway" && pnpm install && pnpm run build || { echo "Error: api-gateway failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/auth-service" && pnpm install || { echo "Error: auth-service failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/product-service" && pnpm install || { echo "Error: product-service failed. Exiting."; exit 1; }
             cd "$PROJECT_DIR"
 
-            echo "👉 DEBUG: Listing all secrets to be injected..."
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
-            echo "OTP_EXPIRY_DURATION=${{ secrets.OTP_EXPIRY_DURATION }}"
-            echo "MAIL_HOST=${{ secrets.MAIL_HOST }}"
-            echo "MAIL_PORT=${{ secrets.MAIL_PORT }}"
-            echo "MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}"
-            echo "MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}"
-            echo "MAIL_FROM=${{ secrets.MAIL_FROM }}"
-            echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}"
-            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}"
-            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}"
-            echo "GOOGLE_CALLBACK_URL=${{ secrets.GOOGLE_CALLBACK_URL }}"
-            echo "FACEBOOK_APP_ID=${{ secrets.FACEBOOK_APP_ID }}"
-            echo "FACEBOOK_APP_SECRET=${{ secrets.FACEBOOK_APP_SECRET }}"
-            echo "FACEBOOK_CALLBACK_URL=${{ secrets.FACEBOOK_CALLBACK_URL }}"
-            echo "EMAIL_ENCRYPTION_KEY=${{ secrets.EMAIL_ENCRYPTION_KEY }}"
-            echo "SALT_ROUND=${{ secrets.SALT_ROUND }}"
-            echo "AUTH_PORT=${{ secrets.AUTH_PORT }}"
-            echo "USER_SERVICE_URL=${{ secrets.USER_SERVICE_URL }}"
-            echo "AUTH_SERVICE_BASE_URL=${{ secrets.AUTH_SERVICE_BASE_URL }}"
-            echo "PRODUCT_SERVICE_BASE_URL=${{ secrets.PRODUCT_SERVICE_BASE_URL }}"
-            echo "PRODUCT_PORT=${{ secrets.PRODUCT_PORT }}"
-            echo "GATEWAY_PORT=${{ secrets.GATEWAY_PORT }}"
-            echo "DATABASE_URL_DEV_USERS=${{ secrets.DATABASE_URL_DEV_USERS }}"
-            echo "DATABASE_URL_DEV_PRODUCT=${{ secrets.DATABASE_URL_DEV_PRODUCT }}"
+            echo "👉 DEBUG: Listing secrets injected to remote..."
+            echo "JWT_SECRET=$JWT_SECRET"
+            echo "OTP_EXPIRY_DURATION=$OTP_EXPIRY_DURATION"
+            echo "MAIL_HOST=$MAIL_HOST"
+            echo "MAIL_PORT=$MAIL_PORT"
+            echo "MAIL_USERNAME=$MAIL_USERNAME"
+            echo "MAIL_PASSWORD=$MAIL_PASSWORD"
+            echo "MAIL_FROM=$MAIL_FROM"
+            echo "FRONTEND_URL=$FRONTEND_URL"
+            echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID"
+            echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET"
+            echo "GOOGLE_CALLBACK_URL=$GOOGLE_CALLBACK_URL"
+            echo "FACEBOOK_APP_ID=$FACEBOOK_APP_ID"
+            echo "FACEBOOK_APP_SECRET=$FACEBOOK_APP_SECRET"
+            echo "FACEBOOK_CALLBACK_URL=$FACEBOOK_CALLBACK_URL"
+            echo "EMAIL_ENCRYPTION_KEY=$EMAIL_ENCRYPTION_KEY"
+            echo "SALT_ROUND=$SALT_ROUND"
+            echo "AUTH_PORT=$AUTH_PORT"
+            echo "USER_SERVICE_URL=$USER_SERVICE_URL"
+            echo "AUTH_SERVICE_BASE_URL=$AUTH_SERVICE_BASE_URL"
+            echo "PRODUCT_SERVICE_BASE_URL=$PRODUCT_SERVICE_BASE_URL"
+            echo "PRODUCT_PORT=$PRODUCT_PORT"
+            echo "GATEWAY_PORT=$GATEWAY_PORT"
+            echo "DATABASE_URL_DEV_USERS=$DATABASE_URL_DEV_USERS"
+            echo "DATABASE_URL_DEV_PRODUCT=$DATABASE_URL_DEV_PRODUCT"
 
             ECOSYSTEM_FILE="ecosystem.config.js"
             BACKUP_DIR="/home/ubuntu/pm2_config_backups"
             mkdir -p "$BACKUP_DIR"
             ls -tp "$BACKUP_DIR" | grep -v '/$' | tail -n +6 | xargs -I {} rm -- "$BACKUP_DIR/{}" || true
 
-            sed -i.bak "s#INJECT_JWT_SECRET#${{ secrets.JWT_SECRET }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_HOST#${{ secrets.MAIL_HOST }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_PORT#${{ secrets.MAIL_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_USERNAME#${{ secrets.MAIL_USERNAME }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_PASSWORD#${{ secrets.MAIL_PASSWORD }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_MAIL_FROM#${{ secrets.MAIL_FROM }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FRONTEND_URL#${{ secrets.FRONTEND_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GOOGLE_CLIENT_ID#${{ secrets.GOOGLE_CLIENT_ID }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GOOGLE_CLIENT_SECRET#${{ secrets.GOOGLE_CLIENT_SECRET }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GOOGLE_CALLBACK_URL#${{ secrets.GOOGLE_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FACEBOOK_APP_ID#${{ secrets.FACEBOOK_APP_ID }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FACEBOOK_APP_SECRET#${{ secrets.FACEBOOK_APP_SECRET }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_FACEBOOK_CALLBACK_URL#${{ secrets.FACEBOOK_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_EMAIL_ENCRYPTION_KEY#${{ secrets.EMAIL_ENCRYPTION_KEY }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_SALT_ROUND#${{ secrets.SALT_ROUND }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_AUTH_PORT#${{ secrets.AUTH_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_PRODUCT_PORT#${{ secrets.PRODUCT_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_GATEWAY_PORT#${{ secrets.GATEWAY_PORT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_DATABASE_URL_DEV_USERS#${{ secrets.DATABASE_URL_DEV_USERS }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_DATABASE_URL_DEV_PRODUCT#${{ secrets.DATABASE_URL_DEV_PRODUCT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_JWT_SECRET#$JWT_SECRET#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_OTP_EXPIRY_DURATION#$OTP_EXPIRY_DURATION#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_HOST#$MAIL_HOST#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_PORT#$MAIL_PORT#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_USERNAME#$MAIL_USERNAME#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_PASSWORD#$MAIL_PASSWORD#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_FROM#$MAIL_FROM#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FRONTEND_URL#$FRONTEND_URL#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GOOGLE_CLIENT_ID#$GOOGLE_CLIENT_ID#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GOOGLE_CLIENT_SECRET#$GOOGLE_CLIENT_SECRET#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GOOGLE_CALLBACK_URL#$GOOGLE_CALLBACK_URL#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FACEBOOK_APP_ID#$FACEBOOK_APP_ID#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FACEBOOK_APP_SECRET#$FACEBOOK_APP_SECRET#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FACEBOOK_CALLBACK_URL#$FACEBOOK_CALLBACK_URL#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_EMAIL_ENCRYPTION_KEY#$EMAIL_ENCRYPTION_KEY#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_SALT_ROUND#$SALT_ROUND#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_AUTH_PORT#$AUTH_PORT#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_USER_SERVICE_URL#$USER_SERVICE_URL#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_AUTH_SERVICE_BASE_URL#$AUTH_SERVICE_BASE_URL#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_PRODUCT_SERVICE_BASE_URL#$PRODUCT_SERVICE_BASE_URL#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_PRODUCT_PORT#$PRODUCT_PORT#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GATEWAY_PORT#$GATEWAY_PORT#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_DATABASE_URL_DEV_USERS#$DATABASE_URL_DEV_USERS#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_DATABASE_URL_DEV_PRODUCT#$DATABASE_URL_DEV_PRODUCT#g" "$ECOSYSTEM_FILE"
 
             BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
             TIMESTAMP=$(date +%Y%m%d%H%M%S)
@@ -141,21 +190,21 @@ jobs:
             echo "👉 Displaying ecosystem.config.js after secret injection:"
             cat "$ECOSYSTEM_FILE"
 
-            echo "👉 Run Prisma migrate + seed for auth-service"
-            cd "$PROJECT_DIR/auth-service" || { echo "Error: Could not change to auth-service directory. Exiting."; exit 1; }
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || { echo "Prisma migrate deploy failed for auth-service. Exiting."; exit 1; }
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma db seed --schema prisma/schema.prisma || { echo "Prisma seed failed for auth-service. Exiting."; exit 1; }
-            pnpm exec prisma generate --schema prisma/schema.prisma || { echo "Prisma generate failed for auth-service. Exiting."; exit 1; }
+            echo "👉 Prisma migrate + seed for auth-service"
+            cd "$PROJECT_DIR/auth-service"
+            DATABASE_URL_DEV_USERS="$DATABASE_URL_DEV_USERS" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_USERS="$DATABASE_URL_DEV_USERS" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
+            pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
             pnpm run build
             cd "$PROJECT_DIR"
 
-            echo "👉 Run Prisma migrate + seed for product-service"
-            cd "$PROJECT_DIR/product-service" || { echo "Error: Could not change to product-service directory. Exiting."; exit 1; }
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || { echo "Prisma migrate deploy failed for product-service. Exiting."; exit 1; }
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma db seed --schema prisma/schema.prisma || { echo "Prisma seed failed for product-service. Exiting."; exit 1; }
-            pnpm exec prisma generate --schema prisma/schema.prisma || { echo "Prisma generate failed for product-service. Exiting."; exit 1; }
+            echo "👉 Prisma migrate + seed for product-service"
+            cd "$PROJECT_DIR/product-service"
+            DATABASE_URL_DEV_PRODUCT="$DATABASE_URL_DEV_PRODUCT" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="$DATABASE_URL_DEV_PRODUCT" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
+            pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
             pnpm run build
             cd "$PROJECT_DIR"
 
             echo "👉 Start/Reload PM2 processes"
-            pm2 start "$ECOSYSTEM_FILE" --update-env --env production || { echo "Error: PM2 start/reload failed. Exiting."; exit 1; }
+            pm2 start "$ECOSYSTEM_FILE" --update-env --env production || exit 1
