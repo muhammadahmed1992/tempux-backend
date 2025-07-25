@@ -3,8 +3,12 @@ import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
-const SALT_ROUND = 10; // adjust if you use a different round
+const SALT_ROUND = process.env.SALT_ROUND || 10; // Adjust if you use a different round in your application
 
+/**
+ * Generates a 6-digit OTP and an expiry date 5 minutes from now.
+ * @returns {object} An object containing the OTP string and its expiry Date object.
+ */
 function generateOTPAndExpiry() {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiry = new Date(Date.now() + 5 * 60 * 1000); // expires in 5 mins
@@ -12,6 +16,8 @@ function generateOTPAndExpiry() {
 }
 
 async function main() {
+  console.log('🚀 Starting database seeding...');
+
   // Seed user types
   const userTypes = [
     { id: 1, name: 'Super Admin' },
@@ -20,6 +26,7 @@ async function main() {
     { id: 4, name: 'Seller' },
   ];
 
+  console.log('Seeding User Types...');
   for (const userType of userTypes) {
     await prisma.userType.upsert({
       where: { id: userType.id },
@@ -29,7 +36,9 @@ async function main() {
         name: userType.name,
       },
     });
+    console.log(`- Upserted UserType: ${userType.name} (ID: ${userType.id})`);
   }
+  console.log('User Types seeding complete.');
 
   // Seed example users
   const users = [
@@ -37,49 +46,59 @@ async function main() {
       email: 'superadmin@example.com',
       name: 'Super Admin',
       fullName: 'Super Admin Full',
-      userType: 1,
-      password: 'superadmin123',
+      userType: 1, // Super Admin
+      // Password now complies with: At least one uppercase, one lowercase, one number, one special char, 8-30 length
+      password: 'SuperAdmin!123',
     },
     {
       email: 'admin@example.com',
       name: 'Admin User',
       fullName: 'Admin Full',
-      userType: 2,
-      password: 'admin123',
+      userType: 2, // Admin
+      password: 'AdminUser@456',
     },
     {
       email: 'buyer@example.com',
       name: 'Buyer User',
       fullName: 'Buyer Full',
-      userType: 3,
-      password: 'buyer123',
+      userType: 3, // Buyer
+      password: 'BuyerPass#789',
     },
     {
       email: 'seller@example.com',
       name: 'Seller User',
       fullName: 'Seller Full',
-      userType: 4,
-      password: 'seller123',
+      userType: 4, // Seller
+      password: 'SellerPwd$012',
     },
   ];
 
+  console.log('Seeding Users...');
   for (const user of users) {
     const hashedPassword = await bcrypt.hash(user.password, SALT_ROUND);
     const otpResponse = generateOTPAndExpiry();
 
+    // Upsert user based on unique combination of email and user_type
     await prisma.user.upsert({
       where: {
         email_user_type: {
+          // Assuming you have a unique constraint on (email, user_type)
           email: user.email,
           user_type: user.userType,
         },
       },
       update: {
         name: user.name,
+        // Only update password if you intend to reset it on every seed
+        // For production seeds, you might not want to update passwords if users already exist.
+        password: hashedPassword,
+        otp: otpResponse.otp,
+        otp_expires_at: otpResponse.otp_expires_at,
+        otp_verified: true, // Assuming seeded users are verified
       },
       create: {
         name: user.name,
-        full_name: user.fullName,
+        full_name: user.fullName, // Ensure this matches your Prisma schema field name
         email: user.email,
         password: hashedPassword,
         user_type: user.userType,
@@ -88,16 +107,20 @@ async function main() {
         otp_verified: true,
       },
     });
+    console.log(`- Upserted User: ${user.email} (UserType: ${user.userType})`);
   }
+  console.log('Users seeding complete.');
 
-  console.log('✅ Seeding complete!');
+  console.log('✅ All seeding operations complete!');
 }
 
 main()
   .catch((e) => {
+    console.error('❌ Seeding failed!');
     console.error(e);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
+    console.log('Database client disconnected.');
   });
