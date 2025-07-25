@@ -1,30 +1,30 @@
-import bcrypt from "bcrypt";
+import bcrypt from 'bcrypt';
 import {
   HttpStatus,
   Injectable,
   InternalServerErrorException,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { JwtService } from "@nestjs/jwt";
-import { Prisma } from "@prisma/client";
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { Prisma } from '@prisma/client';
 
-import { UserRepository } from "@Repository/users.repository";
-import { EmailTemplateType } from "@EmailFactory/email.template.type";
-import Constants from "@Helper/constants";
-import ApiResponse from "@Helper/api-response";
-import ResponseHelper from "@Helper/response-helper";
-import { Utils } from "@Common/utils";
-import { EmailService } from "@Services/email.service";
+import { UserRepository } from '@Repository/users.repository';
+import { EmailTemplateType } from '@EmailFactory/email.template.type';
+import Constants from '@Helper/constants';
+import ApiResponse from '@Helper/api-response';
+import ResponseHelper from '@Helper/response-helper';
+import { Utils } from '@Common/utils';
+import { EmailService } from '@Services/email.service';
 
-import { OTPVerificationRequestDTO } from "@DTO/otp.verification.dto";
-import { ResendOTPDTO } from "@DTO/resend.otp.dto";
-import { SocialLoginResponseDTO } from "@DTO/social-login-response.dto";
-import { CreateUserDto } from "@DTO/create.user.dto";
-import { LoginRequestDTO } from "@DTO/login-request.dto";
-import { LoginDTO } from "@DTO/login.dto";
-import { EncryptionHelper } from "@Helper/encryption.helper";
-import { UpdatePasswordDTO } from "@DTO/update.password.dto";
-import { UserDetailsResponseDto } from "@DTO/user.details.response.dto";
+import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
+import { ResendOTPDTO } from '@DTO/resend.otp.dto';
+import { SocialLoginResponseDTO } from '@DTO/social-login-response.dto';
+import { CreateUserDto } from '@DTO/create.user.dto';
+import { LoginRequestDTO } from '@DTO/login-request.dto';
+import { LoginDTO } from '@DTO/login.dto';
+import { EncryptionHelper } from '@Helper/encryption.helper';
+import { UpdatePasswordDTO } from '@DTO/update.password.dto';
+import { UserDetailsResponseDto } from '@DTO/user.details.response.dto';
 
 @Injectable()
 export class UserService {
@@ -34,12 +34,12 @@ export class UserService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-    private readonly encryptionHelper: EncryptionHelper
+    private readonly encryptionHelper: EncryptionHelper,
   ) {
-    this.SALT_ROUND = Number(this.configService.get<number>("SALT_ROUND")!);
+    this.SALT_ROUND = Number(this.configService.get<number>('SALT_ROUND')!);
     if (!this.SALT_ROUND)
       throw new InternalServerErrorException(
-        "Please check SALT_ROUND environment variable. It is missing or invalid"
+        'Please check SALT_ROUND environment variable. It is missing or invalid',
       );
   }
 
@@ -51,13 +51,13 @@ export class UserService {
         user.userType,
         {
           id: true,
-        }
+        },
       );
       if (isExists) {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
           false,
-          HttpStatus.FOUND
+          HttpStatus.FOUND,
         );
       }
       const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
@@ -69,7 +69,7 @@ export class UserService {
           password: hashedPassword,
           full_name: user.fullName,
           // TODO: Fix this long name sequence later.
-          user_type_users_user_typeTouser_type: {
+          userType: {
             connect: {
               id: user.userType,
             },
@@ -79,7 +79,7 @@ export class UserService {
         },
         {
           id: true,
-        }
+        },
       );
       this.sendOTPInEmail(
         user.email,
@@ -87,54 +87,54 @@ export class UserService {
           otp: otpResponse.plainOTP,
           resetToken: this.encryptionHelper.encrypt(user.email),
         },
-        EmailTemplateType.OTP_VERIFICATION
+        EmailTemplateType.OTP_VERIFICATION,
       );
       return ResponseHelper.CreateResponse<boolean>(
         Constants.USER_CREATED_SUCCESS,
         result.id ? true : false,
-        HttpStatus.CREATED
+        HttpStatus.CREATED,
       );
     } catch (e: unknown) {
       console.error(e);
       return ResponseHelper.CreateResponse<boolean>(
         Constants.ERROR_MESSAGE,
         false,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   async login(
-    request: LoginRequestDTO | SocialLoginResponseDTO
+    request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
     const user = await this.userRepository.validateUser(
       request.email,
-      request.userType
+      request.userType,
     );
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,
-        { accessToken: "" },
-        HttpStatus.NOT_FOUND
+        { accessToken: '' },
+        HttpStatus.NOT_FOUND,
       );
     if (!user.otp_verified) {
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_VERIFIED,
-        { accessToken: "" },
-        HttpStatus.BAD_REQUEST
+        { accessToken: '' },
+        HttpStatus.BAD_REQUEST,
       );
     }
     if (request instanceof LoginRequestDTO) {
       const isPasswordValid = await bcrypt.compare(
         request.password,
-        user.password
+        user.password,
       );
 
       if (!isPasswordValid)
         return ResponseHelper.CreateResponse<LoginDTO>(
           Constants.USER_NOT_FOUND,
-          { accessToken: "" },
-          HttpStatus.NOT_FOUND
+          { accessToken: '' },
+          HttpStatus.NOT_FOUND,
         );
     }
 
@@ -147,12 +147,12 @@ export class UserService {
     return ResponseHelper.CreateResponse<LoginDTO>(
       Constants.USER_LOGGED_IN_SUCCESSFULLY,
       { accessToken: token },
-      HttpStatus.OK
+      HttpStatus.OK,
     );
   }
 
   async verifyOTP(
-    request: OTPVerificationRequestDTO
+    request: OTPVerificationRequestDTO,
   ): Promise<ApiResponse<boolean>> {
     const email = this.encryptionHelper.decrypt(request.resetToken);
     const user = await this.userRepository.findFirstUserByEmail(email);
@@ -160,7 +160,7 @@ export class UserService {
       return ResponseHelper.CreateResponse<boolean>(
         Constants.USER_NOT_FOUND,
         false,
-        HttpStatus.NOT_FOUND
+        HttpStatus.NOT_FOUND,
       );
     const isOTPValid = await bcrypt.compare(request.otp, user.otp!);
     const notExpired = new Date() <= user.otp_expires_at!;
@@ -172,31 +172,31 @@ export class UserService {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_VERIFIED,
           true,
-          HttpStatus.OK
+          HttpStatus.OK,
         );
       } else {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.EXPIRED_OTP,
           false,
-          HttpStatus.EXPECTATION_FAILED
+          HttpStatus.EXPECTATION_FAILED,
         );
       }
     } else {
       return ResponseHelper.CreateResponse<boolean>(
         Constants.INVALID_OTP,
         false,
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
 
   async resendOTP(
     request: ResendOTPDTO,
-    emailType: EmailTemplateType
+    emailType: EmailTemplateType,
   ): Promise<ApiResponse<boolean>> {
     const email = this.encryptionHelper.encrypt(request.email);
     const checkEmail = await this.userRepository.findFirstUserByEmail(
-      request.email
+      request.email,
     );
     if (checkEmail) {
       const otpRes = await this.generateOTPAndExpiry();
@@ -210,43 +210,43 @@ export class UserService {
             otp: otpRes.otp,
             otp_expires_at: otpRes.otp_expiry_date_time,
             otp_verified: false,
-          }
+          },
         ),
         this.sendOTPInEmail(
           request.email,
           { otp: otpRes.plainOTP, resetToken: email },
-          emailType
+          emailType,
         ),
       ]);
 
       return ResponseHelper.CreateResponse<boolean>(
         Constants.OTP_RESEND,
         true,
-        HttpStatus.ACCEPTED
+        HttpStatus.ACCEPTED,
       );
     } else {
       return ResponseHelper.CreateResponse<boolean>(
         Constants.SOMETHING_WENT_WRONG,
         false,
-        HttpStatus.INTERNAL_SERVER_ERROR
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
 
   async resetPassword(
-    request: UpdatePasswordDTO
+    request: UpdatePasswordDTO,
   ): Promise<ApiResponse<boolean>> {
     const email = this.encryptionHelper.decrypt(request.resetToken);
     const user = await this.userRepository.findFirstUserByEmail(email);
     if (user) {
       const oldHashedPwd = await bcrypt.compare(
         request.oldPassword,
-        user.password
+        user.password,
       );
       if (oldHashedPwd) {
         const newPassword = await bcrypt.hash(
           request.newPassword,
-          this.SALT_ROUND
+          this.SALT_ROUND,
         );
         const result = await this.userRepository.update(
           { id: user.id },
@@ -255,33 +255,33 @@ export class UserService {
           },
           {
             id: true,
-          }
+          },
         );
         if (result.id) {
           return ResponseHelper.CreateResponse<boolean>(
             Constants.PASSWORD_UPDATE_SUCCESS,
             true,
-            HttpStatus.OK
+            HttpStatus.OK,
           );
         } else {
           return ResponseHelper.CreateResponse<boolean>(
             Constants.SOMETHING_WENT_WRONG,
             false,
-            HttpStatus.INTERNAL_SERVER_ERROR
+            HttpStatus.INTERNAL_SERVER_ERROR,
           );
         }
       } else {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.INVALID_OLD_PASSWORD,
           false,
-          HttpStatus.NOT_FOUND
+          HttpStatus.NOT_FOUND,
         );
       }
     } else {
       return ResponseHelper.CreateResponse<boolean>(
         Constants.INVALID_EMAIL,
         false,
-        HttpStatus.NOT_FOUND
+        HttpStatus.NOT_FOUND,
       );
     }
   }
@@ -295,14 +295,14 @@ export class UserService {
    * @returns The user object from your database.
    */
   async validateSocialUser(
-    provider: "google" | "facebook",
+    provider: 'google' | 'facebook',
     socialId: string,
     email: string,
-    userType: number
+    userType: number,
   ): Promise<ApiResponse<SocialLoginResponseDTO>> {
     const socialLoginFields = {
-      google: "googleId",
-      facebook: "facebookId",
+      google: 'googleId',
+      facebook: 'facebookId',
     };
     // Determine which ID field to use
     const socialIdField = socialLoginFields[provider];
@@ -315,7 +315,7 @@ export class UserService {
         id: true,
         email: true,
         user_type: true,
-      }
+      },
     );
 
     if (user) {
@@ -327,7 +327,7 @@ export class UserService {
           email: user.email,
           userType: user.user_type,
         },
-        HttpStatus.FOUND
+        HttpStatus.FOUND,
       );
     }
 
@@ -346,7 +346,7 @@ export class UserService {
         const updatedUser = await this.userRepository.update(
           { id: result.id },
           { [socialIdField]: socialId },
-          { id: true, email: true, user_type: true }
+          { id: true, email: true, user_type: true },
         );
         // User found, return it
         return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
@@ -356,7 +356,7 @@ export class UserService {
             email: updatedUser.email,
             userType: updatedUser.user_type,
           },
-          HttpStatus.FOUND
+          HttpStatus.FOUND,
         );
       } else {
         // User found, return it
@@ -367,7 +367,7 @@ export class UserService {
             email: result.email,
             userType: result.user_type,
           },
-          HttpStatus.FOUND
+          HttpStatus.FOUND,
         );
       }
     }
@@ -377,14 +377,14 @@ export class UserService {
     const otpResponse = await this.generateOTPAndExpiry();
     // Construct the data object for createUser
     const password = await bcrypt.hash(
-      "SOCIAL_LOGIN_PASSWORD_PLACEH",
-      this.SALT_ROUND
+      'SOCIAL_LOGIN_PASSWORD_PLACEH',
+      this.SALT_ROUND,
     );
-    const newUserCreateData: Prisma.usersCreateInput = {
-      name: "SOCIAL_LOGIN_USER_NAME",
+    const newUserCreateData: Prisma.UserCreateInput = {
+      name: 'SOCIAL_LOGIN_USER_NAME',
       email: email,
       password: password,
-      user_type_users_user_typeTouser_type: {
+      userType: {
         connect: {
           id: userType,
         },
@@ -395,9 +395,9 @@ export class UserService {
 
     // Conditionally add the social ID field to the data object.
     // Because Prisma doesn't allow dynamic column.
-    if (provider === "google") {
+    if (provider === 'google') {
       newUserCreateData.googleId = socialId;
-    } else if (provider === "facebook") {
+    } else if (provider === 'facebook') {
       newUserCreateData.facebookId = socialId;
     }
 
@@ -407,7 +407,7 @@ export class UserService {
     this.sendOTPInEmail(
       email,
       { otp: otpResponse.plainOTP, resetToken: token },
-      EmailTemplateType.OTP_VERIFICATION
+      EmailTemplateType.OTP_VERIFICATION,
     );
     return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
       Constants.USER_CREATED_SUCCESS,
@@ -416,7 +416,7 @@ export class UserService {
         email: newUser.email,
         userType: newUser.user_type,
       },
-      HttpStatus.CREATED
+      HttpStatus.CREATED,
     );
   }
 
@@ -427,13 +427,13 @@ export class UserService {
    * @returns A promise that resolves to an array of UserDetailsResponseDto.
    */
   async findUsersByIds(
-    userIds: number[]
+    userIds: number[],
   ): Promise<ApiResponse<UserDetailsResponseDto[]>> {
     if (!userIds || userIds.length === 0) {
       return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
-        "",
+        '',
         [],
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -459,10 +459,10 @@ export class UserService {
       users.map((user) => ({
         id: user.id,
         name: user.name,
-        fullName: user.full_name || "",
+        fullName: user.full_name || '',
         email: user.email,
       })),
-      HttpStatus.OK
+      HttpStatus.OK,
     );
   }
   /**
@@ -477,7 +477,7 @@ export class UserService {
     const plainOTP = Utils.generateOtp();
     const OTP = await this.hashOtp(plainOTP);
     const expiryDuration =
-      this.configService.get<number>("OTP_EXPIRY_DURATION") || 5;
+      this.configService.get<number>('OTP_EXPIRY_DURATION') || 5;
     const otpExpiry = this.calculateOtpExpiry(Number(expiryDuration));
     return { otp: OTP, otp_expiry_date_time: otpExpiry, plainOTP };
   }
@@ -493,7 +493,7 @@ export class UserService {
   private async sendOTPInEmail(
     toEmail: string,
     data: any,
-    emailType: EmailTemplateType
+    emailType: EmailTemplateType,
   ): Promise<boolean> {
     const result = await this.emailService.sendEmail(emailType, {
       to: toEmail,
@@ -520,7 +520,7 @@ export class UserService {
       },
       {
         id: true,
-      }
+      },
     );
     return result;
   }

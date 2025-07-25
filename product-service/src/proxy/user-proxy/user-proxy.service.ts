@@ -1,8 +1,9 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import { HttpService } from "@nestjs/axios";
-import { ConfigService } from "@nestjs/config";
-import { firstValueFrom, catchError } from "rxjs";
-import { AxiosError } from "axios";
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom, catchError } from 'rxjs';
+import { AxiosError } from 'axios';
+import { AxiosResponse } from 'axios';
 
 // Define a simple interface for the user data you expect from the User Service
 export interface UserDetails {
@@ -18,13 +19,13 @@ export class UserProxyService {
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
-    this.userSvcUrl = this.configService.getOrThrow<string>("USER_SERVICE_URL");
+    this.userSvcUrl = this.configService.getOrThrow<string>('USER_SERVICE_URL');
     if (!this.userSvcUrl) {
       // TODO: Need to implement logging...
       throw new InternalServerErrorException(
-        "User Service URL not configured."
+        'User Service URL not configured.',
       );
     }
   }
@@ -42,7 +43,7 @@ export class UserProxyService {
 
     const uniqueUserIds = [...new Set(userIds)]; // Ensure unique IDs
 
-    const response = await firstValueFrom(
+    const response: AxiosResponse<UserDetails[]> = await firstValueFrom(
       this.httpService
         .post<UserDetails[]>(
           `${this.userSvcUrl}/user/details-by-ids`,
@@ -50,7 +51,7 @@ export class UserProxyService {
           {
             // You might add an internal API key or mTLS for inter-service security here
             // headers: { 'X-Internal-API-Key': 'your-secret-key' }
-          }
+          },
         )
         .pipe(
           catchError((error: AxiosError) => {
@@ -58,10 +59,10 @@ export class UserProxyService {
               // TODO: Implement Logging..
             }
             throw new InternalServerErrorException(
-              "Failed to fetch user details from User Service."
+              'Failed to fetch user details from User Service.',
             );
-          })
-        )
+          }),
+        ),
     );
     return response.data;
   }

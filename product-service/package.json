@@ -10,33 +10,29 @@
     "dev": "npm run start:dev",
     "start:debug": "nodemon --inspect --watch src --watch ../lib --ext ts,json,js --exec \"ts-node -r tsconfig-paths/register src/main.ts\"",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
+  },
+  "prisma": {
     "seed": "ts-node prisma/seed.ts"
   },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
-  },
   "dependencies": {
+    "@nestjs/axios": "^4.0.1",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.5",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.5",
     "@prisma/client": "^6.12.0",
-    "prisma": "^6.12.0"
+    "axios": "^1.11.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "express": "^5.1.0",
+    "passport-jwt": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/passport-jwt": "^4.0.1",
+    "prisma": "^6.12.0",
+    "ts-node": "^10.9.2"
   }
 }

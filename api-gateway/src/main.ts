@@ -27,7 +27,8 @@ async function bootstrap() {
       "Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key", // Explicitly list headers
     credentials: true, // Allow cookies and authorization headers to be sent
   });
-  app.use(pattern, new ProxyMiddleware().use);
+  const proxyMiddlewareInstance = app.get(ProxyMiddleware);
+  app.use(pattern, proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance));
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
 

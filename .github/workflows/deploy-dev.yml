@@ -3,16 +3,11 @@ name: Deploy Dev Environment
 on:
   push:
     branches:
-      - dev
+      - develop
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
-    env:
-      DATABASE_URL_AUTH: ${{ secrets.DATABASE_URL_AUTH_DEV }}
-      DATABASE_URL_PRODUCT: ${{ secrets.DATABASE_URL_PRODUCT_DEV }}
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -23,26 +18,98 @@ jobs:
           node-version: 20
 
       - name: SSH Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            PROJECT_DIR=/home/ubuntu/tempux-backend
+            export CI=true
             echo "👉 Pull latest code"
-            cd /home/ubuntu/tempux-backend
-            git pull origin dev
+            cd "$PROJECT_DIR" || { echo "Error: Could not change to project directory. Exiting."; exit 1; }
 
-            echo "👉 Install dependencies for all services"
-            cd api-gateway && npm install && cd ..
-            cd auth-service && npm install && cd ..
-            cd product-service && npm install && cd ..
+            git reset --hard HEAD
+            git clean -df
+            git fetch origin
+            git checkout develop
+            git pull origin develop
 
-            echo "👉 Run Prisma migrate + seed for auth-service"
-            cd auth-service && DATABASE_URL=${{ env.DATABASE_URL_AUTH }} npx prisma migrate deploy && npx prisma db seed && cd ..
+            echo "👉 Ensuring .npm-global/bin is in PATH"
+            npm config set prefix '~/.npm-global'
+            export PATH="$PATH:$HOME/.npm-global/bin"
 
-            echo "👉 Run Prisma migrate + seed for product-service"
-            cd product-service && DATABASE_URL=${{ env.DATABASE_URL_PRODUCT }} npx prisma migrate deploy && npx prisma db seed && cd ..
+            echo "👉 Install nestjs cli + tsx globally"
+            npm install -g tsx @nestjs/cli || { echo "Global npm install failed. Exiting."; exit 1; }
 
-            echo "👉 Reload PM2"
-            pm2 reload ecosystem.config.ts --interpreter tsx --env production
+            echo "👉 Stopping and deleting existing PM2 processes..."
+            pm2 delete all || true
+
+            echo "👉 Install dependencies"
+            npm install
+
+            cd "$PROJECT_DIR/api-gateway" && npm install && npm run build || { echo "Error: api-gateway failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: auth-service failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/product-service" && npm install || { echo "Error: product-service failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR"
+
+            ECOSYSTEM_FILE="ecosystem.config.js"
+            BACKUP_DIR="/home/ubuntu/pm2_config_backups"
+            mkdir -p "$BACKUP_DIR"
+            ls -tp "$BACKUP_DIR" | grep -v '/$' | tail -n +6 | xargs -I {} rm -- "$BACKUP_DIR/{}" || true
+
+            sed -i.bak "s#INJECT_JWT_SECRET#${{ secrets.JWT_SECRET }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_OTP_EXPIRY_DURATION#${{ secrets.OTP_EXPIRY_DURATION }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_HOST#${{ secrets.MAIL_HOST }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_PORT#${{ secrets.MAIL_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_USERNAME#${{ secrets.MAIL_USERNAME }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_PASSWORD#${{ secrets.MAIL_PASSWORD }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_MAIL_FROM#${{ secrets.MAIL_FROM }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FRONTEND_URL#${{ secrets.FRONTEND_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GOOGLE_CLIENT_ID#${{ secrets.GOOGLE_CLIENT_ID }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GOOGLE_CLIENT_SECRET#${{ secrets.GOOGLE_CLIENT_SECRET }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GOOGLE_CALLBACK_URL#${{ secrets.GOOGLE_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FACEBOOK_APP_ID#${{ secrets.FACEBOOK_APP_ID }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FACEBOOK_APP_SECRET#${{ secrets.FACEBOOK_APP_SECRET }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FACEBOOK_CALLBACK_URL#${{ secrets.FACEBOOK_CALLBACK_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_EMAIL_ENCRYPTION_KEY#${{ secrets.EMAIL_ENCRYPTION_KEY }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_SALT_ROUND#${{ secrets.SALT_ROUND }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_AUTH_PORT#${{ secrets.AUTH_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_USER_SERVICE_URL#${{ secrets.USER_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_AUTH_SERVICE_BASE_URL#${{ secrets.AUTH_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_PRODUCT_SERVICE_BASE_URL#${{ secrets.PRODUCT_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_PRODUCT_PORT#${{ secrets.PRODUCT_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_GATEWAY_PORT#${{ secrets.GATEWAY_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_DATABASE_URL_DEV_USERS#${{ secrets.DATABASE_URL_DEV_USERS }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_DATABASE_URL_DEV_PRODUCT#${{ secrets.DATABASE_URL_DEV_PRODUCT }}#g" "$ECOSYSTEM_FILE"
+
+            BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            TARGET_BACKUP_PATH="${BACKUP_DIR}/${ECOSYSTEM_FILE}.${TIMESTAMP}.bak"
+
+            if [ -f "$BACKUP_FILENAME" ]; then
+              echo "👉 Moving $BACKUP_FILENAME to $TARGET_BACKUP_PATH..."
+              mv "$BACKUP_FILENAME" "$TARGET_BACKUP_PATH" || { echo "Error: Failed to move backup file. Exiting."; exit 1; }
+              echo "Backup moved successfully."
+            else
+              echo "No .bak file found to move. This might be normal if sed didn't make changes."
+            fi
+
+            echo "👉 Prisma migrate + seed for auth-service"
+            cd "$PROJECT_DIR/auth-service"
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma generate --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma db seed --schema prisma/schema.prisma || exit 1
+            npm run build
+            cd "$PROJECT_DIR"
+
+            echo "👉 Prisma migrate + seed for product-service"
+            cd "$PROJECT_DIR/product-service"
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma generate --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || exit 1
+            npm run build
+            cd "$PROJECT_DIR"
+
+            echo "👉 Start/Reload PM2 processes"
+            pm2 start "$ECOSYSTEM_FILE" --update-env --env production || exit 1

@@ -4,10 +4,10 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL_AUTH")
+  url      = env("DATABASE_URL_DEV_USERS")
 }
 
-model access_management {
+model AccessManagement {
   id           Int       @id @default(autoincrement())
   access       String    @db.VarChar(50)
   description  String?   @db.VarChar(200)
@@ -15,21 +15,23 @@ model access_management {
   created_at   DateTime  @default(now()) @db.Timestamptz(6)
   updated_at   DateTime  @default(now()) @db.Timestamptz(6)
   is_deleted   Boolean   @default(false)
-  user_type    user_type @relation(fields: [user_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user_type    UserType  @relation(fields: [user_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@map("access_management")
 }
 
-model saved_searches {
+model SavedSearch {
   id           BigInt    @id @default(autoincrement())
   user_id      BigInt
   search_query Json
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   is_deleted   Boolean   @default(false)
-  users        users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user         User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@map("saved_searches")
 }
 
-model seller_profile_detail {
+model SellerProfileDetail {
   id                BigInt    @id @default(autoincrement())
   brand_name        String    @db.VarChar(50)
   brand_description String?   @db.VarChar(100)
@@ -39,64 +41,64 @@ model seller_profile_detail {
   created_at        DateTime  @default(now()) @db.Timestamptz(6)
   updated_at        DateTime? @db.Timestamptz(6)
   is_deleted        Boolean   @default(false)
-  users             users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user              User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@map("seller_profile_detail")
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
-model seller_profile_rating {
-  id                                             BigInt    @id @default(autoincrement())
-  rating_name                                    String    @db.VarChar(50)
-  rating_value                                   Decimal?  @db.Decimal(2, 1)
-  seller_id                                      BigInt?
-  reviewed_by                                    BigInt?
-  created_at                                     DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at                                     DateTime? @db.Timestamptz(6)
-  is_deleted                                     Boolean   @default(false)
-  users_seller_profile_rating_reviewed_byTousers users?    @relation("seller_profile_rating_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  users_seller_profile_rating_seller_idTousers   users?    @relation("seller_profile_rating_seller_idTousers", fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+model SellerProfileRating {
+  id               BigInt   @id @default(autoincrement())
+  rating_name      String   @db.VarChar(50)
+  rating_value     Decimal? @db.Decimal(2, 1)
+  seller_id        BigInt?
+  reviewed_by      BigInt?
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime? @db.Timestamptz(6)
+  is_deleted       Boolean   @default(false)
+  reviewedByUser   User?     @relation("seller_profile_rating_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sellerUser       User?     @relation("seller_profile_rating_seller_idTousers", fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@map("seller_profile_rating")
 }
 
-model user_type {
-  id                               Int                 @id @db.SmallInt
-  name                             String              @unique @db.VarChar(20)
-  created_at                       DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at                       DateTime            @default(now()) @db.Timestamptz(6)
-  is_deleted                       Boolean             @default(false)
-  access_management                access_management[]
-  users_users_user_typeTouser_type users[]             @relation("users_user_typeTouser_type")
+model UserType {
+  id             Int              @id @db.SmallInt
+  name           String           @unique @db.VarChar(20)
+  created_at     DateTime         @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
+  is_deleted     Boolean          @default(false)
+  access         AccessManagement[]
+  users          User[]           @relation("users_user_typeTouser_type")
 
+  @@map("user_type")
 }
 
-model users {
-  id           BigInt      @id @default(autoincrement())
-  name         String      @db.VarChar(100)
-  email        String      @db.VarChar(150)
-  full_name    String?     @db.VarChar(100)
-  password     String      @db.VarChar(150)
-  user_type    Int         @db.SmallInt
-  telephone    String?     @db.VarChar(15)
-  address      String?     @db.VarChar(150)
-  created_at   DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime    @default(now()) @db.Timestamptz(6)
-  is_deleted   Boolean     @default(false)
-  otp          String?     @db.Char(60)
+model User {
+  id           BigInt     @id @default(autoincrement())
+  name         String     @db.VarChar(100)
+  email        String     @db.VarChar(150)
+  full_name    String?    @db.VarChar(100)
+  password     String     @db.VarChar(150)
+  user_type    Int        @db.SmallInt
+  telephone    String?    @db.VarChar(15)
+  address      String?    @db.VarChar(150)
+  created_at   DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime   @default(now()) @db.Timestamptz(6)
+  is_deleted   Boolean    @default(false)
+  otp          String?    @db.Char(60)
   otp_expires_at DateTime?
-  otp_verified Boolean     @default(false)
+  otp_verified Boolean    @default(false)
 
-  // Social Login Fields
-  googleId     String?     @db.VarChar(400)
-  facebookId   String?     @db.VarChar(400)
-  onboarded    Boolean     @default(false)
+  googleId     String?    @db.VarChar(400)
+  facebookId   String?    @db.VarChar(400)
+  onboarded    Boolean    @default(false)
 
-  saved_searches                         saved_searches[]
-  seller_profile_detail                  seller_profile_detail[]
-  seller_profile_rating_seller_profile_rating_reviewed_byTousers seller_profile_rating[] @relation("seller_profile_rating_reviewed_byTousers")
-  seller_profile_rating_seller_profile_rating_seller_idTousers   seller_profile_rating[] @relation("seller_profile_rating_seller_idTousers")
-  user_type_users_user_typeTouser_type   user_type   @relation("users_user_typeTouser_type", fields: [user_type], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  saved_searches        SavedSearch[]
+  seller_profile_detail SellerProfileDetail[]
+  reviewedRatings       SellerProfileRating[] @relation("seller_profile_rating_reviewed_byTousers")
+  sellerRatings         SellerProfileRating[] @relation("seller_profile_rating_seller_idTousers")
+  userType              UserType @relation("users_user_typeTouser_type", fields: [user_type], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  // Unique Key constraint on email & usertype
   @@unique([email, user_type], map: "users_email_user_type_unique")
-
+  @@map("users")
 }
