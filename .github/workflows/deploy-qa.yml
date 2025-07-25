@@ -3,7 +3,7 @@ name: Deploy Dev Environment
 on:
   push:
     branches:
-      - develop
+      - qa
 
 jobs:
   deploy:
@@ -45,8 +45,7 @@ jobs:
             echo "👉 Stopping and deleting existing PM2 processes..."
             pm2 delete all || true
 
-            echo "👉 Install dependencies"
-            npm install
+            echo "👉 Install dependencies service wise"
 
             cd "$PROJECT_DIR/api-gateway" && npm install && npm run build || { echo "Error: api-gateway failed. Exiting."; exit 1; }
             cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: auth-service failed. Exiting."; exit 1; }
