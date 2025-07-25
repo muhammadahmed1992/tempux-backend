@@ -1,4 +1,4 @@
-name: Deploy Dev Environment
+name: Deploy QA Environment
 
 on:
   push:
