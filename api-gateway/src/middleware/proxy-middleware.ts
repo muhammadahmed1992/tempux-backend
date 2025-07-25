@@ -94,9 +94,20 @@ export class ProxyMiddleware implements NestMiddleware {
           // proxyRes, req, res
           // TODO: Will investigate later
           console.log('API Gateway proxy response');
-          console.log(proxyRes.originalUrl);
           console.log(req.url);
           console.log(res.statusCode);
+          // Add/modify CORS headers on the response from the proxied target
+          if (req.headers.origin) {
+            // Only set if Origin header is present
+            proxyRes.headers['Access-Control-Allow-Origin'] =
+              req.headers.origin;
+          }
+          proxyRes.headers['Access-Control-Allow-Methods'] =
+            'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS';
+          proxyRes.headers['Access-Control-Allow-Headers'] =
+            'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key';
+          proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+          proxyRes.headers['Access-Control-Max-Age'] = '3600';
         },
         error(
           error: Error,
