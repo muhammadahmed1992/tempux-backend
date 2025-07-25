@@ -32,8 +32,8 @@ jobs:
             git reset --hard HEAD
             git clean -df
             git fetch origin
-            git checkout develop
-            git pull origin develop
+            git checkout qa
+            git pull origin qa
 
             echo "👉 Ensuring .npm-global/bin is in PATH"
             npm config set prefix '~/.npm-global'
