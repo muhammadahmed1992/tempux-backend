@@ -1,10 +1,10 @@
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
-import { ProxyMiddleware } from "./middleware/proxy-middleware";
-import Utils from "@Common/utils";
-import express from "express";
-import ResponseHandlerInterceptor from "./interceptor/response-handler.interceptor";
-import { AllExceptionsFilter } from "./filters/global.exception.filter";
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ProxyMiddleware } from './middleware/proxy-middleware';
+import Utils from '@Common/utils';
+import express from 'express';
+import ResponseHandlerInterceptor from './interceptor/response-handler.interceptor';
+import { AllExceptionsFilter } from './filters/global.exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,9 +22,9 @@ async function bootstrap() {
       // but instead setting it to the actual requesting origin.
       callback(null, true);
     },
-    methods: "*", // Explicitly allow all common HTTP methods
+    methods: '*', // Explicitly allow all common HTTP methods
     allowedHeaders:
-      "Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key", // Explicitly list headers
+      'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key', // Explicitly list headers
     credentials: true, // Allow cookies and authorization headers to be sent
   });
   const proxyMiddlewareInstance = app.get(ProxyMiddleware);
@@ -32,6 +32,6 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  await app.listen(3000);
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

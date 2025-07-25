@@ -1,29 +1,37 @@
-import { Module } from "@nestjs/common";
-import { AppController } from "./app.controller";
-import { RepositoryModule } from "@Module/repository.module";
-import { BrandService } from "@Services/brand.service";
-import { BrandController } from "@Controllers/brand.controller";
-import { TypeController } from "@Controllers/type.controller";
-import { CategoryController } from "@Controllers/category.controller";
-import { SizeController } from "@Controllers/size.controller";
-import { ColorController } from "@Controllers/color.controller";
-import { TypesService } from "@Services/types.service";
-import { CategoryService } from "@Services/category.service";
-import { ColorService } from "@Services/color.service";
-import { SizeService } from "@Services/size.service";
-import { AuthModule } from "@Module/auth.module";
-import { ReviewsModule } from "@Module/reviews.module";
-import { ProductService } from "@Services/product.service";
-import { ProductController } from "@Controllers/product.controller";
-import { ProductVariantService } from "@Services/product-variant.service";
-import { CustomFilterConfiguratorService } from "@Services/custom-filter-configurator.service";
-import { CustomProductVariantCategoryService } from "@Services/custom-product-category.service";
-import { FavoriteService } from "@Services/favorite.service";
-import { CartService } from "@Services/cart.service";
-import { CartController } from "@Controllers/cart.controller";
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { RepositoryModule } from '@Module/repository.module';
+import { BrandService } from '@Services/brand.service';
+import { BrandController } from '@Controllers/brand.controller';
+import { TypeController } from '@Controllers/type.controller';
+import { CategoryController } from '@Controllers/category.controller';
+import { SizeController } from '@Controllers/size.controller';
+import { ColorController } from '@Controllers/color.controller';
+import { TypesService } from '@Services/types.service';
+import { CategoryService } from '@Services/category.service';
+import { ColorService } from '@Services/color.service';
+import { SizeService } from '@Services/size.service';
+import { AuthModule } from '@Module/auth.module';
+import { ReviewsModule } from '@Module/reviews.module';
+import { ProductService } from '@Services/product.service';
+import { ProductController } from '@Controllers/product.controller';
+import { ProductVariantService } from '@Services/product-variant.service';
+import { CustomFilterConfiguratorService } from '@Services/custom-filter-configurator.service';
+import { CustomProductVariantCategoryService } from '@Services/custom-product-category.service';
+import { FavoriteService } from '@Services/favorite.service';
+import { CartService } from '@Services/cart.service';
+import { CartController } from '@Controllers/cart.controller';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [RepositoryModule, AuthModule, ReviewsModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    RepositoryModule,
+    AuthModule,
+    ReviewsModule,
+  ],
   controllers: [
     AppController,
     BrandController,
