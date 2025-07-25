@@ -1,9 +1,9 @@
-name: Deploy Dev Environment
+name: Deploy QA Environment
 
 on:
   push:
     branches:
-      - develop
+      - qa
 
 jobs:
   deploy:
@@ -32,21 +32,15 @@ jobs:
             git reset --hard HEAD
             git clean -df
             git fetch origin
-            git checkout develop
-            git pull origin develop
+            git checkout qa
+            git pull origin qa
 
             echo "👉 Ensuring .npm-global/bin is in PATH"
             npm config set prefix '~/.npm-global'
             export PATH="$PATH:$HOME/.npm-global/bin"
 
-            echo "👉 Install nestjs cli + tsx globally"
-            npm install -g tsx @nestjs/cli || { echo "Global npm install failed. Exiting."; exit 1; }
-
             echo "👉 Stopping and deleting existing PM2 processes..."
             pm2 delete all || true
-
-            echo "👉 Install dependencies"
-            npm install
 
             cd "$PROJECT_DIR/api-gateway" && npm install && npm run build || { echo "Error: api-gateway failed. Exiting."; exit 1; }
             cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: auth-service failed. Exiting."; exit 1; }
