@@ -1,1 +1,15 @@
 * text=auto eol=lf
+# Explicitly mark files to normalize
+*.ts   text eol=lf
+*.js   text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.md   text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+# Keep binaries untouched
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary

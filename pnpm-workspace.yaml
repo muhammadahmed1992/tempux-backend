@@ -1,6 +1,0 @@
-packages:
-  - 'api-gateway'
-  - 'auth-service'
-  - 'order-service'
-  - 'product-service'
-  - 'seller-service'

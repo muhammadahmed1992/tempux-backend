@@ -1,9 +1,19 @@
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "baseUrl": "./",
+    "types": ["node"],
+    "lib": ["es2020"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2023",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
     "paths": {
       "@Module/*": ["src/modules/*"],
       "@Controllers/*": ["src/controllers/*"],

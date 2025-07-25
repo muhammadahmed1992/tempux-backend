@@ -1,98 +1,100 @@
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+const SALT_ROUND = 10; // adjust if you use a different round
+
+function generateOTPAndExpiry() {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiry = new Date(Date.now() + 5 * 60 * 1000); // expires in 5 mins
+  return { otp, otp_expires_at: expiry };
+}
+
 async function main() {
+  // Seed user types
   const userTypes = [
-    { id: 1, name: "Super Admin" },
-    { id: 2, name: "Admin" },
-    { id: 3, name: "Buyer" },
-    { id: 4, name: "Seller" },
+    { id: 1, name: 'Super Admin' },
+    { id: 2, name: 'Admin' },
+    { id: 3, name: 'Buyer' },
+    { id: 4, name: 'Seller' },
   ];
 
   for (const userType of userTypes) {
-    try {
-      // <--- ADD try/catch for each upsert
-      await prisma.user_type.upsert({
-        where: { id: userType.id },
-        update: { name: userType.name },
-        create: {
-          id: userType.id,
-          name: userType.name,
-        },
-      });
-      console.log(`Successfully upserted userType: ${userType.id}`); // <--- ADD THIS
-    } catch (e) {
-      console.error(
-        `Error upserting userType ${userType.id} - ${userType.name}:`,
-        e
-      );
-    }
-  }
-
-  console.log("✅ Default user types seeded!");
-
-  const superAdmin = {
-    name: "sahmed1992",
-    email: "muhammed_hm@hotmail.com",
-    password: bcrypt.hashSync("abc123", Number(process.env.SALT_ROUND) || 10),
-    userType: 1,
-    otp: bcrypt.hashSync("123456", Number(process.env.SALT_ROUND) || 10),
-  };
-
-  const admin = {
-    name: "mahmed1992",
-    email: "muhammed_hm@hotmail.com",
-    password: bcrypt.hashSync("abc123", Number(process.env.SALT_ROUND) || 10),
-    userType: 2,
-    otp: bcrypt.hashSync("123456", Number(process.env.SALT_ROUND) || 10),
-  };
-  try {
-    await prisma.users.upsert({
-      where: {
-        email_user_type: {
-          // Use the generated compound unique key
-          email: superAdmin.email,
-          user_type: superAdmin.userType,
-        },
-      },
-      update: { name: superAdmin.name },
+    await prisma.userType.upsert({
+      where: { id: userType.id },
+      update: { name: userType.name },
       create: {
-        name: superAdmin.name,
-        email: superAdmin.email,
-        password: superAdmin.password,
-        otp: superAdmin.otp,
-        user_type: superAdmin.userType,
+        id: userType.id,
+        name: userType.name,
       },
     });
+  }
 
-    await prisma.users.upsert({
+  // Seed example users
+  const users = [
+    {
+      email: 'superadmin@example.com',
+      name: 'Super Admin',
+      fullName: 'Super Admin Full',
+      userType: 1,
+      password: 'superadmin123',
+    },
+    {
+      email: 'admin@example.com',
+      name: 'Admin User',
+      fullName: 'Admin Full',
+      userType: 2,
+      password: 'admin123',
+    },
+    {
+      email: 'buyer@example.com',
+      name: 'Buyer User',
+      fullName: 'Buyer Full',
+      userType: 3,
+      password: 'buyer123',
+    },
+    {
+      email: 'seller@example.com',
+      name: 'Seller User',
+      fullName: 'Seller Full',
+      userType: 4,
+      password: 'seller123',
+    },
+  ];
+
+  for (const user of users) {
+    const hashedPassword = await bcrypt.hash(user.password, SALT_ROUND);
+    const otpResponse = generateOTPAndExpiry();
+
+    await prisma.user.upsert({
       where: {
         email_user_type: {
-          // Use the generated compound unique key
-          email: admin.email,
-          user_type: admin.userType,
+          email: user.email,
+          user_type: user.userType,
         },
       },
-      update: { name: admin.name },
+      update: {
+        name: user.name,
+      },
       create: {
-        name: admin.name,
-        email: admin.email,
-        password: admin.password,
-        otp: admin.otp,
-        user_type: admin.userType,
+        name: user.name,
+        full_name: user.fullName,
+        email: user.email,
+        password: hashedPassword,
+        user_type: user.userType,
+        otp: otpResponse.otp,
+        otp_expires_at: otpResponse.otp_expires_at,
+        otp_verified: true,
       },
     });
-  } catch (e) {
-    console.error("Error while adding seed user");
-    console.error(e);
   }
+
+  console.log('✅ Seeding complete!');
 }
 
 main()
   .catch((e) => {
-    console.error("Exception occured while seeding data: Auth-Service");
     console.error(e);
     process.exit(1);
   })

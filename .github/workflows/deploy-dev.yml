@@ -37,33 +37,20 @@ jobs:
 
             echo "👉 Ensuring .npm-global/bin is in PATH"
             npm config set prefix '~/.npm-global'
-            export PATH="$PATH:/home/ubuntu/.npm-global/bin"
-            echo 'export PATH="$PATH:/home/ubuntu/.npm-global/bin"' >> ~/.bashrc
-            source ~/.bashrc
-
-            echo "👉 Installing pnpm globally..."
-            npm install -g pnpm || { echo "Failed to install pnpm globally. Exiting."; exit 1; }
-
-            pnpm setup
-            export PNPM_HOME="$HOME/.pnpm-global"
-            mkdir -p "$PNPM_HOME"
-            echo "export PNPM_HOME=\"$PNPM_HOME\"" >> ~/.bashrc
-            echo "export PATH=\"$PNPM_HOME:$PATH\"" >> ~/.bashrc
-            export PATH="$PNPM_HOME:$PATH"
-            source ~/.bashrc
+            export PATH="$PATH:$HOME/.npm-global/bin"
 
             echo "👉 Install nestjs cli + tsx globally"
-            pnpm add -g tsx @nestjs/cli || { echo "Global pnpm install failed. Exiting."; exit 1; }
+            npm install -g tsx @nestjs/cli || { echo "Global npm install failed. Exiting."; exit 1; }
 
             echo "👉 Stopping and deleting existing PM2 processes..."
             pm2 delete all || true
 
             echo "👉 Install dependencies"
-            pnpm install
+            npm install
 
-            cd "$PROJECT_DIR/api-gateway" && pnpm install && pnpm run build || { echo "Error: api-gateway failed. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/auth-service" && pnpm install || { echo "Error: auth-service failed. Exiting."; exit 1; }
-            cd "$PROJECT_DIR/product-service" && pnpm install || { echo "Error: product-service failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/api-gateway" && npm install && npm run build || { echo "Error: api-gateway failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: auth-service failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/product-service" && npm install || { echo "Error: product-service failed. Exiting."; exit 1; }
             cd "$PROJECT_DIR"
 
             ECOSYSTEM_FILE="ecosystem.config.js"
@@ -110,18 +97,18 @@ jobs:
 
             echo "👉 Prisma migrate + seed for auth-service"
             cd "$PROJECT_DIR/auth-service"
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
-            pnpm run build
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma generate --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma db seed --schema prisma/schema.prisma || exit 1
+            npm run build
             cd "$PROJECT_DIR"
 
             echo "👉 Prisma migrate + seed for product-service"
             cd "$PROJECT_DIR/product-service"
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma migrate deploy --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma generate --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" pnpm exec prisma db seed --schema prisma/schema.prisma || exit 1
-            pnpm run build
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma generate --schema prisma/schema.prisma || exit 1
+            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || exit 1
+            npm run build
             cd "$PROJECT_DIR"
 
             echo "👉 Start/Reload PM2 processes"

@@ -1,23 +1,23 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "@Services/prisma.service";
-import { BaseRepository } from "./base.repository";
-import { Prisma, users } from "@prisma/client";
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '@Services/prisma.service';
+import { BaseRepository } from './base.repository';
+import { Prisma, User } from '@prisma/client';
 
 @Injectable()
 export class UserRepository extends BaseRepository<
-  users,
-  Prisma.usersCreateInput,
-  Prisma.usersUpdateInput,
-  Prisma.usersWhereUniqueInput,
-  Prisma.usersFindUniqueArgs,
-  Prisma.usersFindManyArgs,
-  Prisma.usersFindFirstArgs
+  User,
+  Prisma.UserCreateInput,
+  Prisma.UserUpdateInput,
+  Prisma.UserWhereUniqueInput,
+  Prisma.UserFindUniqueArgs,
+  Prisma.UserFindManyArgs,
+  Prisma.UserFindFirstArgs
 > {
   constructor(prisma: PrismaService) {
-    super(prisma.users);
+    super(prisma.user);
   }
 
-  async createUser(data: Prisma.usersCreateInput, select?: object) {
+  async createUser(data: Prisma.UserCreateInput, select?: object) {
     return this.model.create({
       data,
       select,
@@ -39,7 +39,7 @@ export class UserRepository extends BaseRepository<
   async findUserBySocialId(
     socialIdField: string,
     socialId?: string,
-    select?: object
+    select?: object,
   ) {
     return this.model.findFirst({
       where: {
