@@ -23,7 +23,7 @@ import { CreateUserDto } from '@DTO/create.user.dto';
 import { LoginRequestDTO } from '@DTO/login-request.dto';
 import { LoginDTO } from '@DTO/login.dto';
 import { EncryptionHelper } from '@Helper/encryption.helper';
-import { ForgotPasswordDTO, UpdatePasswordDTO } from '@DTO/update.password.dto';
+import { ForgotPasswordDTO } from '@DTO/update.password.dto';
 import { UserDetailsResponseDto } from '@DTO/user.details.response.dto';
 
 @Injectable()
