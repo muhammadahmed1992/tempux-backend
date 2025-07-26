@@ -254,34 +254,37 @@ model excel_batch_import {
 
 }
 model product {
-  id           BigInt             @id @default(autoincrement())
-  name         String             @db.VarChar(150)
-  description  String             @db.VarChar(300)
-  title        String?            @db.VarChar(150)
-  brand_id     Int          @db.Integer
+  id           BigInt                                     @id @default(autoincrement())
+  name         String                                     @db.VarChar(150)
+  description  String                                     @db.VarChar(300)
+  buyer_confidence_boost_description  String?             @db.VarChar(5000)
+  title        String?                                    @db.VarChar(150)
+  brand_id     Int                                        @db.Integer
   brand brand @relation("ProductBrand", fields: [brand_id], references: [id])
 
-  category_id  Int          @db.Integer
+  category_id  Int                                        @db.Integer
   category category @relation("ProductCategory", fields: [category_id], references: [id])
 
   // This is refer as 'Gender' field.
-  type_id      Int          @db.Integer
+  type_id      Int                                        @db.Integer
   type type @relation("ProductType", fields: [type_id], references: [id])
 
-  is_accessory          Boolean         @default(false) @db.Boolean
-  year_of_production    Int             @db.Integer
-  serial_number         String          @db.VarChar(15)
-  reference_number    BigInt            @db.BigInt
-  created_at   DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime?       @db.Timestamptz(6)
-  deleted_at   DateTime?       @db.Timestamptz(6)
+  is_accessory          Boolean                           @default(false) @db.Boolean
+  year_of_production    Int                               @db.Integer
+  serial_number         String                            @db.VarChar(15)
+  reference_number    BigInt                              @db.BigInt
+  created_at   DateTime                                   @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime?                                  @db.Timestamptz(6)
+  deleted_at   DateTime?                                  @db.Timestamptz(6)
 
-  created_by   BigInt             @db.BigInt
-  updated_by   BigInt?            @db.BigInt
-  deleted_by   BigInt?            @db.BigInt
+  created_by   BigInt                                     @db.BigInt
+  updated_by   BigInt?                                    @db.BigInt
+  deleted_by   BigInt?                                    @db.BigInt
 
-  is_deleted   Boolean            @default(false)
-  approval_status_by_admin String @default("PENDING") @db.VarChar(10)
+  is_deleted   Boolean                                    @default(false)
+  approval_status_by_admin String                         @default("PENDING") @db.VarChar(10)
+  approximation Boolean                                   @default(false)
+  unknown Boolean                                         @default(false)
 
   productVariants product_variants[] @relation("ProductVariants")
   productReviews reviews_ratings[] @relation("ProductReviews")
