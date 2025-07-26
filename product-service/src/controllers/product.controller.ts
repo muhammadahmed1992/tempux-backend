@@ -5,6 +5,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   Param,
   Post,
   Put,
@@ -20,6 +21,7 @@ import { ProductType } from '@Common/enums/product.type.enum';
 import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import Utils from '@Common/utils';
 import Constants from '@Helper/constants';
+import ResponseHelper from '@Helper/response-helper';
 
 @Controller('product')
 export class ProductController {
@@ -63,45 +65,49 @@ export class ProductController {
    */
   @Get(':productId/details')
   async getProductInformation(@Param('productId') productId: number) {
-    return {
-      basicInfo: {
-        listingCode: 'N55CC1',
-        brand: 'Rolex',
-        model: 'Submariner Date',
-        referenceNumber: '116610N (Submariner Ceramic Bezel Dark)',
+    return ResponseHelper.CreateResponse<any>(
+      '',
+      {
+        basicInfo: {
+          listingCode: 'N55CC1',
+          brand: 'Rolex',
+          model: 'Submariner Date',
+          referenceNumber: '116610N (Submariner Ceramic Bezel Dark)',
 
-        braceletMaterial: 'Steel',
-        yearOfProduction: 2025,
-        condition:
-          'Used (Very good) The item shows minor sign of wear, such as small, intangible scratches',
-        scopeOfDelivery: 'Orignal box, original papers',
-        gender: `Men's watch/uni sex`,
-        location: 'California, USA',
-        price: '$122.54 (=$122.54)',
-        availability: 'In stock',
-        bracelet_strap: 'N/A',
-        bracelet_color: 'Green',
-        clasp: 'Fold clasp',
-        clasp_material: 'Steel',
+          braceletMaterial: 'Steel',
+          yearOfProduction: 2025,
+          condition:
+            'Used (Very good) The item shows minor sign of wear, such as small, intangible scratches',
+          scopeOfDelivery: 'Orignal box, original papers',
+          gender: `Men's watch/uni sex`,
+          location: 'California, USA',
+          price: '$122.54 (=$122.54)',
+          availability: 'In stock',
+          bracelet_strap: 'N/A',
+          bracelet_color: 'Green',
+          clasp: 'Fold clasp',
+          clasp_material: 'Steel',
+        },
+        caliber: {
+          movement: 'Automatic',
+          caliber_movement: '3135',
+          base_caliber: 'cal. 3135',
+          power_reserve: '48 h',
+          no_of_jewels: 31,
+          case: '',
+          caseMaterial: 'Steel',
+          case_diameter: `48 mm`,
+          water_resistance: '30 ATM',
+          bezel_material: 'Ceramic',
+          crystal: 'Sapphire  crystal',
+          dial: 'black',
+          dial_numerals: 'no numerals',
+        },
+        functions: {},
+        date: '2025-01-01',
       },
-      caliber: {
-        movement: 'Automatic',
-        caliber_movement: '3135',
-        base_caliber: 'cal. 3135',
-        power_reserve: '48 h',
-        no_of_jewels: 31,
-        case: '',
-        caseMaterial: 'Steel',
-        case_diameter: `48 mm`,
-        water_resistance: '30 ATM',
-        bezel_material: 'Ceramic',
-        crystal: 'Sapphire  crystal',
-        dial: 'black',
-        dial_numerals: 'no numerals',
-      },
-      functions: {},
-      date: '2025-01-01',
-    };
+      HttpStatus.ACCEPTED,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
