@@ -20,7 +20,7 @@ import { SocialLoginResponseDTO } from '@DTO/social-login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { EmailTemplateType } from '@EmailFactory/email.template.type';
-import { ForgotPasswordDTO, UpdatePasswordDTO } from '@DTO/update.password.dto';
+import { ForgotPasswordDTO } from '@DTO/update.password.dto';
 
 @Controller('user')
 export class UserController {
