@@ -128,33 +128,26 @@ export class UserController {
     // The 'user' object is populated by GoogleStrategy.validate()
     // Cast to your social login response dto...
     // TODO: Will refactor any to strongly typed object
-    const user = (req as any).user.data;
+    const user = (req as any).user;
 
-    if (!user) {
-      // Handle error if user is not found or validation failed
-      //return res.redirect("/login?error=google_login_failed"); // Redirect to frontend login with error
+    if (!user.data || !user.success) {
+      throw new BadRequestException(user.message);
     }
 
     // Generate your application's JWT
     const result = await this.userService.login(user);
+    return result;
+    // // TOOD: If user is created but it is not verified.
+    // if (!result.success) {
+    //   return result;
+    // }
+    // const { accessToken } = result.data;
 
-    // TOOD: If user is created but it is not verified.
-    if (!result.data.accessToken) {
-      return res.redirect(
-        `${this.configService.get<string>(
-          'FRONTEND_URL',
-        )}dashboard?user=user_not_verified`,
-      );
-    }
-    const { accessToken } = result.data;
-
-    // Redirect to your frontend with the JWT (e.g., as a query parameter or in a cookie)
-    // For simplicity, using query parameter. In production, consider HttpOnly cookies.
-    return res.redirect(
-      `${this.configService.get<string>(
-        'FRONTEND_URL',
-      )}dashboard?token=${accessToken}`,
-    );
+    // // Redirect to your frontend with the JWT (e.g., as a query parameter or in a cookie)
+    // // For simplicity, using query parameter. In production, consider HttpOnly cookies.
+    // return res.redirect(
+    //   `${this.configService.get<string>('FRONTEND_URL')}?token=${accessToken}`,
+    // );
   }
 
   /**
@@ -220,51 +213,32 @@ export class UserController {
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook')) // Use AuthGuard for 'facebook' strategy
   async facebookAuthRedirect(@Req() req: Request, @Res() res: Response) {
-    const user = (req.user as any).data as SocialLoginResponseDTO;
+    console.log('Facebook Callback endpoint hit!'); // Add this line
+    console.log('Request Query:', req.url); // Add this to see what's in the query
+    // This endpoint is hit after Google authenticates the user.
+    // The 'user' object is populated by GoogleStrategy.validate()
+    // Cast to your social login response dto...
+    // TODO: Will refactor any to strongly typed object
+    const user = (req as any).user;
 
-    if (!user) {
-      console.error(
-        'Facebook login failed: User object not found after strategy validation.',
-      );
-      return res.redirect(
-        `${this.configService.get<string>(
-          'FRONTEND_URL',
-        )}login?error=facebook_login_failed`,
-      );
+    if (!user.data || !user.success) {
+      throw new BadRequestException(user.message);
     }
 
-    try {
-      // Generate your application's JWT
-      const result = await this.userService.login(user);
+    // Generate your application's JWT
+    const result = await this.userService.login(user);
+    return result;
+    // // TOOD: If user is created but it is not verified.
+    // if (!result.success) {
+    //   return result;
+    // }
+    // const { accessToken } = result.data;
 
-      // TOOD: If user is created but it is not verified.
-      if (!result.data.accessToken) {
-        return res.redirect(
-          `${this.configService.get<string>(
-            'FRONTEND_URL',
-          )}dashboard?user=user_not_verified`,
-        );
-      }
-      console.log(
-        `Facebook login successful for user ID: ${user.id}. Redirecting to dashboard.`,
-      );
-      const { accessToken } = result.data;
-      return res.redirect(
-        `${this.configService.get<string>(
-          'FRONTEND_URL',
-        )}dashboard?token=${accessToken}`,
-      );
-    } catch (error) {
-      console.error(
-        'Error generating JWT or redirecting after Facebook login:',
-        error,
-      );
-      return res.redirect(
-        `${this.configService.get<string>(
-          'FRONTEND_URL',
-        )}login?error=jwt_generation_failed`,
-      );
-    }
+    // // Redirect to your frontend with the JWT (e.g., as a query parameter or in a cookie)
+    // // For simplicity, using query parameter. In production, consider HttpOnly cookies.
+    // return res.redirect(
+    //   `${this.configService.get<string>('FRONTEND_URL')}?token=${accessToken}`,
+    // );
   }
   @Post('details-by-ids')
   async getUsersDetailsByIdsPost(@Body('ids') userIds: number[]) {
