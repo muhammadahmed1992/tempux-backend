@@ -309,14 +309,25 @@ export class UserService {
 
     if (user) {
       // User found, return it
+      if (user.otp_verified) {
+        return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+          Constants.USER_ALREADY_VERIFIED,
+          {
+            id: Number(user.id),
+            email: user.email,
+            userType: user.user_type,
+          },
+          HttpStatus.FOUND,
+        );
+      }
       return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-        Constants.USER_ALREADY_EXISTS_SOCIAL,
+        Constants.USER_NOT_VERIFIED,
         {
           id: Number(user.id),
           email: user.email,
           userType: user.user_type,
         },
-        HttpStatus.FOUND,
+        HttpStatus.BAD_REQUEST,
       );
     }
 
@@ -337,17 +348,18 @@ export class UserService {
           { [socialIdField]: socialId },
           { id: true, email: true, user_type: true },
         );
-        // User found, return it
-        return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-          Constants.USER_ALREADY_EXISTS,
-          {
-            id: Number(updatedUser.id),
-            email: updatedUser.email,
-            userType: updatedUser.user_type,
-          },
-          HttpStatus.FOUND,
-        );
-      } else {
+        if (!result.otp_verified) {
+          // User found, return it
+          return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+            Constants.USER_NOT_VERIFIED,
+            {
+              id: Number(result.id),
+              email: result.email,
+              userType: result.user_type,
+            },
+            HttpStatus.BAD_REQUEST,
+          );
+        }
         // User found, return it
         return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
           Constants.USER_ALREADY_EXISTS,

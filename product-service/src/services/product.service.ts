@@ -112,10 +112,7 @@ export class ProductService {
       });
     });
 
-    // Sort images by their 'order' property before returning
-    const images = Array.from(uniqueImagesMap.values()).sort(
-      (a, b) => a.order - b.order,
-    );
+    const images = Array.from(uniqueImagesMap.values());
 
     // Construct the final output
     const summary: ProductSummaryOutputDTO = {
