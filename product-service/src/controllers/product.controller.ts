@@ -7,8 +7,8 @@ import {
   Get,
   HttpStatus,
   Param,
+  ParseIntPipe,
   Post,
-  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +22,8 @@ import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import Utils from '@Common/utils';
 import Constants from '@Helper/constants';
 import ResponseHelper from '@Helper/response-helper';
+import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
+import ApiResponse from '@Helper/api-response';
 
 @Controller('product')
 export class ProductController {
@@ -61,10 +63,25 @@ export class ProductController {
   /**
    *
    * @param productId This is the productId provided by the client-side.
+   * @returns Summary Information of a ApiResponse<ProductSummaryOutput>.
+   */
+  // Example route: GET /products/123/summary
+  @Get(':id/summary')
+  async getProductSummary(
+    @Param('id', ParseIntPipe) id: string,
+  ): Promise<ApiResponse<ProductSummaryOutputDTO>> {
+    // Convert string ID from URL to BigInt
+    const productId = BigInt(id);
+    return this.productService.getProductSummary(productId);
+  }
+
+  /**
+   *
+   * @param productId This is the productId provided by the client-side.
    * @returns Detailed Information of a product.
    */
-  @Get(':productId/details')
-  async getProductInformation(@Param('productId') productId: number) {
+  @Get(':productId/:variantId/details')
+  async getProductInformation(@Param('productId') productId: bigint) {
     return ResponseHelper.CreateResponse<any>(
       '',
       {
@@ -106,7 +123,7 @@ export class ProductController {
         functions: {},
         date: '2025-01-01',
       },
-      HttpStatus.ACCEPTED,
+      HttpStatus.OK,
     );
   }
 

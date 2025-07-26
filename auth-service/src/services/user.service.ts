@@ -23,7 +23,7 @@ import { CreateUserDto } from '@DTO/create.user.dto';
 import { LoginRequestDTO } from '@DTO/login-request.dto';
 import { LoginDTO } from '@DTO/login.dto';
 import { EncryptionHelper } from '@Helper/encryption.helper';
-import { UpdatePasswordDTO } from '@DTO/update.password.dto';
+import { ForgotPasswordDTO, UpdatePasswordDTO } from '@DTO/update.password.dto';
 import { UserDetailsResponseDto } from '@DTO/user.details.response.dto';
 
 @Injectable()
@@ -233,48 +233,36 @@ export class UserService {
     }
   }
 
-  async resetPassword(
-    request: UpdatePasswordDTO,
+  async forgotPassword(
+    request: ForgotPasswordDTO,
   ): Promise<ApiResponse<boolean>> {
     const email = this.encryptionHelper.decrypt(request.resetToken);
     const user = await this.userRepository.findFirstUserByEmail(email);
     if (user) {
-      const oldHashedPwd = await bcrypt.compare(
-        request.oldPassword,
-        user.password,
+      const newPassword = await bcrypt.hash(
+        request.newPassword,
+        this.SALT_ROUND,
       );
-      if (oldHashedPwd) {
-        const newPassword = await bcrypt.hash(
-          request.newPassword,
-          this.SALT_ROUND,
+      const result = await this.userRepository.update(
+        { id: user.id },
+        {
+          password: newPassword,
+        },
+        {
+          id: true,
+        },
+      );
+      if (result.id) {
+        return ResponseHelper.CreateResponse<boolean>(
+          Constants.PASSWORD_UPDATE_SUCCESS,
+          true,
+          HttpStatus.OK,
         );
-        const result = await this.userRepository.update(
-          { id: user.id },
-          {
-            password: newPassword,
-          },
-          {
-            id: true,
-          },
-        );
-        if (result.id) {
-          return ResponseHelper.CreateResponse<boolean>(
-            Constants.PASSWORD_UPDATE_SUCCESS,
-            true,
-            HttpStatus.OK,
-          );
-        } else {
-          return ResponseHelper.CreateResponse<boolean>(
-            Constants.SOMETHING_WENT_WRONG,
-            false,
-            HttpStatus.INTERNAL_SERVER_ERROR,
-          );
-        }
       } else {
         return ResponseHelper.CreateResponse<boolean>(
-          Constants.INVALID_OLD_PASSWORD,
+          Constants.SOMETHING_WENT_WRONG,
           false,
-          HttpStatus.NOT_FOUND,
+          HttpStatus.INTERNAL_SERVER_ERROR,
         );
       }
     } else {
@@ -285,6 +273,7 @@ export class UserService {
       );
     }
   }
+
   /**
    * Validates a social user (Google/Facebook).
    * Finds an existing user by socialId, or creates a new one.

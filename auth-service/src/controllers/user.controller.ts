@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -19,7 +20,7 @@ import { SocialLoginResponseDTO } from '@DTO/social-login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { EmailTemplateType } from '@EmailFactory/email.template.type';
-import { UpdatePasswordDTO } from '@DTO/update.password.dto';
+import { ForgotPasswordDTO, UpdatePasswordDTO } from '@DTO/update.password.dto';
 
 @Controller('user')
 export class UserController {
@@ -64,10 +65,13 @@ export class UserController {
   }
 
   @Post('password')
-  async updatePassword(
-    @Body() request: UpdatePasswordDTO,
+  async forgotPassword(
+    @Body() request: ForgotPasswordDTO,
   ): Promise<ApiResponse<boolean>> {
-    return await this.userService.resetPassword(request);
+    if (request.newPassword !== request.confirmPassword) {
+      throw new BadRequestException('New and confirm password must match');
+    }
+    return await this.userService.forgotPassword(request);
   }
 
   // Google Auth
