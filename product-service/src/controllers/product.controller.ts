@@ -25,7 +25,7 @@ import ResponseHelper from '@Helper/response-helper';
 import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
 import ApiResponse from '@Helper/api-response';
 
-@Controller('product')
+@Controller()
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
@@ -80,8 +80,11 @@ export class ProductController {
    * @param productId This is the productId provided by the client-side.
    * @returns Detailed Information of a product.
    */
-  @Get(':productId/:variantId/details')
-  async getProductInformation(@Param('productId') productId: bigint) {
+  @Get(':id/:variantId/details')
+  async getProductInformation(
+    @Param('id', ParseIntPipe) id: string,
+    @Param('variantId', ParseIntPipe) variantId: string,
+  ) {
     return ResponseHelper.CreateResponse<any>(
       '',
       {
