@@ -1,6 +1,6 @@
 export default class Constants {
   public static readonly USER_CREATED_SUCCESS =
-    'User has been created successfully.';
+    'User has been created successfully. Please check your email for OTP verification';
   public static readonly USER_CREATED_ERROR =
     'An error occurred while creating user.';
   public static readonly ERROR_MESSAGE =
@@ -35,4 +35,6 @@ export default class Constants {
     'Data has been retrieved successfully!';
   public static readonly USER_ALREADY_VERIFIED =
     "User is already verified. You'll be redirecting in couple of seconds.";
+  public static readonly OTP_SENT =
+    'An OTP has been sent to your registered email if it is found in our system. Please check your spam/junk.';
 }

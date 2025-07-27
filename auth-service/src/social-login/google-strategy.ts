@@ -16,7 +16,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     super({
       clientID: configService.get<string>('GOOGLE_CLIENT_ID')!,
       clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET')!,
-      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')!, // For local development
+      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL')!,
       scope: ['email', 'profile'], // Request email and basic profile information
       passReqToCallback: true, // <--- IMPORTANT: Pass the request object to the validate callback
     });

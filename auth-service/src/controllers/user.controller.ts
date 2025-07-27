@@ -16,7 +16,6 @@ import { LoginDTO } from '@DTO/login.dto';
 import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
 import { ResendOTPDTO } from '@DTO/resend.otp.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { SocialLoginResponseDTO } from '@DTO/social-login-response.dto';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { EmailTemplateType } from '@EmailFactory/email.template.type';
@@ -109,6 +108,7 @@ export class UserController {
       `redirect_uri=${encodeURIComponent(callbackURL)}&` +
       `response_type=code&` +
       `scope=${encodeURIComponent('email profile')}&` +
+      `prompt=select_account&` +
       `state=${state}`; // Pass the state parameter
 
     console.log(`--- AuthController.googleAuth() Redirecting ---`);
@@ -131,7 +131,7 @@ export class UserController {
     const user = (req as any).user;
 
     if (!user.data || !user.success) {
-      throw new BadRequestException(user.message);
+      throw new BadRequestException(user);
     }
 
     // Generate your application's JWT
