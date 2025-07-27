@@ -68,7 +68,6 @@ export class UserService {
           email: user.email,
           password: hashedPassword,
           full_name: user.fullName,
-          // TODO: Fix this long name sequence later.
           userType: {
             connect: {
               id: user.userType,
@@ -317,17 +316,38 @@ export class UserService {
             email: user.email,
             userType: user.user_type,
           },
-          HttpStatus.FOUND,
+          HttpStatus.OK,
         );
       }
+      // TODO: Code optimization...
+      // Send OTP to the user's email.
+      const otpResponse = await this.generateOTPAndExpiry();
+      const token = this.encryptionHelper.encrypt(user.email);
+      this.sendOTPInEmail(
+        email,
+        { otp: otpResponse.plainOTP, resetToken: token },
+        EmailTemplateType.OTP_VERIFICATION,
+      );
+      await this.userRepository.update(
+        {
+          email_user_type: {
+            user_type: user.user_type,
+            email: user.email,
+          },
+        },
+        {
+          otp: otpResponse.otp,
+          otp_expires_at: otpResponse.otp_expiry_date_time,
+        },
+      );
       return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-        Constants.USER_NOT_VERIFIED,
+        Constants.OTP_SENT,
         {
           id: Number(user.id),
           email: user.email,
           userType: user.user_type,
         },
-        HttpStatus.BAD_REQUEST,
+        HttpStatus.BAD_GATEWAY,
       );
     }
 
@@ -343,32 +363,53 @@ export class UserService {
     if (result) {
       // User with this email exists, link the social ID only if it's not linked.
       if (!(result.googleId && result.facebookId)) {
-        const updatedUser = await this.userRepository.update(
-          { id: result.id },
-          { [socialIdField]: socialId },
-          { id: true, email: true, user_type: true },
-        );
-        if (!result.otp_verified) {
+        if (result.otp_verified) {
+          const updatedUser = await this.userRepository.update(
+            { id: result.id },
+            { [socialIdField]: socialId },
+            { id: true, email: true, user_type: true },
+          );
           // User found, return it
           return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-            Constants.USER_NOT_VERIFIED,
+            Constants.USER_ALREADY_VERIFIED,
             {
               id: Number(result.id),
               email: result.email,
               userType: result.user_type,
             },
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.OK,
           );
         }
-        // User found, return it
+        // User found, but not verified return it
+        // TODO: Code optimization...
+        // Send OTP to the user's email.
+        const otpResponse = await this.generateOTPAndExpiry();
+        const token = this.encryptionHelper.encrypt(result.email);
+        this.sendOTPInEmail(
+          email,
+          { otp: otpResponse.plainOTP, resetToken: token },
+          EmailTemplateType.OTP_VERIFICATION,
+        );
+        await this.userRepository.update(
+          {
+            email_user_type: {
+              user_type: result.user_type,
+              email: result.email,
+            },
+          },
+          {
+            otp: otpResponse.otp,
+            otp_expires_at: otpResponse.otp_expiry_date_time,
+          },
+        );
         return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-          Constants.USER_ALREADY_EXISTS,
+          Constants.OTP_SENT,
           {
             id: Number(result.id),
             email: result.email,
             userType: result.user_type,
           },
-          HttpStatus.FOUND,
+          HttpStatus.BAD_GATEWAY,
         );
       }
     }
