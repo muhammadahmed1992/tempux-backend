@@ -93,6 +93,20 @@ export class ProxyMiddleware implements NestMiddleware {
         proxyRes(proxyRes, req: Request, res: Response) {
           // proxyRes, req, res
           // TODO: Will investigate later
+          // This is where we ensure CORS headers are set for ALL responses,
+          // including the OPTIONS preflight response.
+          // TODO: Will allow only specific origin.
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader(
+            'Access-Control-Allow-Methods',
+            'GET,HEAD,PUT,PATCH,POST,DELETE,HEAD,OPTIONS',
+          );
+          res.setHeader(
+            'Access-Control-Allow-Headers',
+            'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key',
+          );
+          // If you are using credentials (cookies, HTTP authentication), uncomment this:
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
           console.log('API Gateway proxy response');
           console.log(req.url);
           console.log(res.statusCode);
