@@ -322,7 +322,9 @@ export class UserService {
       // TODO: Code optimization...
       // Send OTP to the user's email.
       const otpResponse = await this.generateOTPAndExpiry();
+      console.log(`[Auth-Service][Social-Login] user-email: ${user.email}`);
       const token = this.encryptionHelper.encrypt(user.email);
+      console.log(`[Auth-Service][Social-Login] token: ${token}`);
       this.sendOTPInEmail(
         email,
         { otp: otpResponse.plainOTP, resetToken: token },
@@ -384,7 +386,9 @@ export class UserService {
         // TODO: Code optimization...
         // Send OTP to the user's email.
         const otpResponse = await this.generateOTPAndExpiry();
+        console.log(`[Auth-Service][User-Email] user-email: ${result.email}`);
         const token = this.encryptionHelper.encrypt(result.email);
+        console.log(`[Auth-Service][User-Email] token: ${token}`);
         this.sendOTPInEmail(
           email,
           { otp: otpResponse.plainOTP, resetToken: token },
