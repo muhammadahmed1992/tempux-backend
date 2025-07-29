@@ -136,26 +136,13 @@ export class ProductController {
     @UserId() userId: bigint,
     @Param('productId') productId: bigint,
     @Param('itemId') itemId: bigint,
+    @Body() flag: boolean,
   ) {
     return this.favoriteService.markProductAsFavorite(
       userId,
       productId,
       itemId,
-    );
-  }
-
-  // TODO: Need to Make it put
-  @UseGuards(JwtAuthGuard)
-  @Post('favorite/:productId/:itemId')
-  async UnFavorite(
-    @UserId() userId: bigint,
-    @Param('productId') productId: bigint,
-    @Param('itemId') itemId: bigint,
-  ) {
-    return this.favoriteService.markProductAsUnFavorite(
-      userId,
-      productId,
-      itemId,
+      flag,
     );
   }
 

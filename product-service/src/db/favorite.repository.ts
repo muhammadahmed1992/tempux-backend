@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { Prisma, PrismaClient, favorite } from "@prisma/client";
-import { BaseRepository } from "./base.repository";
-import { PrismaService } from "@Services/prisma.service";
+import { Injectable } from '@nestjs/common';
+import { Prisma, PrismaClient, favorite } from '@prisma/client';
+import { BaseRepository } from './base.repository';
+import { PrismaService } from '@Services/prisma.service';
 
 @Injectable()
 export class FavoriteRepository extends BaseRepository<
@@ -26,40 +26,10 @@ export class FavoriteRepository extends BaseRepository<
   async markProductAsFavorite(
     userId: bigint,
     productId: bigint,
-    itemId: bigint
+    itemId: bigint,
+    flag: boolean,
   ) {
-    return this.model.create({
-      data: {
-        user_id: userId,
-        product: {
-          connect: {
-            id: productId,
-          },
-        },
-        product_variant: {
-          connect: {
-            id: itemId,
-          },
-        },
-        created_by: userId,
-      },
-      select: {
-        id: true,
-      },
-    });
-  }
-  /**
-   * This method will be un marking or removing the product from Favorite. But it will only updated the isDelete flag won't remove permanently.
-   * @param userId Id of the user which is marking the product as favorite
-   * @param productId Parent Id of the currently selected/marked product variant
-   * @param itemId Specific Id of that particular variant
-   */
-  async markProductAsUnFavorite(
-    userId: bigint,
-    productId: bigint,
-    itemId: bigint
-  ) {
-    return this.model.update({
+    return this.prisma.favorite.upsert({
       where: {
         user_id_product_id_product_variant_id: {
           user_id: userId,
@@ -67,12 +37,33 @@ export class FavoriteRepository extends BaseRepository<
           product_variant_id: itemId,
         },
       },
-      data: {
-        is_deleted: true,
-        deleted_at: new Date(),
-        deleted_by: userId,
-        updated_at: new Date(),
-        updated_by: userId,
+      update: flag
+        ? {
+            is_deleted: false,
+            deleted_at: null,
+            deleted_by: null,
+            updated_at: new Date(),
+            updated_by: userId,
+          }
+        : {
+            is_deleted: true,
+            deleted_at: new Date(),
+            deleted_by: userId,
+            updated_at: new Date(),
+            updated_by: userId,
+          },
+      create: {
+        user_id: userId,
+        product: {
+          connect: { id: productId },
+        },
+        product_variant: {
+          connect: { id: itemId },
+        },
+        is_deleted: !flag,
+        deleted_at: !flag ? new Date() : null,
+        deleted_by: !flag ? userId : null,
+        created_by: userId,
       },
       select: {
         id: true,
