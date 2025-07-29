@@ -1,9 +1,13 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { ConfigService } from '@nestjs/config';
 
 const prisma = new PrismaClient();
-
-const SALT_ROUND = process.env.SALT_ROUND || 10; // Adjust if you use a different round in your application
+const configService = new ConfigService();
+const SALT_ROUND = parseInt(
+  configService.get<string>('SALT_ROUND') || '10',
+  10,
+);
 
 /**
  * Generates a 6-digit OTP and an expiry date 5 minutes from now.
@@ -43,7 +47,7 @@ async function main() {
   // Seed example users
   const users = [
     {
-      email: 'superadmin@example.com',
+      email: 'superadmin@mailinator.com',
       name: 'Super Admin',
       fullName: 'Super Admin Full',
       userType: 1, // Super Admin
@@ -51,21 +55,21 @@ async function main() {
       password: 'SuperAdmin!123',
     },
     {
-      email: 'admin@example.com',
+      email: 'admin@mailinator.com',
       name: 'Admin User',
       fullName: 'Admin Full',
       userType: 2, // Admin
       password: 'AdminUser@456',
     },
     {
-      email: 'buyer@example.com',
+      email: 'buyer@mailinator.com',
       name: 'Buyer User',
       fullName: 'Buyer Full',
       userType: 3, // Buyer
       password: 'BuyerPass#789',
     },
     {
-      email: 'seller@example.com',
+      email: 'seller@mailinator.com',
       name: 'Seller User',
       fullName: 'Seller Full',
       userType: 4, // Seller
