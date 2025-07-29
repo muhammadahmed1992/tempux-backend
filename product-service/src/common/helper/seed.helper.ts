@@ -1,6 +1,11 @@
-import { CustomFilter } from "../enums/custom-filter.enum";
-import { PrismaClient, Prisma } from "@prisma/client";
-import { Decimal } from "@prisma/client/runtime/library";
+import { CustomFilter } from '../enums/custom-filter.enum';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
+import { HashidsService } from '../../hash-ids/hashids.service'; // Adjust path if necessary
+import { SlugService } from '../../slug/slug.service'; // Adjust path if necessary
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../../app.module';
+import { ConfigService } from '@nestjs/config';
 
 function getRandomElement<T>(arr: T[]): T | undefined {
   if (arr.length === 0) return undefined;
@@ -15,14 +20,14 @@ function getRandomInt(min: number, max: number): number {
 
 function generateSerialNumber(): string {
   // Simple serial number generation (e.g., ABC-123456)
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const randomChars = Array.from(
     { length: 3 },
-    () => chars[Math.floor(Math.random() * chars.length)]
-  ).join("");
+    () => chars[Math.floor(Math.random() * chars.length)],
+  ).join('');
   const randomNumbers = String(Math.floor(Math.random() * 1000000)).padStart(
     6,
-    "0"
+    '0',
   );
   return `${randomChars}-${randomNumbers}`;
 }
@@ -42,33 +47,33 @@ const getBrandCode = (brandTitle: string): string => {
 const getCategoryCode = (categoryTitle: string): string => {
   // Map common categories to 3-letter codes
   const upperCaseCategory = categoryTitle.toUpperCase();
-  if (upperCaseCategory.includes("DIVE")) return "DVR";
-  if (upperCaseCategory.includes("PILOT")) return "PLT";
-  if (upperCaseCategory.includes("CHRONOGRAPH")) return "CHN";
-  if (upperCaseCategory.includes("DRESS")) return "DRS";
-  if (upperCaseCategory.includes("SMARTWATCH")) return "SMW";
-  if (upperCaseCategory.includes("FIELD")) return "FLD";
-  if (upperCaseCategory.includes("LUXURY")) return "LUX";
-  if (upperCaseCategory.includes("DIGITAL")) return "DGT";
-  return "GEN"; // Generic fallback if no specific match
+  if (upperCaseCategory.includes('DIVE')) return 'DVR';
+  if (upperCaseCategory.includes('PILOT')) return 'PLT';
+  if (upperCaseCategory.includes('CHRONOGRAPH')) return 'CHN';
+  if (upperCaseCategory.includes('DRESS')) return 'DRS';
+  if (upperCaseCategory.includes('SMARTWATCH')) return 'SMW';
+  if (upperCaseCategory.includes('FIELD')) return 'FLD';
+  if (upperCaseCategory.includes('LUXURY')) return 'LUX';
+  if (upperCaseCategory.includes('DIGITAL')) return 'DGT';
+  return 'GEN'; // Generic fallback if no specific match
 };
 
 const getColorCode = (colorName: string): string => {
   // Map common colors to 2-letter codes
   const lowerCaseColor = colorName.toLowerCase();
-  if (lowerCaseColor.includes("stainless steel")) return "SS";
-  if (lowerCaseColor.includes("black")) return "BK";
-  if (lowerCaseColor.includes("white")) return "WH";
-  if (lowerCaseColor.includes("gold")) return "GD"; // Covers Yellow Gold, Rose Gold, White Gold
-  if (lowerCaseColor.includes("silver")) return "SV";
-  if (lowerCaseColor.includes("blue")) return "BL";
-  if (lowerCaseColor.includes("green")) return "GR";
-  if (lowerCaseColor.includes("red")) return "RD";
-  if (lowerCaseColor.includes("brown")) return "BR";
-  if (lowerCaseColor.includes("ceramic")) return "CE";
-  if (lowerCaseColor.includes("titanium")) return "TI";
-  if (lowerCaseColor.includes("bronze")) return "BZ";
-  return "OT"; // Other/Unknown
+  if (lowerCaseColor.includes('stainless steel')) return 'SS';
+  if (lowerCaseColor.includes('black')) return 'BK';
+  if (lowerCaseColor.includes('white')) return 'WH';
+  if (lowerCaseColor.includes('gold')) return 'GD'; // Covers Yellow Gold, Rose Gold, White Gold
+  if (lowerCaseColor.includes('silver')) return 'SV';
+  if (lowerCaseColor.includes('blue')) return 'BL';
+  if (lowerCaseColor.includes('green')) return 'GR';
+  if (lowerCaseColor.includes('red')) return 'RD';
+  if (lowerCaseColor.includes('brown')) return 'BR';
+  if (lowerCaseColor.includes('ceramic')) return 'CE';
+  if (lowerCaseColor.includes('titanium')) return 'TI';
+  if (lowerCaseColor.includes('bronze')) return 'BZ';
+  return 'OT'; // Other/Unknown
 };
 
 const getSizeCode = (sizeValue: number): string => {
@@ -77,7 +82,7 @@ const getSizeCode = (sizeValue: number): string => {
   // If sizes are always integers (e.g., 38, 40, 42, 44), this is fine.
   // For 42.5, it will become '43'. If precision is needed, a 3-char code might be required.
   const roundedSize = Math.round(sizeValue);
-  return String(roundedSize).padStart(2, "0").slice(-2); // Ensure 2 digits (e.g., "08", "42")
+  return String(roundedSize).padStart(2, '0').slice(-2); // Ensure 2 digits (e.g., "08", "42")
 };
 
 const generateSku = (
@@ -86,13 +91,13 @@ const generateSku = (
   productReferenceNumber: number, // Full reference number (e.g., 123456)
   mainColorName: string,
   sizeValue: number,
-  productionYear: number
+  productionYear: number,
 ): string => {
   const brandCode = getBrandCode(brandTitle); // 3 chars
   const categoryCode = getCategoryCode(categoryTitle); // 3 chars
   // Take last 4 digits of the product's reference number
   const productRefSnippet = String(productReferenceNumber)
-    .padStart(6, "0")
+    .padStart(6, '0')
     .slice(-4); // 4 chars
   const colorCode = getColorCode(mainColorName); // 2 chars
   const sizeCode = getSizeCode(sizeValue); // 2 chars
@@ -103,7 +108,13 @@ const generateSku = (
 };
 
 export default class SeedHelper {
-  constructor(private prisma: PrismaClient) {}
+  private hashidsService!: HashidsService;
+  private readonly slugService: SlugService;
+
+  constructor(private prisma: PrismaClient) {
+    // Initialize services here within the constructor
+    this.slugService = new SlugService();
+  }
 
   /**
    * Orchestrates the entire seeding process using upsert logic.
@@ -113,134 +124,152 @@ export default class SeedHelper {
    */
   async seedAllData(userId: string, numberOfProducts = 450): Promise<void> {
     const creatorId = BigInt(userId);
+    const configService = new ConfigService();
 
-    console.log("Starting extensive data seeding with upsert logic...");
+    const hashidsService = new HashidsService(configService);
+    hashidsService.onModuleInit();
+    this.hashidsService = hashidsService;
+    console.log('Starting extensive data seeding with upsert logic...');
 
     try {
       await this.prisma.$transaction(
         async (tx: any) => {
-          // Seed base data
-          await this.seedColors(creatorId, tx);
-          await this.seedSizes(creatorId, tx);
-          await this.seedBrands(creatorId, tx);
-          await this.seedCategories(creatorId, tx);
-          await this.seedMovements(creatorId, tx);
-          await this.seedTypes(creatorId, tx);
-          await this.seedCurrenciesAndTaxes(creatorId, tx);
+          // Seed global configuration
+          await this.seedGlobalConfiguration(creatorId, tx);
 
-          // Seed products and variants (these must exist for dependent models)
-          await this.seedProductsAndVariants(creatorId, numberOfProducts, tx);
+          const ifSeedRun = await tx.globalConfiguration.findFirst({
+            where: {
+              key: 'SEED_SCRIPT_RUN',
+            },
+          });
+          if (Number(ifSeedRun?.value) === 1) {
+            // Seed base data
+            await this.seedColors(creatorId, tx);
+            await this.seedSizes(creatorId, tx);
+            await this.seedBrands(creatorId, tx);
+            await this.seedCategories(creatorId, tx);
+            await this.seedMovements(creatorId, tx);
+            await this.seedTypes(creatorId, tx);
+            await this.seedCurrenciesAndTaxes(creatorId, tx);
 
-          // Seed related media and user-generated content after products/variants are ready
-          await this.seedOwnershipProofs(creatorId, tx);
-          await this.seedSignOfWears(creatorId, tx);
-          await this.seedProductImages(creatorId, tx);
-          await this.seedTags(creatorId, tx); // Seed tags before product_tags
-          await this.seedProductTags(creatorId, tx);
-          await this.seedReviewsAndRatings(creatorId, tx); // Seed after products exist
-          await this.seedFavorites(creatorId, tx); // Seed after products/variants exist
+            // Seed products and variants (these must exist for dependent models)
+            await this.seedProductsAndVariants(creatorId, numberOfProducts, tx);
+
+            // Seed related media and user-generated content after products/variants are ready
+            await this.seedOwnershipProofs(creatorId, tx);
+            await this.seedSignOfWears(creatorId, tx);
+            await this.seedProductImages(creatorId, tx);
+            await this.seedTags(creatorId, tx); // Seed tags before product_tags
+            await this.seedProductTags(creatorId, tx);
+            await this.seedReviewsAndRatings(creatorId, tx); // Seed after products exist
+            await this.seedFavorites(creatorId, tx); // Seed after products/variants exist
+          } else {
+            console.log(
+              `Seed doesn't run as per its configuration (SEED_SCRIPT_RUN is not 1).`,
+            );
+          }
         },
         {
-          timeout: 300000, // 5 minutes timeout for the entire transaction
-        }
+          timeout: 600000, // 10 minutes timeout for the entire transaction
+        },
       );
-      console.log("Extensive data seeding completed successfully!");
+      console.log('Extensive data seeding completed successfully!');
     } catch (error) {
       console.error(
-        "Extensive data seeding failed and was rolled back:",
-        error
+        'Extensive data seeding failed and was rolled back:',
+        error,
       );
       throw error; // Re-throw to indicate overall failure
     }
   }
 
   private async seedColors(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log("Seeding colors (upserting)...");
+    console.log('Seeding colors (upserting)...');
     const colorsData = [
       {
-        name: "Silver",
-        colorCode: "#C0C0C0",
-        description: "Classic metal finish".substring(0, 14),
+        name: 'Silver',
+        colorCode: '#C0C0C0',
+        description: 'Classic metal finish'.substring(0, 14),
       },
       {
-        name: "Gold",
-        colorCode: "#FFD700",
-        description: "Luxurious yellow gold".substring(0, 14),
+        name: 'Gold',
+        colorCode: '#FFD700',
+        description: 'Luxurious yellow gold'.substring(0, 14),
       },
       {
-        name: "Black",
-        colorCode: "#000000",
-        description: "Deep black finish".substring(0, 14),
+        name: 'Black',
+        colorCode: '#000000',
+        description: 'Deep black finish'.substring(0, 14),
       },
       {
-        name: "White",
-        colorCode: "#FFFFFF",
-        description: "Pristine white".substring(0, 14),
+        name: 'White',
+        colorCode: '#FFFFFF',
+        description: 'Pristine white'.substring(0, 14),
       },
       {
-        name: "Rose Gold",
-        colorCode: "#B76E79",
-        description: "Warm pinkish gold".substring(0, 14),
+        name: 'Rose Gold',
+        colorCode: '#B76E79',
+        description: 'Warm pinkish gold'.substring(0, 14),
       },
       {
-        name: "Blue",
-        colorCode: "#0000FF",
-        description: "Vibrant blue".substring(0, 14),
+        name: 'Blue',
+        colorCode: '#0000FF',
+        description: 'Vibrant blue'.substring(0, 14),
       },
       {
-        name: "Navy Blue",
-        colorCode: "#000080",
-        description: "Dark, deep blue".substring(0, 14),
+        name: 'Navy Blue',
+        colorCode: '#000080',
+        description: 'Dark, deep blue'.substring(0, 14),
       },
       {
-        name: "Green",
-        colorCode: "#008000",
-        description: "Standard green".substring(0, 14),
+        name: 'Green',
+        colorCode: '#008000',
+        description: 'Standard green'.substring(0, 14),
       },
       {
-        name: "Forest Green",
-        colorCode: "#228B22",
-        description: "Deep forest green".substring(0, 14),
+        name: 'Forest Green',
+        colorCode: '#228B22',
+        description: 'Deep forest green'.substring(0, 14),
       },
       {
-        name: "Red",
-        colorCode: "#FF0000",
-        description: "Bright red".substring(0, 14),
+        name: 'Red',
+        colorCode: '#FF0000',
+        description: 'Bright red'.substring(0, 14),
       },
       {
-        name: "Burgundy",
-        colorCode: "#800020",
-        description: "Rich deep red".substring(0, 14),
+        name: 'Burgundy',
+        colorCode: '#800020',
+        description: 'Rich deep red'.substring(0, 14),
       },
       {
-        name: "Gray",
-        colorCode: "#808080",
-        description: "Neutral gray".substring(0, 14),
+        name: 'Gray',
+        colorCode: '#808080',
+        description: 'Neutral gray'.substring(0, 14),
       },
       {
-        name: "Charcoal Gray",
-        colorCode: "#36454F",
-        description: "Dark matte gray".substring(0, 14),
+        name: 'Charcoal Gray',
+        colorCode: '#36454F',
+        description: 'Dark matte gray'.substring(0, 14),
       },
       {
-        name: "Bronze",
-        colorCode: "#CD7F32",
-        description: "Earthy brown-orange".substring(0, 14),
+        name: 'Bronze',
+        colorCode: '#CD7F32',
+        description: 'Earthy brown-orange'.substring(0, 14),
       },
       {
-        name: "Brown",
-        colorCode: "#A52A2A",
-        description: "Classic brown".substring(0, 14),
+        name: 'Brown',
+        colorCode: '#A52A2A',
+        description: 'Classic brown'.substring(0, 14),
       },
       {
-        name: "Titanium",
-        colorCode: "#878A8F",
-        description: "Matte gray titanium".substring(0, 14),
+        name: 'Titanium',
+        colorCode: '#878A8F',
+        description: 'Matte gray titanium'.substring(0, 14),
       },
       {
-        name: "Ceramic Black",
-        colorCode: "#080808",
-        description: "Scratch-resistant black ceramic".substring(0, 14),
+        name: 'Ceramic Black',
+        colorCode: '#080808',
+        description: 'Scratch-resistant black ceramic'.substring(0, 14),
       },
     ];
 
@@ -255,27 +284,29 @@ export default class SeedHelper {
   }
 
   private async seedSizes(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log("Seeding sizes (upserting)...");
+    console.log('Seeding sizes (upserting) with MM units...');
+    // Generating common watch case sizes in MM, ensuring all have widthUnit and heightUnit
     const sizesData = [
-      { value: 28, height: 28 },
-      { value: 30, height: 30 },
-      { value: 32, height: 32 },
-      { value: 34, height: 34 },
-      { value: 36, height: 36 },
-      { value: 37, height: 37 },
-      { value: 38, height: 38 },
-      { value: 39, height: 39 },
-      { value: 40, height: 40 },
-      { value: 41, height: 41 },
-      { value: 42, height: 42 },
-      { value: 43, height: 43 },
-      { value: 44, height: 44 },
-      { value: 45, height: 45 },
-      { value: 46, height: 46 },
-      { value: 47, height: 47 },
-      { value: 48, height: 48 },
-      { value: 25, height: 30, widthUnit: "MM", heightUnit: "MM" },
-      { value: 30, height: 40, widthUnit: "MM", heightUnit: "MM" },
+      { value: 28, height: 28, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 30, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 32, height: 32, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 34, height: 34, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 36, height: 36, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 37, height: 37, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 38, height: 38, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 39, height: 39, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 40, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 41, height: 41, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 42, height: 42, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 43, height: 43, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 44, height: 44, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 45, height: 45, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 46, height: 46, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 47, height: 47, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 48, height: 48, widthUnit: 'MM', heightUnit: 'MM' },
+      // Example of rectangular watch sizes, ensuring units are explicit
+      { value: 25, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 30, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
     ];
 
     for (const data of sizesData) {
@@ -289,98 +320,98 @@ export default class SeedHelper {
   }
 
   private async seedBrands(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log("Seeding brands (upserting)...");
+    console.log('Seeding brands (upserting)...');
     const brandsData = [
-      { title: "Rolex", order: 1, image_url: "https://example.com/rolex.png" },
-      { title: "Omega", order: 2, image_url: "https://example.com/omega.png" },
+      { title: 'Rolex', order: 1, image_url: 'https://example.com/rolex.png' },
+      { title: 'Omega', order: 2, image_url: 'https://example.com/omega.png' },
       {
-        title: "Patek Philippe",
+        title: 'Patek Philippe',
         order: 3,
-        image_url: "https://example.com/patek.png",
+        image_url: 'https://example.com/patek.png',
       },
       {
-        title: "Audemars Piguet",
+        title: 'Audemars Piguet',
         order: 4,
-        image_url: "https://example.com/ap.png",
+        image_url: 'https://example.com/ap.png',
       },
       {
-        title: "Vacheron Constantin",
+        title: 'Vacheron Constantin',
         order: 5,
-        image_url: "https://example.com/vc.png",
+        image_url: 'https://example.com/vc.png',
       },
       {
-        title: "A. Lange & Söhne",
+        title: 'A. Lange & Söhne',
         order: 6,
-        image_url: "https://example.com/alangesohne.png",
+        image_url: 'https://example.com/alangesohne.png',
       },
       {
-        title: "Jaeger-LeCoultre",
+        title: 'Jaeger-LeCoultre',
         order: 7,
-        image_url: "https://example.com/jlc.png",
+        image_url: 'https://example.com/jlc.png',
       },
       {
-        title: "IWC Schaffhausen",
+        title: 'IWC Schaffhausen',
         order: 8,
-        image_url: "https://example.com/iwc.png",
+        image_url: 'https://example.com/iwc.png',
       },
       {
-        title: "Breitling",
+        title: 'Breitling',
         order: 9,
-        image_url: "https://example.com/breitling.png",
+        image_url: 'https://example.com/breitling.png',
       },
       {
-        title: "Zenith",
+        title: 'Zenith',
         order: 10,
-        image_url: "https://example.com/zenith.png",
+        image_url: 'https://example.com/zenith.png',
       },
       {
-        title: "Blancpain",
+        title: 'Blancpain',
         order: 11,
-        image_url: "https://example.com/blancpain.png",
+        image_url: 'https://example.com/blancpain.png',
       },
       {
-        title: "Cartier",
+        title: 'Cartier',
         order: 12,
-        image_url: "https://example.com/cartier.png",
+        image_url: 'https://example.com/cartier.png',
       },
       {
-        title: "Longines",
+        title: 'Longines',
         order: 13,
-        image_url: "https://example.com/longines.png",
+        image_url: 'https://example.com/longines.png',
       },
       {
-        title: "Tissot",
+        title: 'Tissot',
         order: 14,
-        image_url: "https://example.com/tissot.png",
+        image_url: 'https://example.com/tissot.png',
       },
       {
-        title: "Hamilton",
+        title: 'Hamilton',
         order: 15,
-        image_url: "https://example.com/hamilton.png",
+        image_url: 'https://example.com/hamilton.png',
       },
-      { title: "Oris", order: 16, image_url: "https://example.com/oris.png" },
+      { title: 'Oris', order: 16, image_url: 'https://example.com/oris.png' },
       {
-        title: "Citizen",
+        title: 'Citizen',
         order: 17,
-        image_url: "https://example.com/citizen.png",
+        image_url: 'https://example.com/citizen.png',
       },
-      { title: "Seiko", order: 18, image_url: "https://example.com/seiko.png" },
-      { title: "Casio", order: 19, image_url: "https://example.com/casio.png" },
+      { title: 'Seiko', order: 18, image_url: 'https://example.com/seiko.png' },
+      { title: 'Casio', order: 19, image_url: 'https://example.com/casio.png' },
       {
-        title: "Fossil",
+        title: 'Fossil',
         order: 20,
-        image_url: "https://example.com/fossil.png",
+        image_url: 'https://example.com/fossil.png',
       },
-      { title: "Timex", order: 21, image_url: "https://example.com/timex.png" },
+      { title: 'Timex', order: 21, image_url: 'https://example.com/timex.png' },
       {
-        title: "Swatch",
+        title: 'Swatch',
         order: 22,
-        image_url: "https://example.com/swatch.png",
+        image_url: 'https://example.com/swatch.png',
       },
       {
-        title: "Grand Seiko",
+        title: 'Grand Seiko',
         order: 23,
-        image_url: "https://example.com/grandseiko.png",
+        image_url: 'https://example.com/grandseiko.png',
       },
     ];
 
@@ -396,79 +427,79 @@ export default class SeedHelper {
 
   private async seedCategories(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding categories (upserting)...");
+    console.log('Seeding categories (upserting)...');
     const categoriesData = [
       {
-        title: "Luxury Watches",
+        title: 'Luxury Watches',
         order: 1,
-        image_url: "https://example.com/cat_luxury.png",
+        image_url: 'https://example.com/cat_luxury.png',
       },
       {
-        title: "Sports Watches",
+        title: 'Sports Watches',
         order: 2,
-        image_url: "https://example.com/cat_sports.png",
+        image_url: 'https://example.com/cat_sports.png',
       },
       {
-        title: "Smartwatches",
+        title: 'Smartwatches',
         order: 3,
-        image_url: "https://example.com/cat_smart.png",
+        image_url: 'https://example.com/cat_smart.png',
       },
       {
-        title: "Dress Watches",
+        title: 'Dress Watches',
         order: 4,
-        image_url: "https://example.com/cat_dress.png",
+        image_url: 'https://example.com/cat_dress.png',
       },
       {
-        title: "Dive Watches",
+        title: 'Dive Watches',
         order: 5,
-        image_url: "https://example.com/cat_dive.png",
+        image_url: 'https://example.com/cat_dive.png',
       },
       {
-        title: "Pilot Watches",
+        title: 'Pilot Watches',
         order: 6,
-        image_url: "https://example.com/cat_pilot.png",
+        image_url: 'https://example.com/cat_pilot.png',
       },
       {
-        title: "Field Watches",
+        title: 'Field Watches',
         order: 7,
-        image_url: "https://example.com/cat_field.png",
+        image_url: 'https://example.com/cat_field.png',
       },
       {
-        title: "Chronographs",
+        title: 'Chronographs',
         order: 8,
-        image_url: "https://example.com/cat_chrono.png",
+        image_url: 'https://example.com/cat_chrono.png',
       },
       {
-        title: "GMT Watches",
+        title: 'GMT Watches',
         order: 9,
-        image_url: "https://example.com/cat_gmt.png",
+        image_url: 'https://example.com/cat_gmt.png',
       },
       {
-        title: "Fashion Watches",
+        title: 'Fashion Watches',
         order: 10,
-        image_url: "https://example.com/cat_fashion.png",
+        image_url: 'https://example.com/cat_fashion.png',
       },
       {
-        title: "Digital Watches",
+        title: 'Digital Watches',
         order: 11,
-        image_url: "https://example.com/cat_digital.png",
+        image_url: 'https://example.com/cat_digital.png',
       },
       {
-        title: "Skeleton Watches",
+        title: 'Skeleton Watches',
         order: 12,
-        image_url: "https://example.com/cat_skeleton.png",
+        image_url: 'https://example.com/cat_skeleton.png',
       },
       {
-        title: "Complication Watches",
+        title: 'Complication Watches',
         order: 13,
-        image_url: "https://example.com/cat_complication.png",
+        image_url: 'https://example.com/cat_complication.png',
       },
       {
-        title: "Vintage Watches",
+        title: 'Vintage Watches',
         order: 14,
-        image_url: "https://example.com/cat_vintage.png",
+        image_url: 'https://example.com/cat_vintage.png',
       },
     ];
 
@@ -484,17 +515,17 @@ export default class SeedHelper {
 
   private async seedMovements(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding movements (upserting)...");
+    console.log('Seeding movements (upserting)...');
     const movementsData = [
-      { title: "Automatic" },
-      { title: "Quartz" },
-      { title: "Manual Wind" },
-      { title: "Smartwatch" },
-      { title: "Solar-Powered" },
-      { title: "Kinetic" },
-      { title: "Spring Drive" },
+      { title: 'Automatic' },
+      { title: 'Quartz' },
+      { title: 'Manual Wind' },
+      { title: 'Smartwatch' },
+      { title: 'Solar-Powered' },
+      { title: 'Kinetic' },
+      { title: 'Spring Drive' },
     ];
 
     for (const data of movementsData) {
@@ -508,22 +539,22 @@ export default class SeedHelper {
   }
 
   private async seedTypes(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log("Seeding types (gender/style, upserting)...");
+    console.log('Seeding types (gender/style, upserting)...');
     const typesData = [
       {
         title: "Men's",
         order: 1,
-        image_url: "https://example.com/type_mens.png",
+        image_url: 'https://example.com/type_mens.png',
       },
       {
         title: "Women's",
         order: 2,
-        image_url: "https://example.com/type_womens.png",
+        image_url: 'https://example.com/type_womens.png',
       },
       {
-        title: "Unisex",
+        title: 'Unisex',
         order: 3,
-        image_url: "https://example.com/type_unisex.png",
+        image_url: 'https://example.com/type_unisex.png',
       },
     ];
     for (const data of typesData) {
@@ -538,34 +569,34 @@ export default class SeedHelper {
 
   private async seedCurrenciesAndTaxes(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding currencies and tax rules (upserting)...");
+    console.log('Seeding currencies and tax rules (upserting)...');
     await tx.currency_exchange.upsert({
-      where: { curr: "$" },
+      where: { curr: '$' },
       update: {
-        description: "United States Dollar",
+        description: 'United States Dollar',
         exchangeRate: new Decimal(1.0),
         updated_by: creatorId,
       },
       create: {
-        curr: "$",
-        description: "United States Dollar",
+        curr: '$',
+        description: 'United States Dollar',
         exchangeRate: new Decimal(1.0),
         created_by: creatorId,
       },
     });
     await tx.currency_exchange.upsert({
-      where: { curr: "RP" },
+      where: { curr: 'RP' },
       update: {
-        description: "Pakistani Rupee",
+        description: 'Pakistani Rupee',
         exchangeRate: new Decimal(278.0),
         updated_by: creatorId,
         is_deleted: true,
       },
       create: {
-        curr: "RP",
-        description: "Pakistani Rupee",
+        curr: 'RP',
+        description: 'Pakistani Rupee',
         exchangeRate: new Decimal(278.0),
         created_by: creatorId,
         is_deleted: true,
@@ -573,39 +604,39 @@ export default class SeedHelper {
     });
 
     await tx.tax_rule.upsert({
-      where: { description: "Standard Sales Tax (10%)" },
+      where: { description: 'Standard Sales Tax (10%)' },
       update: { taxRate: new Decimal(0.1), updated_by: creatorId },
       create: {
         taxRate: new Decimal(0.1),
-        description: "Standard Sales Tax (10%)",
+        description: 'Standard Sales Tax (10%)',
         created_by: creatorId,
       },
     });
     await tx.tax_rule.upsert({
-      where: { description: "Luxury Goods Tax (20%)" },
+      where: { description: 'Luxury Goods Tax (20%)' },
       update: { taxRate: new Decimal(0.2), updated_by: creatorId },
       create: {
         taxRate: new Decimal(0.2),
-        description: "Luxury Goods Tax (20%)",
+        description: 'Luxury Goods Tax (20%)',
         created_by: creatorId,
       },
     });
     await tx.tax_rule.upsert({
-      where: { description: "No Tax" },
+      where: { description: 'No Tax' },
       update: { taxRate: new Decimal(0.0), updated_by: creatorId },
       create: {
         taxRate: new Decimal(0.0),
-        description: "No Tax",
+        description: 'No Tax',
         created_by: creatorId,
       },
     });
-    console.log("Currencies and Tax Rules seeded.");
+    console.log('Currencies and Tax Rules seeded.');
   }
 
   private async seedProductsAndVariants(
     creatorId: bigint,
     numberOfProducts: number,
-    tx: PrismaClient // Use the transactional client
+    tx: PrismaClient, // Use the transactional client
   ): Promise<void> {
     console.log(`Attempting to seed up to ${numberOfProducts} products...`);
 
@@ -616,13 +647,13 @@ export default class SeedHelper {
     const allMovements = await tx.movement.findMany();
     const allTypes = await tx.type.findMany();
     const defaultCurrency = await tx.currency_exchange.findUnique({
-      where: { curr: "$" },
+      where: { curr: '$' },
     });
     const standardTax = await tx.tax_rule.findUnique({
-      where: { description: "Standard Sales Tax (10%)" },
+      where: { description: 'Standard Sales Tax (10%)' },
     });
     const luxuryTax = await tx.tax_rule.findUnique({
-      where: { description: "Luxury Goods Tax (20%)" },
+      where: { description: 'Luxury Goods Tax (20%)' },
     });
 
     if (
@@ -637,7 +668,7 @@ export default class SeedHelper {
       allTypes.length === 0
     ) {
       console.error(
-        "Missing required base data (currency, tax, or lookup entities like brands, categories, movements, colors, sizes, types) for product variant seeding. Please ensure they are seeded."
+        'Missing required base data (currency, tax, or lookup entities like brands, categories, movements, colors, sizes, types) for product variant seeding. Please ensure they are seeded.',
       );
       return;
     }
@@ -651,10 +682,10 @@ export default class SeedHelper {
 
     for (const key of customFilterKeys) {
       const configValue =
-        key === CustomFilter.NEW_ARRIVAL ? "30" : "category_marker"; // '30' for New Arrival days, 'category_marker' for others
+        key === CustomFilter.NEW_ARRIVAL ? '30' : 'category_marker'; // '30' for New Arrival days, 'category_marker' for others
       const description =
         key === CustomFilter.NEW_ARRIVAL
-          ? "Number of days to consider a product as new arrival"
+          ? 'Number of days to consider a product as new arrival'
           : `Marker for ${key} custom product category`;
 
       const config = await tx.customFilterConfigurator.upsert({
@@ -677,37 +708,37 @@ export default class SeedHelper {
       });
       customCategoryConfigs[key] = { id: config.id, key: config.key }; // Store ID and key for later use
     }
-    console.log("Seeded CustomFilterConfigurator entries.");
+    console.log('Seeded CustomFilterConfigurator entries.');
 
     // --- End STEP 1 ---
 
     const getNameSuffix = (categoryTitle: string) => {
-      if (categoryTitle.includes("Dive")) return "Pro Diver";
-      if (categoryTitle.includes("Pilot")) return "Pilot Chrono";
-      if (categoryTitle.includes("Chronograph")) return "Racing";
-      if (categoryTitle.includes("Dress")) return "Elegance";
-      if (categoryTitle.includes("Smartwatch")) return "Connect";
-      if (categoryTitle.includes("Field")) return "Explorer";
-      if (categoryTitle.includes("Luxury")) return "Masterpiece";
-      if (categoryTitle.includes("Digital")) return "Digital";
-      return "Classic";
+      if (categoryTitle.includes('Dive')) return 'Pro Diver';
+      if (categoryTitle.includes('Pilot')) return 'Pilot Chrono';
+      if (categoryTitle.includes('Chronograph')) return 'Racing';
+      if (categoryTitle.includes('Dress')) return 'Elegance';
+      if (categoryTitle.includes('Smartwatch')) return 'Connect';
+      if (categoryTitle.includes('Field')) return 'Explorer';
+      if (categoryTitle.includes('Luxury')) return 'Masterpiece';
+      if (categoryTitle.includes('Digital')) return 'Digital';
+      return 'Classic';
     };
 
     let productsCreated = 0;
     const existingReferenceNumbers = new Set(
       (await tx.product.findMany({ select: { reference_number: true } })).map(
-        (p) => Number(p.reference_number)
-      )
+        (p) => Number(p.reference_number),
+      ),
     );
     const existingSerialNumbers = new Set(
       (await tx.product.findMany({ select: { serial_number: true } })).map(
-        (p) => p.serial_number
-      )
+        (p) => p.serial_number,
+      ),
     );
     const existingSkus = new Set(
       (await tx.product_variants.findMany({ select: { sku: true } })).map(
-        (pv) => pv.sku
-      )
+        (pv) => pv.sku,
+      ),
     );
 
     const MAX_GENERATION_ATTEMPTS = numberOfProducts * 10;
@@ -729,66 +760,66 @@ export default class SeedHelper {
 
       if (!brand || !category || !type) {
         console.warn(
-          "Skipping product creation due to missing base data (brand, category, or type). This should not happen if initial checks pass."
+          'Skipping product creation due to missing base data (brand, category, or type). This should not happen if initial checks pass.',
         );
         continue;
       }
 
       let basePrice: number;
       switch (brand.title) {
-        case "Patek Philippe":
-        case "Audemars Piguet":
-        case "Vacheron Constantin":
-        case "A. Lange & Söhne":
+        case 'Patek Philippe':
+        case 'Audemars Piguet':
+        case 'Vacheron Constantin':
+        case 'A. Lange & Söhne':
           basePrice = getRandomInt(40000, 250000);
           break;
-        case "Rolex":
-        case "Omega":
-        case "Jaeger-LeCoultre":
-        case "IWC Schaffhausen":
-        case "Breitling":
-        case "Zenith":
-        case "Blancpain":
-        case "Cartier":
-        case "Grand Seiko":
+        case 'Rolex':
+        case 'Omega':
+        case 'Jaeger-LeCoultre':
+        case 'IWC Schaffhausen':
+        case 'Breitling':
+        case 'Zenith':
+        case 'Blancpain':
+        case 'Cartier':
+        case 'Grand Seiko':
           basePrice = getRandomInt(5000, 40000);
           break;
-        case "Longines":
+        case 'Longines':
           basePrice = getRandomInt(1000, 4000);
           break;
-        case "Tissot":
-        case "Hamilton":
-        case "Oris":
+        case 'Tissot':
+        case 'Hamilton':
+        case 'Oris':
           basePrice = getRandomInt(300, 1500);
           break;
-        case "Citizen":
-        case "Seiko":
+        case 'Citizen':
+        case 'Seiko':
           basePrice = getRandomInt(150, 800);
           break;
-        case "Casio":
-        case "Timex":
+        case 'Casio':
+        case 'Timex':
           basePrice = getRandomInt(50, 300);
           break;
-        case "Fossil":
-        case "Swatch":
+        case 'Fossil':
+        case 'Swatch':
           basePrice = getRandomInt(100, 400);
           break;
         default:
           basePrice = getRandomInt(200, 1000);
       }
 
-      if (category.title.includes("Smartwatch"))
+      if (category.title.includes('Smartwatch'))
         basePrice = getRandomInt(150, 600);
-      if (category.title.includes("Chronographs"))
+      if (category.title.includes('Chronographs'))
         basePrice += getRandomInt(100, 500);
-      if (category.title.includes("Complication"))
+      if (category.title.includes('Complication'))
         basePrice += getRandomInt(1000, 10000);
-      if (category.title.includes("Digital")) basePrice = getRandomInt(50, 250);
+      if (category.title.includes('Digital')) basePrice = getRandomInt(50, 250);
 
       const productNameSuffix = getNameSuffix(category.title);
       const productName = `${brand.title} ${productNameSuffix} ${getRandomInt(
         100,
-        999
+        999,
       )}`;
       const productTitle = `${productName} | ${brand.title} Official Store`;
       const productDescription = `Discover the exquisite ${productName}. This premium ${category.title.toLowerCase()} from ${
@@ -803,7 +834,7 @@ export default class SeedHelper {
         serialAttemptCount++;
         if (serialAttemptCount > MAX_SERIAL_ATTEMPTS) {
           console.warn(
-            `Could not generate unique serial number for product after ${MAX_SERIAL_ATTEMPTS} attempts. Skipping this product.`
+            `Could not generate unique serial number for product after ${MAX_SERIAL_ATTEMPTS} attempts. Skipping this product.`,
           );
           break;
         }
@@ -817,7 +848,7 @@ export default class SeedHelper {
         refAttemptCount++;
         if (refAttemptCount > MAX_SERIAL_ATTEMPTS) {
           console.warn(
-            `Could not generate unique reference number for product after ${MAX_SERIAL_ATTEMPTS} attempts. Skipping this product.`
+            `Could not generate unique reference number for product after ${MAX_SERIAL_ATTEMPTS} attempts. Skipping this product.`,
           );
           break;
         }
@@ -829,22 +860,17 @@ export default class SeedHelper {
 
       const productionYear = getRandomInt(2010, 2024);
 
+      // Generate product slug here for the initial create
+      const initialProductSlug = this.slugService.generateSlug(
+        `${productName} ${brand.title} ${category.title} ${type.title}`,
+      );
+
       let createdProduct;
       try {
-        createdProduct = await tx.product.upsert({
-          where: { reference_number: referenceNumber },
-          update: {
-            updated_by: creatorId,
-            name: productName,
-            description: productDescription,
-            title: productTitle,
-            brand_id: brand.id,
-            category_id: category.id,
-            type_id: type.id,
-            year_of_production: productionYear,
-            serial_number: serialNumber,
-          },
-          create: {
+        createdProduct = await tx.product.create({
+          // Changed from upsert to create
+          data: {
+            // Data for the new product
             name: productName,
             description: productDescription,
             title: productTitle,
@@ -856,17 +882,25 @@ export default class SeedHelper {
             serial_number: serialNumber,
             reference_number: referenceNumber,
             created_by: creatorId,
-            approval_status_by_admin: "APPROVED",
+            approval_status_by_admin: 'APPROVED',
+            product_public_id: '', // Temporary placeholder, will be updated
+            product_slug: initialProductSlug, // Use the generated slug
+          },
+          include: {
+            // Include relations to get their names for accurate slug generation in the next step
+            brand: true,
+            category: true,
+            type: true,
           },
         });
         productsCreated++;
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2002"
+          error.code === 'P2002'
         ) {
           console.warn(
-            `Product with serial number ${serialNumber} or reference number ${referenceNumber} already exists in DB. Retrying with a new one.`
+            `Product with serial number ${serialNumber} or reference number ${referenceNumber} already exists in DB. Retrying with a new one.`,
           );
           i--;
           continue;
@@ -875,6 +909,23 @@ export default class SeedHelper {
           throw error;
         }
       }
+
+      // Generate product_public_id using the service after creation
+      // and update the product. The product_slug will also be re-set here
+      // to ensure consistency if any changes are made during the update phase.
+      const productPublicId = this.hashidsService.encode(createdProduct.id);
+      const productSlug = this.slugService.generateSlug(
+        `${createdProduct.name} ${brand.title} ${category.title} ${type.title}`,
+      );
+
+      // Update the newly created product with the generated values
+      await tx.product.update({
+        where: { id: createdProduct.id },
+        data: {
+          product_public_id: productPublicId,
+          product_slug: productSlug,
+        },
+      });
 
       const numberOfVariants = getRandomInt(1, 4);
       const usedVariantCombos = new Set<string>();
@@ -893,16 +944,16 @@ export default class SeedHelper {
           const tempMovement = getRandomElement(allMovements);
 
           if (
-            category.title.includes("Smartwatch") &&
-            tempMovement?.title !== "Smartwatch"
+            category.title.includes('Smartwatch') &&
+            tempMovement?.title !== 'Smartwatch'
           ) {
-            movement = allMovements.find((m) => m.title === "Smartwatch");
+            movement = allMovements.find((m) => m.title === 'Smartwatch');
           } else if (
-            !category.title.includes("Smartwatch") &&
-            tempMovement?.title === "Smartwatch"
+            !category.title.includes('Smartwatch') &&
+            tempMovement?.title === 'Smartwatch'
           ) {
             movement = getRandomElement(
-              allMovements.filter((m) => m.title !== "Smartwatch")
+              allMovements.filter((m) => m.title !== 'Smartwatch'),
             );
           } else {
             movement = tempMovement;
@@ -916,7 +967,7 @@ export default class SeedHelper {
             !movement
           ) {
             console.warn(
-              `Incomplete data for variant creation (color, size, or movement). Retrying variant.`
+              `Incomplete data for variant creation (color, size, or movement). Retrying variant.`,
             );
             variantAttemptCount++;
             continue;
@@ -928,13 +979,14 @@ export default class SeedHelper {
             continue;
           }
 
+          // Use size.value directly as it's now numeric
           variantSku = generateSku(
             brand.title,
             category.title,
             Number(createdProduct.reference_number),
             mainColor.name,
-            size.value,
-            createdProduct.year_of_production
+            size.value, // Pass the numeric size value
+            createdProduct.year_of_production,
           ).substring(0, 19);
 
           if (existingSkus.has(variantSku)) {
@@ -947,58 +999,58 @@ export default class SeedHelper {
 
         if (variantAttemptCount >= MAX_VARIANT_ATTEMPTS) {
           console.warn(
-            `Could not create unique variant for product ${createdProduct.id} after ${MAX_VARIANT_ATTEMPTS} attempts. Skipping this variant.`
+            `Could not create unique variant for product ${createdProduct.id} after ${MAX_VARIANT_ATTEMPTS} attempts. Skipping this variant.`,
           );
           continue;
         }
 
         usedVariantCombos.add(
-          `${mainColor!.id}-${braceletColor!.id}-${dialColor!.id}-${size!.id}`
+          `${mainColor!.id}-${braceletColor!.id}-${dialColor!.id}-${size!.id}`,
         );
         existingSkus.add(variantSku!);
 
         let variantPrice = basePrice + getRandomInt(-100, 500);
         if (
-          mainColor!.name.includes("Gold") ||
-          mainColor!.name.includes("Rose Gold")
+          mainColor!.name.includes('Gold') ||
+          mainColor!.name.includes('Rose Gold')
         ) {
           variantPrice += getRandomInt(500, 5000);
-        } else if (mainColor!.name.includes("Bronze")) {
+        } else if (mainColor!.name.includes('Bronze')) {
           variantPrice += getRandomInt(100, 500);
         }
 
-        let caseMaterial = "Stainless Steel";
-        let braceletMaterial = "Stainless Steel";
+        let caseMaterial = 'Stainless Steel';
+        let braceletMaterial = 'Stainless Steel';
 
-        if (mainColor!.name.includes("Gold")) {
-          caseMaterial = "Gold";
-          braceletMaterial = "Gold";
-        } else if (mainColor!.name.includes("Bronze")) {
-          caseMaterial = "Bronze";
-        } else if (mainColor!.name.includes("Ceramic")) {
-          caseMaterial = "Ceramic";
-          braceletMaterial = "Ceramic";
-        } else if (mainColor!.name.includes("Titanium")) {
-          caseMaterial = "Titanium";
-          braceletMaterial = "Titanium";
+        if (mainColor!.name.includes('Gold')) {
+          caseMaterial = 'Gold';
+          braceletMaterial = 'Gold';
+        } else if (mainColor!.name.includes('Bronze')) {
+          caseMaterial = 'Bronze';
+        } else if (mainColor!.name.includes('Ceramic')) {
+          caseMaterial = 'Ceramic';
+          braceletMaterial = 'Ceramic';
+        } else if (mainColor!.name.includes('Titanium')) {
+          caseMaterial = 'Titanium';
+          braceletMaterial = 'Titanium';
         }
 
         if (getRandomInt(0, 100) < 30) {
           if (getRandomInt(0, 1) === 0) {
-            braceletMaterial = "Leather";
+            braceletMaterial = 'Leather';
             variantPrice -= getRandomInt(50, 200);
           } else {
-            braceletMaterial = "Rubber";
+            braceletMaterial = 'Rubber';
             variantPrice -= getRandomInt(20, 100);
           }
         }
 
         if (variantPrice < 50) variantPrice = 50;
 
-        const brandSlug = brand.title.toLowerCase().replace(/\s/g, "-");
-        const categorySlug = category.title.toLowerCase().replace(/\s/g, "-");
-        const mainColorSlug = mainColor!.name.toLowerCase().replace(/\s/g, "-");
-        const sizeSlug = String(size!.value).replace(".", "-").toLowerCase();
+        const brandSlug = this.slugService.generateSlug(brand.title);
+        const categorySlug = this.slugService.generateSlug(category.title);
+        const mainColorSlug = this.slugService.generateSlug(mainColor!.name);
+        const sizeSlug = String(size!.value).replace('.', '-').toLowerCase(); // Use numeric size for slug
 
         const baseImageUrl = `https://images.watchstore.com/watches/${brandSlug}-${categorySlug}-${mainColorSlug}-${sizeSlug}.jpg`;
 
@@ -1029,7 +1081,7 @@ export default class SeedHelper {
               bracelet_material: braceletMaterial,
               currency_id: defaultCurrency.id,
               tax_rule_id:
-                category.title.includes("Luxury") || basePrice > 5000
+                category.title.includes('Luxury') || basePrice > 5000
                   ? luxuryTax.id
                   : standardTax.id,
               created_by: creatorId,
@@ -1041,11 +1093,11 @@ export default class SeedHelper {
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002" &&
-            error.meta?.target === "sku"
+            error.code === 'P2002' &&
+            error.meta?.target === 'sku'
           ) {
             console.warn(
-              `SKU ${variantSku} already exists in DB. Retrying this variant.`
+              `SKU ${variantSku} already exists in DB. Retrying this variant.`,
             );
             j--;
             existingSkus.delete(variantSku!);
@@ -1053,7 +1105,7 @@ export default class SeedHelper {
           }
           console.error(
             `Error upserting product variant for product ${createdProduct.id} (Color: ${mainColor?.name}, Size: ${size?.value}mm):`,
-            error
+            error,
           );
           throw error;
         }
@@ -1083,7 +1135,7 @@ export default class SeedHelper {
         const configEntry = customCategoryConfigs[categoryType];
         if (!configEntry) {
           console.warn(
-            `Config entry for custom filter type '${categoryType}' not found. Skipping CustomProductCategory assignment for variant ${variantId}.`
+            `Config entry for custom filter type '${categoryType}' not found. Skipping CustomProductCategory assignment for variant ${variantId}.`,
           );
           continue;
         }
@@ -1111,15 +1163,15 @@ export default class SeedHelper {
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002"
+            error.code === 'P2002'
           ) {
             console.warn(
-              `CustomProductCategory for variant ${variantId} and config ${configEntry.key} already exists. Skipping duplicate.`
+              `CustomProductCategory for variant ${variantId} and config ${configEntry.key} already exists. Skipping duplicate.`,
             );
           } else {
             console.error(
               `Error upserting CustomProductCategory for variant ${variantId} and type ${categoryType}:`,
-              error
+              error,
             );
             // Decide if you want to rethrow or just log for seeding
           }
@@ -1133,9 +1185,9 @@ export default class SeedHelper {
 
   private async seedOwnershipProofs(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding ownership proofs...");
+    console.log('Seeding ownership proofs...');
     const products = await tx.product.findMany({ select: { id: true } });
     const productVariants = await tx.product_variants.findMany({
       select: { id: true, product_id: true },
@@ -1143,7 +1195,7 @@ export default class SeedHelper {
 
     if (products.length === 0 || productVariants.length === 0) {
       console.warn(
-        "No products or product variants found to attach ownership proofs. Skipping."
+        'No products or product variants found to attach ownership proofs. Skipping.',
       );
       return;
     }
@@ -1152,15 +1204,20 @@ export default class SeedHelper {
     const proofsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
 
     for (const variant of productVariants) {
+      // Check if we already created a proof for this variant based on your unique constraint
       if (proofsCreated.has(`${variant.product_id}-${variant.id}`)) {
-        continue; // Already added proofs for this variant
+        continue;
       }
 
       const numProofs = getRandomInt(0, maxProofsPerVariant); // 0, 1, or 2 proofs
+      // Due to the unique constraint `@@unique([product_id, product_variant_id])`,
+      // we can only successfully `create` one entry per variant.
+      // If `numProofs` is > 1, subsequent attempts for the same variant will fail/warn.
+      // The loop will effectively create at most one proof per variant.
       for (let i = 0; i < numProofs; i++) {
         const imageUrl = `https://picsum.photos/id/${getRandomInt(
           100,
-          200
+          200,
         )}/600/400`;
         const altText = `Proof image for product variant ${variant.id}`;
 
@@ -1175,7 +1232,7 @@ export default class SeedHelper {
             update: {
               image_url: imageUrl,
               alt_text: altText,
-              order: i + 1,
+              order: i + 1, // This `order` might not be unique if only one entry is created
               updated_by: creatorId,
             },
             create: {
@@ -1188,26 +1245,21 @@ export default class SeedHelper {
             },
           });
           proofsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
+          // If upsert successful, and we only want one per unique constraint, break here
+          break;
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002"
+            error.code === 'P2002'
           ) {
-            // Unique constraint violation, means it was upserted or another loop iteration already added it
-            // This can happen if numProofs > 1 and we are trying to create multiple for the same unique combo.
-            // We only allow one unique product_id, product_variant_id combo per entry as per your schema.
-            // If you want multiple proofs, the unique constraint should be on just `id`.
-            // For now, based on your schema `@@unique([product_id, product_variant_id])`, we'll only create one.
-            if (numProofs > 1) {
-              console.warn(
-                `Attempted to add multiple ownership proofs for product variant ${variant.id}, but schema only allows one unique entry per product_id, product_variant_id combination. Only one will be created.`
-              );
-              break; // Stop trying to add more for this variant if unique constraint hit
-            }
+            console.warn(
+              `Ownership proof for product variant ${variant.id} already exists (unique constraint). Skipping further proofs for this variant.`,
+            );
+            break; // Stop trying to add more for this variant if unique constraint hit
           } else {
             console.error(
               `Error seeding ownership proof for variant ${variant.id}:`,
-              error
+              error,
             );
             throw error;
           }
@@ -1219,9 +1271,9 @@ export default class SeedHelper {
 
   private async seedSignOfWears(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding signs of wear...");
+    console.log('Seeding signs of wear...');
     const products = await tx.product.findMany({ select: { id: true } });
     const productVariants = await tx.product_variants.findMany({
       select: { id: true, product_id: true },
@@ -1229,7 +1281,7 @@ export default class SeedHelper {
 
     if (products.length === 0 || productVariants.length === 0) {
       console.warn(
-        "No products or product variants found to attach signs of wear. Skipping."
+        'No products or product variants found to attach signs of wear. Skipping.',
       );
       return;
     }
@@ -1238,15 +1290,17 @@ export default class SeedHelper {
     const signsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
 
     for (const variant of productVariants) {
+      // Check if we already created a sign of wear for this variant based on your unique constraint
       if (signsCreated.has(`${variant.product_id}-${variant.id}`)) {
-        continue; // Already added signs for this variant
+        continue;
       }
 
       const numSigns = getRandomInt(0, maxSignsPerVariant); // 0 to 3 signs
+      // Similar to ownership proofs, due to the unique constraint, only one entry will be created.
       for (let i = 0; i < numSigns; i++) {
         const imageUrl = `https://picsum.photos/id/${getRandomInt(
           200,
-          300
+          300,
         )}/600/400`;
         const altText = `Sign of wear image for product variant ${variant.id}`;
 
@@ -1261,7 +1315,7 @@ export default class SeedHelper {
             update: {
               image_url: imageUrl,
               alt_text: altText,
-              order: i + 1,
+              order: i + 1, // This `order` might not be unique if only one entry is created
               updated_by: creatorId,
             },
             create: {
@@ -1274,22 +1328,20 @@ export default class SeedHelper {
             },
           });
           signsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
+          break; // Stop trying to add more for this variant if unique constraint hit
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002"
+            error.code === 'P2002'
           ) {
-            // Same logic as ownership_proof: your schema unique constraint means only one unique entry.
-            if (numSigns > 1) {
-              console.warn(
-                `Attempted to add multiple signs of wear for product variant ${variant.id}, but schema only allows one unique entry per product_id, product_variant_id combination. Only one will be created.`
-              );
-              break;
-            }
+            console.warn(
+              `Sign of wear for product variant ${variant.id} already exists (unique constraint). Skipping further signs for this variant.`,
+            );
+            break;
           } else {
             console.error(
               `Error seeding sign of wear for variant ${variant.id}:`,
-              error
+              error,
             );
             throw error;
           }
@@ -1301,15 +1353,15 @@ export default class SeedHelper {
 
   private async seedProductImages(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding product images...");
+    console.log('Seeding product images...');
     const productVariants = await tx.product_variants.findMany({
       select: { id: true, color_id: true, size_id: true },
     });
 
     if (productVariants.length === 0) {
-      console.warn("No product variants found to attach images. Skipping.");
+      console.warn('No product variants found to attach images. Skipping.');
       return;
     }
 
@@ -1322,14 +1374,13 @@ export default class SeedHelper {
       for (let i = 0; i < numImages; i++) {
         const imgUrl = `https://picsum.photos/id/${getRandomInt(
           1,
-          100
+          100,
         )}/800/600?random=${variant.id}-${i}`;
         const altText = `Image ${i + 1} for variant ${variant.id}`;
 
         try {
-          // product_images doesn't have a unique constraint on product_variant_id,
-          // so we don't need upsert for uniqueness here if we intend to add multiple.
-          // If you *do* want uniqueness for img_url + variant combo, you'd add @@unique([img_url, product_variant_id]) to schema.
+          // product_images doesn't have a unique constraint on product_variant_id + img_url,
+          // so we can add multiple images per variant.
           await tx.product_images.create({
             data: {
               img_url: imgUrl,
@@ -1345,7 +1396,7 @@ export default class SeedHelper {
         } catch (error) {
           console.error(
             `Error seeding product image for variant ${variant.id}:`,
-            error
+            error,
           );
           throw error;
         }
@@ -1356,9 +1407,9 @@ export default class SeedHelper {
 
   private async seedReviewsAndRatings(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding reviews and ratings...");
+    console.log('Seeding reviews and ratings...');
     const products = await tx.product.findMany({
       select: { id: true, name: true },
     });
@@ -1366,7 +1417,7 @@ export default class SeedHelper {
     // In a real app, you'd fetch actual user IDs.
 
     if (products.length === 0) {
-      console.warn("No products found to add reviews to. Skipping.");
+      console.warn('No products found to add reviews to. Skipping.');
       return;
     }
 
@@ -1414,15 +1465,15 @@ export default class SeedHelper {
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002"
+            error.code === 'P2002'
           ) {
             console.warn(
-              `Review for product ${product.id} by user ${creatorId} already exists. Skipping duplicate.`
+              `Review for product ${product.id} by user ${creatorId} already exists. Skipping duplicate.`,
             );
           } else {
             console.error(
               `Error seeding review for product ${product.id}:`,
-              error
+              error,
             );
             throw error;
           }
@@ -1434,9 +1485,9 @@ export default class SeedHelper {
 
   private async seedFavorites(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding favorites...");
+    console.log('Seeding favorites...');
     // For `user_id`, assuming `creatorId` can act as a user ID for seeding purposes.
     const products = await tx.product.findMany({ select: { id: true } });
     const productVariants = await tx.product_variants.findMany({
@@ -1445,7 +1496,7 @@ export default class SeedHelper {
 
     if (products.length === 0 || productVariants.length === 0) {
       console.warn(
-        "No products or product variants found for favorites. Skipping."
+        'No products or product variants found for favorites. Skipping.',
       );
       return;
     }
@@ -1456,7 +1507,7 @@ export default class SeedHelper {
     // Pick a random subset of product variants to mark as favorite
     const variantsToFavorite = getRandomInt(
       1,
-      Math.min(50, productVariants.length)
+      Math.min(50, productVariants.length),
     );
 
     for (let i = 0; i < variantsToFavorite; i++) {
@@ -1491,10 +1542,10 @@ export default class SeedHelper {
       } catch (error) {
         if (
           error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === "P2002"
+          error.code === 'P2002'
         ) {
           console.warn(
-            `Favorite for user ${creatorId}, product ${variant.product_id}, variant ${variant.id} already exists. Skipping duplicate.`
+            `Favorite for user ${creatorId}, product ${variant.product_id}, variant ${variant.id} already exists. Skipping duplicate.`,
           );
         } else {
           console.error(`Error seeding favorite:`, error);
@@ -1506,16 +1557,16 @@ export default class SeedHelper {
   }
 
   private async seedTags(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log("Seeding tags...");
+    console.log('Seeding tags...');
     const tagsData = [
-      { name: "New Arrival", description: "Recently added to stock" },
-      { name: "Best Seller", description: "Our most popular products" },
-      { name: "Limited Edition", description: "Exclusive and rare timepieces" },
-      { name: "On Sale", description: "Currently discounted items" },
-      { name: "Luxury Pick", description: "Handpicked high-end watches" },
-      { name: "Smart Tech", description: "Watches with advanced features" },
-      { name: "Durable", description: "Built to last" },
-      { name: "Classic Design", description: "Timeless aesthetic" },
+      { name: 'New Arrival', description: 'Recently added to stock' },
+      { name: 'Best Seller', description: 'Our most popular products' },
+      { name: 'Limited Edition', description: 'Exclusive and rare timepieces' },
+      { name: 'On Sale', description: 'Currently discounted items' },
+      { name: 'Luxury Pick', description: 'Handpicked high-end watches' },
+      { name: 'Smart Tech', description: 'Watches with advanced features' },
+      { name: 'Durable', description: 'Built to last' },
+      { name: 'Classic Design', description: 'Timeless aesthetic' },
     ];
 
     for (const data of tagsData) {
@@ -1530,15 +1581,15 @@ export default class SeedHelper {
 
   private async seedProductTags(
     creatorId: bigint,
-    tx: PrismaClient
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log("Seeding product tags...");
+    console.log('Seeding product tags...');
     const products = await tx.product.findMany({ select: { id: true } });
     const tags = await tx.tags.findMany({ select: { id: true } });
 
     if (products.length === 0 || tags.length === 0) {
       console.warn(
-        "No products or tags found to create product tags. Skipping."
+        'No products or tags found to create product tags. Skipping.',
       );
       return;
     }
@@ -1575,10 +1626,10 @@ export default class SeedHelper {
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === "P2002"
+            error.code === 'P2002'
           ) {
             console.warn(
-              `Product tag for product ${product.id} and tag ${tag.id} already exists. Skipping duplicate.`
+              `Product tag for product ${product.id} and tag ${tag.id} already exists. Skipping duplicate.`,
             );
           } else {
             console.error(`Error seeding product tag:`, error);
@@ -1588,5 +1639,74 @@ export default class SeedHelper {
       }
     }
     console.log(`Seeded ${count} product tags.`);
+  }
+
+  private async seedGlobalConfiguration(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    try {
+      console.log(`Seeding GlobalConfiguration...`);
+
+      // Add (or update) the 'PRODUCT_VIEWERSHIP_LAST_SEEN' configuration
+      await tx.globalConfiguration.upsert({
+        where: {
+          key: 'PRODUCT_VIEWERSHIP_LAST_SEEN',
+        },
+        update: {
+          value: await this.getAnalyticsWindowHours(), // Dynamic value for analytics window
+          updated_at: new Date(),
+          updated_by: creatorId,
+        },
+        create: {
+          key: 'PRODUCT_VIEWERSHIP_LAST_SEEN',
+          value: await this.getAnalyticsWindowHours(),
+          created_at: new Date(),
+          created_by: creatorId,
+        },
+      });
+
+      // Add (or update) the 'SEED_SCRIPT_RUN' configuration
+      await tx.globalConfiguration.upsert({
+        where: {
+          key: 'SEED_SCRIPT_RUN',
+        },
+        update: {
+          value: await this.getSeedScriptRunFlag(), // Always set to '1' to ensure seed runs on subsequent executions
+          updated_at: new Date(),
+          updated_by: creatorId,
+        },
+        create: {
+          key: 'SEED_SCRIPT_RUN',
+          value: 1, // Default set to '1' so that it will get executed.
+          created_at: new Date(),
+          created_by: creatorId,
+        },
+      });
+
+      console.log(`GlobalConfiguration seeded.`);
+      console.log(`Seeding finished.`);
+    } catch (error) {
+      console.error(`Error seeding global configuration: `, error);
+      throw error;
+    }
+  }
+
+  // Helper method for getting analytics window hours (though it's seeded now)
+  async getAnalyticsWindowHours(): Promise<number> {
+    const config = await this.prisma.globalConfiguration.findUnique({
+      where: { key: 'PRODUCT_VIEWERSHIP_LAST_SEEN' },
+    });
+
+    // Default to '48' if not found or invalid
+    return config ? Number(config.value) : 48;
+  }
+
+  // Helper method for getting seed script run flag (though it's seeded now)
+  async getSeedScriptRunFlag(): Promise<number> {
+    const config = await this.prisma.globalConfiguration.findUnique({
+      where: { key: 'SEED_SCRIPT_RUN' },
+    });
+    return config ? Number(config.value) : 1; // Default to '0' if not found
   }
 }
