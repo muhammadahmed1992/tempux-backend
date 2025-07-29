@@ -93,7 +93,7 @@ jobs:
             cd "$PROJECT_DIR/auth-service"
             if [ "${{ secrets.RESET_DB }}" = "true" ]; then
               echo "🔁 Resetting and reseeding auth-service database..."
-              DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate reset --force --skip-generate --schema prisma/schema.prisma || exit 1
+              DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate reset --force --schema prisma/schema.prisma || exit 1
             fi
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma generate --schema prisma/schema.prisma || exit 1
@@ -108,7 +108,7 @@ jobs:
             cd "$PROJECT_DIR/product-service"
             if [ "${{ secrets.RESET_DB }}" = "true" ]; then
               echo "🔁 Resetting and reseeding product-service database..."
-              DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate reset --force --skip-generate --schema prisma/schema.prisma || exit 1
+              DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate reset --force --schema prisma/schema.prisma || exit 1
             fi
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma generate --schema prisma/schema.prisma || exit 1
