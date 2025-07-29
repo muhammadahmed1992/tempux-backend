@@ -1,6 +1,11 @@
 import { CustomFilter } from '../enums/custom-filter.enum';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { HashidsService } from '../../hash-ids/hashids.service'; // Adjust path if necessary
+import { SlugService } from '../../slug/slug.service'; // Adjust path if necessary
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../../app.module';
+import { ConfigService } from '@nestjs/config';
 
 function getRandomElement<T>(arr: T[]): T | undefined {
   if (arr.length === 0) return undefined;
@@ -103,7 +108,13 @@ const generateSku = (
 };
 
 export default class SeedHelper {
-  constructor(private prisma: PrismaClient) {}
+  private hashidsService!: HashidsService;
+  private readonly slugService: SlugService;
+
+  constructor(private prisma: PrismaClient) {
+    // Initialize services here within the constructor
+    this.slugService = new SlugService();
+  }
 
   /**
    * Orchestrates the entire seeding process using upsert logic.
@@ -113,7 +124,11 @@ export default class SeedHelper {
    */
   async seedAllData(userId: string, numberOfProducts = 450): Promise<void> {
     const creatorId = BigInt(userId);
+    const configService = new ConfigService();
 
+    const hashidsService = new HashidsService(configService);
+    hashidsService.onModuleInit();
+    this.hashidsService = hashidsService;
     console.log('Starting extensive data seeding with upsert logic...');
 
     try {
@@ -127,7 +142,7 @@ export default class SeedHelper {
               key: 'SEED_SCRIPT_RUN',
             },
           });
-          if (ifSeedRun?.value) {
+          if (Number(ifSeedRun?.value) === 1) {
             // Seed base data
             await this.seedColors(creatorId, tx);
             await this.seedSizes(creatorId, tx);
@@ -149,11 +164,13 @@ export default class SeedHelper {
             await this.seedReviewsAndRatings(creatorId, tx); // Seed after products exist
             await this.seedFavorites(creatorId, tx); // Seed after products/variants exist
           } else {
-            console.log(`Seed doesn't run as per its configuration`);
+            console.log(
+              `Seed doesn't run as per its configuration (SEED_SCRIPT_RUN is not 1).`,
+            );
           }
         },
         {
-          timeout: 600000, // 5 minutes timeout for the entire transaction
+          timeout: 600000, // 10 minutes timeout for the entire transaction
         },
       );
       console.log('Extensive data seeding completed successfully!');
@@ -267,25 +284,27 @@ export default class SeedHelper {
   }
 
   private async seedSizes(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log('Seeding sizes (upserting)...');
+    console.log('Seeding sizes (upserting) with MM units...');
+    // Generating common watch case sizes in MM, ensuring all have widthUnit and heightUnit
     const sizesData = [
-      { value: 28, height: 28 },
-      { value: 30, height: 30 },
-      { value: 32, height: 32 },
-      { value: 34, height: 34 },
-      { value: 36, height: 36 },
-      { value: 37, height: 37 },
-      { value: 38, height: 38 },
-      { value: 39, height: 39 },
-      { value: 40, height: 40 },
-      { value: 41, height: 41 },
-      { value: 42, height: 42 },
-      { value: 43, height: 43 },
-      { value: 44, height: 44 },
-      { value: 45, height: 45 },
-      { value: 46, height: 46 },
-      { value: 47, height: 47 },
-      { value: 48, height: 48 },
+      { value: 28, height: 28, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 30, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 32, height: 32, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 34, height: 34, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 36, height: 36, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 37, height: 37, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 38, height: 38, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 39, height: 39, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 40, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 41, height: 41, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 42, height: 42, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 43, height: 43, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 44, height: 44, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 45, height: 45, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 46, height: 46, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 47, height: 47, widthUnit: 'MM', heightUnit: 'MM' },
+      { value: 48, height: 48, widthUnit: 'MM', heightUnit: 'MM' },
+      // Example of rectangular watch sizes, ensuring units are explicit
       { value: 25, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
       { value: 30, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
     ];
@@ -841,22 +860,17 @@ export default class SeedHelper {
 
       const productionYear = getRandomInt(2010, 2024);
 
+      // Generate product slug here for the initial create
+      const initialProductSlug = this.slugService.generateSlug(
+        `${productName} ${brand.title} ${category.title} ${type.title}`,
+      );
+
       let createdProduct;
       try {
-        createdProduct = await tx.product.upsert({
-          where: { reference_number: referenceNumber },
-          update: {
-            updated_by: creatorId,
-            name: productName,
-            description: productDescription,
-            title: productTitle,
-            brand_id: brand.id,
-            category_id: category.id,
-            type_id: type.id,
-            year_of_production: productionYear,
-            serial_number: serialNumber,
-          },
-          create: {
+        createdProduct = await tx.product.create({
+          // Changed from upsert to create
+          data: {
+            // Data for the new product
             name: productName,
             description: productDescription,
             title: productTitle,
@@ -869,6 +883,14 @@ export default class SeedHelper {
             reference_number: referenceNumber,
             created_by: creatorId,
             approval_status_by_admin: 'APPROVED',
+            product_public_id: '', // Temporary placeholder, will be updated
+            product_slug: initialProductSlug, // Use the generated slug
+          },
+          include: {
+            // Include relations to get their names for accurate slug generation in the next step
+            brand: true,
+            category: true,
+            type: true,
           },
         });
         productsCreated++;
@@ -887,6 +909,23 @@ export default class SeedHelper {
           throw error;
         }
       }
+
+      // Generate product_public_id using the service after creation
+      // and update the product. The product_slug will also be re-set here
+      // to ensure consistency if any changes are made during the update phase.
+      const productPublicId = this.hashidsService.encode(createdProduct.id);
+      const productSlug = this.slugService.generateSlug(
+        `${createdProduct.name} ${brand.title} ${category.title} ${type.title}`,
+      );
+
+      // Update the newly created product with the generated values
+      await tx.product.update({
+        where: { id: createdProduct.id },
+        data: {
+          product_public_id: productPublicId,
+          product_slug: productSlug,
+        },
+      });
 
       const numberOfVariants = getRandomInt(1, 4);
       const usedVariantCombos = new Set<string>();
@@ -940,12 +979,13 @@ export default class SeedHelper {
             continue;
           }
 
+          // Use size.value directly as it's now numeric
           variantSku = generateSku(
             brand.title,
             category.title,
             Number(createdProduct.reference_number),
             mainColor.name,
-            size.value,
+            size.value, // Pass the numeric size value
             createdProduct.year_of_production,
           ).substring(0, 19);
 
@@ -1007,10 +1047,10 @@ export default class SeedHelper {
 
         if (variantPrice < 50) variantPrice = 50;
 
-        const brandSlug = brand.title.toLowerCase().replace(/\s/g, '-');
-        const categorySlug = category.title.toLowerCase().replace(/\s/g, '-');
-        const mainColorSlug = mainColor!.name.toLowerCase().replace(/\s/g, '-');
-        const sizeSlug = String(size!.value).replace('.', '-').toLowerCase();
+        const brandSlug = this.slugService.generateSlug(brand.title);
+        const categorySlug = this.slugService.generateSlug(category.title);
+        const mainColorSlug = this.slugService.generateSlug(mainColor!.name);
+        const sizeSlug = String(size!.value).replace('.', '-').toLowerCase(); // Use numeric size for slug
 
         const baseImageUrl = `https://images.watchstore.com/watches/${brandSlug}-${categorySlug}-${mainColorSlug}-${sizeSlug}.jpg`;
 
@@ -1164,11 +1204,16 @@ export default class SeedHelper {
     const proofsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
 
     for (const variant of productVariants) {
+      // Check if we already created a proof for this variant based on your unique constraint
       if (proofsCreated.has(`${variant.product_id}-${variant.id}`)) {
-        continue; // Already added proofs for this variant
+        continue;
       }
 
       const numProofs = getRandomInt(0, maxProofsPerVariant); // 0, 1, or 2 proofs
+      // Due to the unique constraint `@@unique([product_id, product_variant_id])`,
+      // we can only successfully `create` one entry per variant.
+      // If `numProofs` is > 1, subsequent attempts for the same variant will fail/warn.
+      // The loop will effectively create at most one proof per variant.
       for (let i = 0; i < numProofs; i++) {
         const imageUrl = `https://picsum.photos/id/${getRandomInt(
           100,
@@ -1187,7 +1232,7 @@ export default class SeedHelper {
             update: {
               image_url: imageUrl,
               alt_text: altText,
-              order: i + 1,
+              order: i + 1, // This `order` might not be unique if only one entry is created
               updated_by: creatorId,
             },
             create: {
@@ -1200,22 +1245,17 @@ export default class SeedHelper {
             },
           });
           proofsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
+          // If upsert successful, and we only want one per unique constraint, break here
+          break;
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === 'P2002'
           ) {
-            // Unique constraint violation, means it was upserted or another loop iteration already added it
-            // This can happen if numProofs > 1 and we are trying to create multiple for the same unique combo.
-            // We only allow one unique product_id, product_variant_id combo per entry as per your schema.
-            // If you want multiple proofs, the unique constraint should be on just `id`.
-            // For now, based on your schema `@@unique([product_id, product_variant_id])`, we'll only create one.
-            if (numProofs > 1) {
-              console.warn(
-                `Attempted to add multiple ownership proofs for product variant ${variant.id}, but schema only allows one unique entry per product_id, product_variant_id combination. Only one will be created.`,
-              );
-              break; // Stop trying to add more for this variant if unique constraint hit
-            }
+            console.warn(
+              `Ownership proof for product variant ${variant.id} already exists (unique constraint). Skipping further proofs for this variant.`,
+            );
+            break; // Stop trying to add more for this variant if unique constraint hit
           } else {
             console.error(
               `Error seeding ownership proof for variant ${variant.id}:`,
@@ -1250,11 +1290,13 @@ export default class SeedHelper {
     const signsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
 
     for (const variant of productVariants) {
+      // Check if we already created a sign of wear for this variant based on your unique constraint
       if (signsCreated.has(`${variant.product_id}-${variant.id}`)) {
-        continue; // Already added signs for this variant
+        continue;
       }
 
       const numSigns = getRandomInt(0, maxSignsPerVariant); // 0 to 3 signs
+      // Similar to ownership proofs, due to the unique constraint, only one entry will be created.
       for (let i = 0; i < numSigns; i++) {
         const imageUrl = `https://picsum.photos/id/${getRandomInt(
           200,
@@ -1273,7 +1315,7 @@ export default class SeedHelper {
             update: {
               image_url: imageUrl,
               alt_text: altText,
-              order: i + 1,
+              order: i + 1, // This `order` might not be unique if only one entry is created
               updated_by: creatorId,
             },
             create: {
@@ -1286,18 +1328,16 @@ export default class SeedHelper {
             },
           });
           signsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
+          break; // Stop trying to add more for this variant if unique constraint hit
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === 'P2002'
           ) {
-            // Same logic as ownership_proof: your schema unique constraint means only one unique entry.
-            if (numSigns > 1) {
-              console.warn(
-                `Attempted to add multiple signs of wear for product variant ${variant.id}, but schema only allows one unique entry per product_id, product_variant_id combination. Only one will be created.`,
-              );
-              break;
-            }
+            console.warn(
+              `Sign of wear for product variant ${variant.id} already exists (unique constraint). Skipping further signs for this variant.`,
+            );
+            break;
           } else {
             console.error(
               `Error seeding sign of wear for variant ${variant.id}:`,
@@ -1339,9 +1379,8 @@ export default class SeedHelper {
         const altText = `Image ${i + 1} for variant ${variant.id}`;
 
         try {
-          // product_images doesn't have a unique constraint on product_variant_id,
-          // so we don't need upsert for uniqueness here if we intend to add multiple.
-          // If you *do* want uniqueness for img_url + variant combo, you'd add @@unique([img_url, product_variant_id]) to schema.
+          // product_images doesn't have a unique constraint on product_variant_id + img_url,
+          // so we can add multiple images per variant.
           await tx.product_images.create({
             data: {
               img_url: imgUrl,
@@ -1615,7 +1654,7 @@ export default class SeedHelper {
           key: 'PRODUCT_VIEWERSHIP_LAST_SEEN',
         },
         update: {
-          value: await this.getAnalyticsWindowHours(),
+          value: await this.getAnalyticsWindowHours(), // Dynamic value for analytics window
           updated_at: new Date(),
           updated_by: creatorId,
         },
@@ -1633,13 +1672,13 @@ export default class SeedHelper {
           key: 'SEED_SCRIPT_RUN',
         },
         update: {
-          value: await this.getSeedScriptRunFlag(),
+          value: await this.getSeedScriptRunFlag(), // Always set to '1' to ensure seed runs on subsequent executions
           updated_at: new Date(),
           updated_by: creatorId,
         },
         create: {
           key: 'SEED_SCRIPT_RUN',
-          value: 1, // Default set to 1 so that it will get executed.
+          value: 1, // Default set to '1' so that it will get executed.
           created_at: new Date(),
           created_by: creatorId,
         },
@@ -1652,23 +1691,22 @@ export default class SeedHelper {
       throw error;
     }
   }
-  // In your analytics service or configuration service
+
+  // Helper method for getting analytics window hours (though it's seeded now)
   async getAnalyticsWindowHours(): Promise<number> {
     const config = await this.prisma.globalConfiguration.findUnique({
       where: { key: 'PRODUCT_VIEWERSHIP_LAST_SEEN' },
     });
 
-    // Default to 48 if not found or invalid
-    const hours = config ? config.value : 48;
-
-    // Ensure it's a valid number
-    return Number(hours);
+    // Default to '48' if not found or invalid
+    return config ? Number(config.value) : 48;
   }
 
+  // Helper method for getting seed script run flag (though it's seeded now)
   async getSeedScriptRunFlag(): Promise<number> {
     const config = await this.prisma.globalConfiguration.findUnique({
       where: { key: 'SEED_SCRIPT_RUN' },
     });
-    return Number(config?.value);
+    return config ? Number(config.value) : 1; // Default to '0' if not found
   }
 }

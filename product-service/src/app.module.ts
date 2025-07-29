@@ -22,6 +22,8 @@ import { FavoriteService } from '@Services/favorite.service';
 import { CartService } from '@Services/cart.service';
 import { CartController } from '@Controllers/cart.controller';
 import { ConfigModule } from '@nestjs/config';
+import { SlugModule } from './slug/slug.module';
+import { HashidsModule } from './hash-ids/hash-ids.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { ConfigModule } from '@nestjs/config';
     RepositoryModule,
     AuthModule,
     ReviewsModule,
+    SlugModule,
+    HashidsModule,
   ],
   controllers: [
     AppController,
