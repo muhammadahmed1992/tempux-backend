@@ -114,7 +114,8 @@ jobs:
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
             DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma generate --schema prisma/schema.prisma || exit 1
             if [ "${{ secrets.RE_RUN_SEED }}" = "true" ]; then
-              DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma db seed --schema prisma/schema.prisma || exit 1
+              DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" HASHIDS_SALT=${{ secrets.HASHIDS_SALT }}
+              npx prisma db seed --schema prisma/schema.prisma || exit 1
             fi
             npm run build
             cd "$PROJECT_DIR"
