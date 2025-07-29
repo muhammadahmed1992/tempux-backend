@@ -76,6 +76,7 @@ jobs:
             sed -i.bak "s#INJECT_GATEWAY_PORT#${{ secrets.GATEWAY_PORT }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_DATABASE_URL_DEV_USERS#${{ secrets.DATABASE_URL_DEV_USERS }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_DATABASE_URL_DEV_PRODUCT#${{ secrets.DATABASE_URL_DEV_PRODUCT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_HASHIDS_SALT#${{ secrets.HASHIDS_SALT }}#g" "$ECOSYSTEM_FILE"
 
             BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
             TIMESTAMP=$(date +%Y%m%d%H%M%S)
