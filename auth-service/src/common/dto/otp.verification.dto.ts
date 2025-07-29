@@ -1,10 +1,4 @@
-import {
-  IsEmail,
-  IsIn,
-  IsNotEmpty,
-  IsString,
-  MaxLength,
-} from "class-validator";
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class OTPVerificationRequestDTO {
   @IsNotEmpty()
