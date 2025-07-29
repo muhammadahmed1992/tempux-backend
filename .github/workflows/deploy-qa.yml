@@ -94,7 +94,7 @@ jobs:
             cd "$PROJECT_DIR/auth-service"
             if [ "${{ secrets.RESET_DB }}" = "true" ]; then
               echo "🔁 Resetting and reseeding auth-service database..."
-              DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate reset --force --schema prisma/schema.prisma || exit 1
+              DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate reset --force --skip-seed --schema prisma/schema.prisma || exit 1
             fi
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
             DATABASE_URL_DEV_USERS="${{ secrets.DATABASE_URL_DEV_USERS }}" npx prisma generate --schema prisma/schema.prisma || exit 1
@@ -107,16 +107,32 @@ jobs:
 
             echo "👉 Prisma migrate + seed for product-service"
             cd "$PROJECT_DIR/product-service"
+
+            # Step 1: Reset the DB only if flag is true
             if [ "${{ secrets.RESET_DB }}" = "true" ]; then
               echo "🔁 Resetting and reseeding product-service database..."
-              DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate reset --force --schema prisma/schema.prisma || exit 1
+              INJECT_DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" \
+              HASHIDS_SALT="${{ secrets.HASHIDS_SALT }}" \
+              npx prisma migrate reset --force --skip-seed --schema prisma/schema.prisma || exit 1
             fi
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
-            DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" npx prisma generate --schema prisma/schema.prisma || exit 1
+
+            # Step 2: Run migrate deploy (for applying migrations on existing DB)
+            INJECT_DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" \
+            npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
+
+            # Step 3: Generate Prisma client
+            INJECT_DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" \
+            npx prisma generate --schema prisma/schema.prisma || exit 1
+
+            # Step 4: Seed only if RE_RUN_SEED is true
             if [ "${{ secrets.RE_RUN_SEED }}" = "true" ]; then
-              DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" HASHIDS_SALT=${{ secrets.HASHIDS_SALT }}
+              echo "🌱 Seeding product-service database..."
+              INJECT_DATABASE_URL_DEV_PRODUCT="${{ secrets.DATABASE_URL_DEV_PRODUCT }}" \
+              HASHIDS_SALT="${{ secrets.HASHIDS_SALT }}" \
               npx prisma db seed --schema prisma/schema.prisma || exit 1
             fi
+
+            # Step 5: Build
             npm run build
             cd "$PROJECT_DIR"
 
