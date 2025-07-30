@@ -1071,6 +1071,7 @@ export default class SeedHelper {
               size_id: size!.id,
               movement_id: movement!.id,
               price: new Decimal(variantPrice),
+              discount: j % 3 == 0 ? 10 : 24,
               cost_price: new Decimal(variantPrice * 0.7),
               quantity: getRandomInt(1, 20),
               original_box_and_paper: getRandomInt(0, 1) === 1,

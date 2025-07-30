@@ -30,7 +30,7 @@ export class FavoriteService {
     return ResponseHelper.CreateResponse<number>(
       '',
       Number(result),
-      HttpStatus.CREATED,
+      flag ? HttpStatus.CREATED : HttpStatus.GONE,
     );
   }
 }

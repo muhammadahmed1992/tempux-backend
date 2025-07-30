@@ -1,5 +1,5 @@
 export class UserDetailsResponseDto {
-  id?: bigint;
+  id?: string;
   name?: string;
   emai?: string;
   fullName?: string;

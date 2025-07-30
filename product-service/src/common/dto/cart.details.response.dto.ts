@@ -5,6 +5,7 @@ export type CartDetailsResponseDTO = {
   productTitle: string;
   reference_number: string;
   product_variant_Id: bigint;
+  base_image_url: string;
   price: number;
   size: string;
   color: string;

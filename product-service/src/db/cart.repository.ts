@@ -1,9 +1,9 @@
-import { Injectable } from "@nestjs/common";
-import { Prisma, cart } from "@prisma/client";
-import { BaseRepository } from "./base.repository";
-import { AddToCartRequestDTO } from "@DTO/add.to.cart.request.dto";
-import { RemoveCartItemRequestDTO } from "@DTO/remove.cart.request.dto";
-import { PrismaService } from "../services/prisma.service";
+import { Injectable } from '@nestjs/common';
+import { Prisma, cart } from '@prisma/client';
+import { BaseRepository } from './base.repository';
+import { AddToCartRequestDTO } from '@DTO/add.to.cart.request.dto';
+import { RemoveCartItemRequestDTO } from '@DTO/remove.cart.request.dto';
+import { PrismaService } from '../services/prisma.service';
 
 @Injectable()
 export class CartRepository extends BaseRepository<
@@ -26,8 +26,20 @@ export class CartRepository extends BaseRepository<
    * @param itemId Specific Id of that particular variant
    */
   async addProductInCart(create: AddToCartRequestDTO) {
-    return this.model.create({
-      data: {
+    return this.prisma.cart.upsert({
+      where: {
+        user_id_product_id_product_variant_id: {
+          user_id: create.userId,
+          product_id: create.productId,
+          product_variant_id: create.product_variant_Id,
+        },
+      },
+      update: {
+        quantity: create.quantity,
+        updated_at: new Date(),
+        updated_by: create.userId,
+      },
+      create: {
         user_id: create.userId,
         product: {
           connect: {
@@ -39,8 +51,9 @@ export class CartRepository extends BaseRepository<
             id: create.product_variant_Id,
           },
         },
-        created_by: create.userId,
         quantity: create.quantity,
+        created_by: create.userId,
+        created_at: new Date(),
       },
       select: {
         id: true,
@@ -53,24 +66,21 @@ export class CartRepository extends BaseRepository<
    * @param productId Parent Id of the currently selected/marked product variant
    * @param itemId Specific Id of that particular variant
    */
-  async removeFromCart(remove: RemoveCartItemRequestDTO) {
-    return this.model.update({
+  async removeFromCart(
+    userId: bigint,
+    items: RemoveCartItemRequestDTO[],
+  ): Promise<{ count: number }> {
+    if (!items.length) return { count: 0 };
+
+    const orConditions = items.map((item) => ({
+      user_id: userId,
+      product_id: item.productId,
+      product_variant_id: item.product_variant_Id,
+    }));
+
+    return this.prisma.cart.deleteMany({
       where: {
-        user_id_product_id_product_variant_id: {
-          user_id: remove.userId,
-          product_id: remove.productId,
-          product_variant_id: remove.product_variant_Id,
-        },
-      },
-      data: {
-        is_deleted: true,
-        deleted_at: new Date(),
-        deleted_by: remove.userId,
-        updated_at: new Date(),
-        updated_by: remove.userId,
-      },
-      select: {
-        id: true,
+        OR: orConditions,
       },
     });
   }
@@ -89,7 +99,7 @@ export class CartRepository extends BaseRepository<
     pageSize: number,
     where?: object,
     select?: object,
-    order?: object
+    order?: object,
   ): Promise<{ data: any[]; totalCount: number }> {
     // Fetch all cart information for the user
 
@@ -107,6 +117,7 @@ export class CartRepository extends BaseRepository<
           select: {
             id: true,
             price: true,
+            base_image_url: true,
             color: {
               select: {
                 name: true,
@@ -128,7 +139,7 @@ export class CartRepository extends BaseRepository<
           },
         },
       },
-      order
+      order,
     );
     return { data, totalCount };
   }

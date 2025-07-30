@@ -1,11 +1,11 @@
-import { Injectable } from "@nestjs/common";
-import { Prisma, PrismaClient, reviews_ratings } from "@prisma/client";
-import { BaseRepository } from "./base.repository";
+import { Injectable } from '@nestjs/common';
+import { Prisma, PrismaClient, reviews_ratings } from '@prisma/client';
+import { BaseRepository } from './base.repository';
 import {
   ProductRatingReviewDTO,
   ProductRatingReviewsDTO,
-} from "@DTO/product.rating.reviews";
-import { PrismaService } from "@Services/prisma.service";
+} from '@DTO/product.rating.reviews';
+import { PrismaService } from '@Services/prisma.service';
 
 @Injectable()
 export class ReviewsRepository extends BaseRepository<
@@ -54,7 +54,7 @@ export class ReviewsRepository extends BaseRepository<
     productId: bigint,
     page: number,
     pageSize: number,
-    order?: object
+    order?: object,
   ): Promise<{ data: ProductRatingReviewsDTO[]; totalCount: number }> {
     // Fetch all relevant reviews for the product
     const { data, totalCount } = await this.findManyPaginated(
@@ -70,7 +70,7 @@ export class ReviewsRepository extends BaseRepository<
         reviewedBy: true,
         created_at: true,
       },
-      order
+      order,
     );
     return { data, totalCount };
   }
@@ -83,6 +83,7 @@ export class ReviewsRepository extends BaseRepository<
    * @returns id of the newly created record.
    */
   async review(userId: bigint, review: ProductRatingReviewDTO) {
+    console.log(`userId: ${userId}`);
     return this.prisma.reviews_ratings.upsert({
       where: {
         product_id_reviewedBy: {
@@ -96,6 +97,7 @@ export class ReviewsRepository extends BaseRepository<
         updated_at: new Date(),
         updated_by: userId,
         is_deleted: false,
+        reviewedBy: userId,
       },
       create: {
         product: {
@@ -107,7 +109,6 @@ export class ReviewsRepository extends BaseRepository<
         created_by: userId,
         review: review.review,
         ratings: review.ratings,
-        // created_at, updated_at, deleted_at, is_deleted will be handled by @default and @updatedAt
       },
       // 4. 'select' clause: What to return from the operation.
       select: {

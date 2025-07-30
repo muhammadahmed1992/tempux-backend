@@ -1,11 +1,11 @@
-import { HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
-import ApiResponse from "@Helper/api-response";
-import ResponseHelper from "@Helper/response-helper";
-import { CartRepository } from "@Repository/cart.repository";
-import { AddToCartRequestDTO } from "@DTO/add.to.cart.request.dto";
-import { RemoveCartItemRequestDTO } from "@DTO/remove.cart.request.dto";
-import { CartDetailsResponseDTO } from "@DTO/cart.details.response.dto";
-import Constants from "@Helper/constants";
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import ApiResponse from '@Helper/api-response';
+import ResponseHelper from '@Helper/response-helper';
+import { CartRepository } from '@Repository/cart.repository';
+import { AddToCartRequestDTO } from '@DTO/add.to.cart.request.dto';
+import { RemoveCartItemRequestDTO } from '@DTO/remove.cart.request.dto';
+import { CartDetailsResponseDTO } from '@DTO/cart.details.response.dto';
+import Constants from '@Helper/constants';
 @Injectable()
 export class CartService {
   constructor(private readonly repository: CartRepository) {}
@@ -16,13 +16,13 @@ export class CartService {
    * @returns newly marked cart id
    */
   async addProductToCart(
-    cart: AddToCartRequestDTO
+    cart: AddToCartRequestDTO,
   ): Promise<ApiResponse<number>> {
     const result = (await this.repository.addProductInCart(cart)).id;
     return ResponseHelper.CreateResponse<number>(
-      "",
+      '',
       Number(result),
-      HttpStatus.CREATED
+      HttpStatus.CREATED,
     );
   }
 
@@ -32,13 +32,14 @@ export class CartService {
    * @returns currently removed item from cart
    */
   async removeFromCart(
-    cart: RemoveCartItemRequestDTO
+    userId: bigint,
+    cart: RemoveCartItemRequestDTO[],
   ): Promise<ApiResponse<number>> {
-    const result = (await this.repository.removeFromCart(cart)).id;
+    const result = await this.repository.removeFromCart(userId, cart);
     return ResponseHelper.CreateResponse<number>(
-      "",
-      Number(result),
-      HttpStatus.NO_CONTENT
+      '',
+      Number(result.count),
+      HttpStatus.OK,
     );
   }
 
@@ -56,7 +57,7 @@ export class CartService {
     pageSize: number,
     where?: object,
     select?: object,
-    order?: object
+    order?: object,
   ): Promise<ApiResponse<CartDetailsResponseDTO[]>> {
     const { data, totalCount } =
       await this.repository.getCartDetailedInfomration(
@@ -65,7 +66,7 @@ export class CartService {
         pageSize,
         where,
         select,
-        order
+        order,
       );
     if (!totalCount) throw new NotFoundException(Constants.NO_CART_DATA_FOUND);
     // Map the raw Prisma result to the CartDetailsResponseDTO format
@@ -81,7 +82,7 @@ export class CartService {
         ) {
           // Log a warning if data is inconsistent, or handle as per your application's error policy
           console.warn(
-            `Cart item ${item.id} has missing product, variant, color, or size data.`
+            `Cart item ${item.id} has missing product, variant, color, or size data.`,
           );
           return null; // Return null for this item, which will be filtered out later
         }
@@ -94,15 +95,16 @@ export class CartService {
           productTitle: item.product_variant.product.title,
           reference_number: item.product_variant.product.reference_number,
           product_variant_Id: item.product_variant.id,
-          price: item.product_variant.price.toNumber(), // Convert Prisma Decimal to a JavaScript number
+          base_image_url: item.product_variant.base_image_url,
+          price: item.product_variant.price.toNumber(),
           size: item.product_variant.size.value,
           color: item.product_variant.color.name,
-          quantity: item.quantity, // Quantity from the cart item
+          quantity: item.quantity,
         };
       })
       .filter((item) => item != null);
     return ResponseHelper.CreateResponse(
-      "",
+      '',
       detailedCartItems,
       HttpStatus.ACCEPTED,
       {
@@ -110,7 +112,7 @@ export class CartService {
         pageSize: pageSize,
         totalCount,
         numberOfTotalPages: Math.ceil(totalCount / pageSize),
-      }
+      },
     );
   }
 }
