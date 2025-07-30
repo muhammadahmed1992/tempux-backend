@@ -1,4 +1,4 @@
-import { createParamDecorator, ExecutionContext } from "@nestjs/common";
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 /**
  * Custom decorator to extract the userId from the authenticated user object.
@@ -17,5 +17,5 @@ export const UserId = createParamDecorator(
     // The `user` object is populated by Passport's JWT strategy
     // Ensure that your JwtStrategy returns an object with a `userId` property.
     return request.user?.sub;
-  }
+  },
 );

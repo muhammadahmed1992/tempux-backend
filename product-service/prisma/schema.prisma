@@ -342,6 +342,7 @@ model product_variants {
 
   price        Decimal         @db.Decimal(10,2)
   cost_price   Decimal         @db.Decimal(10,2)
+  discount     Decimal?        @default(0.00) @db.Decimal(10,2)
   quantity     Int             @default(0) @db.Integer
   original_box_and_paper Boolean  @db.Boolean
   original_box            Boolean @db.Boolean

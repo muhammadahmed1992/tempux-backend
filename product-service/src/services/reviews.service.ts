@@ -1,26 +1,26 @@
 // product-service/src/reviews/reviews.service.ts
-import { BadRequestException, HttpStatus, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import {
   UserDetails,
   UserProxyService,
-} from "@Proxy/user-proxy/user-proxy.service"; // Import the proxy service
-import { EnrichedReviewResponseDto } from "@DTO/enriched-review.response.dto";
-import { ReviewsRepository } from "@Repository/reviews.repository";
-import ApiResponse from "@Helper/api-response";
-import ResponseHelper from "@Helper/response-helper";
-import Constants from "@Helper/constants";
-import { AverageProductRatingDTO } from "@DTO/average.product.rating";
+} from '@Proxy/user-proxy/user-proxy.service'; // Import the proxy service
+import { EnrichedReviewResponseDto } from '@DTO/enriched-review.response.dto';
+import { ReviewsRepository } from '@Repository/reviews.repository';
+import ApiResponse from '@Helper/api-response';
+import ResponseHelper from '@Helper/response-helper';
+import Constants from '@Helper/constants';
+import { AverageProductRatingDTO } from '@DTO/average.product.rating';
 import {
   ProductRatingReviewDTO,
   ProductRatingReviewsDTO,
   ProductRatingReviewsUserDTO,
-} from "@DTO/product.rating.reviews";
+} from '@DTO/product.rating.reviews';
 
 @Injectable()
 export class ReviewsService {
   constructor(
     private readonly repository: ReviewsRepository,
-    private readonly userProxyService: UserProxyService
+    private readonly userProxyService: UserProxyService,
   ) {}
 
   /**
@@ -33,27 +33,31 @@ export class ReviewsService {
     pageSize: number,
     order?: object,
     where?: object,
-    select?: object
+    select?: object,
   ): Promise<ApiResponse<EnrichedReviewResponseDto[]>> {
     const { data, totalCount } = await this.repository.findManyPaginated(
       pageNumber,
       pageSize,
       where,
       select,
-      order
+      order,
     );
 
     // Extract unique user IDs from the reviews
-    const uniqueUserIds = [...new Set(data.map((review) => review.reviewedBy))];
+    const uniqueUserIds = [
+      ...new Set(data.map((review) => review.reviewedBy.toString())),
+    ];
     const userDetailsMap = await this.fetchUserDetailsInBatch(uniqueUserIds);
+    console.log(userDetailsMap);
+    console.log(uniqueUserIds);
     // Enrich reviews with user details
     const enrichedReviews: EnrichedReviewResponseDto[] = data.map((review) => ({
       review: review.review,
       ratings: review.ratings,
-      user: userDetailsMap.get(review.reviewedBy) || {
-        email: "unknown@example.com",
-        name: "Unknown User",
-        fullName: "Unknow User - Full Name",
+      user: userDetailsMap.get(review.reviewedBy.toString()) || {
+        email: 'unknown@example.com',
+        name: 'Unknown User',
+        fullName: 'Unknow User - Full Name',
       },
       created_at: review.created_at,
     }));
@@ -67,7 +71,7 @@ export class ReviewsService {
         pageSize,
         totalCount,
         numberOfTotalPages: Math.ceil(totalCount / pageSize),
-      }
+      },
     );
   }
 
@@ -76,15 +80,15 @@ export class ReviewsService {
    * @param productId this is the productId of a product which we need to extract the average rating.
    */
   async fetchAverageRatingByProduct(
-    productId: bigint
+    productId: bigint,
   ): Promise<ApiResponse<AverageProductRatingDTO>> {
     const result = await this.repository.getAverageRatingByProductId(productId);
     return ResponseHelper.CreateResponse<AverageProductRatingDTO>(
-      "",
+      '',
       {
         averageRating: result,
       },
-      HttpStatus.OK
+      HttpStatus.OK,
     );
   }
 
@@ -98,7 +102,7 @@ export class ReviewsService {
     productId: bigint,
     page: number,
     pageSize: number,
-    orderBy?: object
+    orderBy?: object,
   ): Promise<ApiResponse<ProductRatingReviewsUserDTO[]>> {
     // 1. Fetch all relevant reviews for the product
     const { data: reviews, totalCount } =
@@ -106,13 +110,15 @@ export class ReviewsService {
         productId,
         page,
         pageSize,
-        orderBy
+        orderBy,
       );
 
     // 3. Extract unique reviewer IDs to fetch their names from the user service
-    const reviewerIds = [...new Set(reviews.map((r) => r.reviewedBy))];
+    const reviewerIds = [
+      ...new Set(reviews.map((r) => r.reviewedBy.toString())),
+    ];
 
-    let userDetailsMap = new Map<bigint, UserDetails>();
+    let userDetailsMap = new Map<string, UserDetails>();
     if (reviewerIds.length > 0) {
       userDetailsMap = await this.fetchUserDetailsInBatch(reviewerIds);
     }
@@ -121,17 +127,17 @@ export class ReviewsService {
     // 4. Map the reviews to include the reviewer's name
     const detailedReviews: ProductRatingReviewsUserDTO[] = reviews.map(
       (review) => {
-        user = userDetailsMap.get(review.reviewedBy) ?? null;
+        user = userDetailsMap.get(review.reviewedBy.toString()) ?? null;
         return {
           review: review.review,
           ratings: review.ratings,
-          reviewedBy: user?.fullName || user?.name || "Unknown User",
+          reviewedBy: user?.fullName || user?.name || 'Unknown User',
           created_at: review.created_at,
         };
-      }
+      },
     );
     return ResponseHelper.CreateResponse<ProductRatingReviewsUserDTO[]>(
-      "",
+      '',
       detailedReviews,
       HttpStatus.OK,
       {
@@ -139,7 +145,7 @@ export class ReviewsService {
         pageSize,
         totalCount,
         numberOfTotalPages: Math.ceil(totalCount / pageSize),
-      }
+      },
     );
   }
 
@@ -151,7 +157,7 @@ export class ReviewsService {
    */
   async review(
     userId: bigint,
-    review: ProductRatingReviewDTO
+    review: ProductRatingReviewDTO,
   ): Promise<ApiResponse<number>> {
     const result = await this.repository.review(userId, review);
     const isCreated =
@@ -162,28 +168,28 @@ export class ReviewsService {
     return ResponseHelper.CreateResponse<number>(
       Constants.REVIEW_MARKED_SUCCESSFULLy,
       result.id,
-      isCreated ? HttpStatus.CREATED : HttpStatus.NO_CONTENT
+      isCreated ? HttpStatus.CREATED : HttpStatus.NO_CONTENT,
     );
   }
 
-  private async fetchUserDetailsInBatch(uniqueUserIds: bigint[]) {
+  private async fetchUserDetailsInBatch(uniqueUserIds: string[]) {
     // Fetch user details in a single batch call to the User Service
-    const userDetailsMap = new Map<bigint, UserDetails>();
+    const userDetailsMap = new Map<string, UserDetails>();
     try {
       const users = await this.userProxyService.getUsersDetailsByIds(
-        uniqueUserIds
+        uniqueUserIds,
       );
       // TODO: will fix later
       (users as any).data.forEach((user: any) =>
-        userDetailsMap.set(user.id, user)
+        userDetailsMap.set(user.id, user),
       );
       return userDetailsMap;
     } catch (error) {
-      console.error("Failed to fetch user details for reviews:", error);
+      console.error('Failed to fetch user details for reviews:', error);
       // Decide how to handle this: return reviews without user data, throw error, etc.
       // For now, we'll proceed, and 'user' will be undefined for reviews where user data couldn't be fetched.
       throw new BadRequestException(
-        "Failed to fetch user details for reviews:"
+        'Failed to fetch user details for reviews:',
       );
     }
   }

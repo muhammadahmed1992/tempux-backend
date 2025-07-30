@@ -485,7 +485,6 @@ export class UserService {
 
     // Ensure unique IDs to avoid redundant queries
     const uniqueUserIds = [...new Set(userIds)];
-
     const users = await this.userRepository.findMany({
       where: {
         id: {
@@ -503,7 +502,7 @@ export class UserService {
     return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
       Constants.DATA_RETRIEVED_SUCCESSFULLY,
       users.map((user) => ({
-        id: user.id,
+        id: user.id.toString(),
         name: user.name,
         fullName: user.full_name || '',
         email: user.email,

@@ -33,21 +33,20 @@ export class UserProxyService {
   /**
    * Fetches details for multiple users from the User Service.
    * Uses a POST request to handle potentially large lists of IDs.
-   * @param userIds An array of user IDs (BigInt).
+   * @param userIds An array of user IDs (string).
    * @returns A promise that resolves to an array of UserDetails.
    */
-  async getUsersDetailsByIds(userIds: bigint[]): Promise<UserDetails[]> {
+  async getUsersDetailsByIds(userIds: string[]): Promise<UserDetails[]> {
     if (!userIds || userIds.length === 0) {
       return [];
     }
 
     const uniqueUserIds = [...new Set(userIds)]; // Ensure unique IDs
-
     const response: AxiosResponse<UserDetails[]> = await firstValueFrom(
       this.httpService
         .post<UserDetails[]>(
           `${this.userSvcUrl}/user/details-by-ids`,
-          { ids: uniqueUserIds.map((id) => Number(id)) },
+          { ids: uniqueUserIds.map((id) => id.toString()) },
           {
             // You might add an internal API key or mTLS for inter-service security here
             // headers: { 'X-Internal-API-Key': 'your-secret-key' }

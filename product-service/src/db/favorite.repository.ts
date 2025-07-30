@@ -22,6 +22,7 @@ export class FavoriteRepository extends BaseRepository<
    * @param userId Id of the user which is marking the product as favorite
    * @param productId Parent Id of the currently selected/marked product variant
    * @param itemId Specific Id of that particular variant
+   * @return
    */
   async markProductAsFavorite(
     userId: bigint,
@@ -29,45 +30,35 @@ export class FavoriteRepository extends BaseRepository<
     itemId: bigint,
     flag: boolean,
   ) {
-    return this.prisma.favorite.upsert({
-      where: {
-        user_id_product_id_product_variant_id: {
+    console.log(flag);
+    if (flag) {
+      return this.model.create({
+        data: {
           user_id: userId,
-          product_id: productId,
-          product_variant_id: itemId,
-        },
-      },
-      update: flag
-        ? {
-            is_deleted: false,
-            deleted_at: null,
-            deleted_by: null,
-            updated_at: new Date(),
-            updated_by: userId,
-          }
-        : {
-            is_deleted: true,
-            deleted_at: new Date(),
-            deleted_by: userId,
-            updated_at: new Date(),
-            updated_by: userId,
+          product: {
+            connect: {
+              id: productId,
+            },
           },
-      create: {
-        user_id: userId,
-        product: {
-          connect: { id: productId },
+          product_variant: {
+            connect: {
+              id: itemId,
+            },
+          },
+          created_by: userId,
+          created_at: new Date(),
         },
-        product_variant: {
-          connect: { id: itemId },
+      });
+    } else {
+      return this.model.delete({
+        where: {
+          user_id_product_id_product_variant_id: {
+            user_id: userId,
+            product_id: productId,
+            product_variant_id: itemId,
+          },
         },
-        is_deleted: !flag,
-        deleted_at: !flag ? new Date() : null,
-        deleted_by: !flag ? userId : null,
-        created_by: userId,
-      },
-      select: {
-        id: true,
-      },
-    });
+      });
+    }
   }
 }

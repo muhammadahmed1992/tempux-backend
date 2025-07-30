@@ -1,7 +1,8 @@
+import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import { GetAllQueryDTO } from '@DTO/get-all-query.dto';
 import { ProductRatingReviewDTO } from '@DTO/product.rating.reviews';
 import { UserId } from '@Helper/decorators/userId.decorator';
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ReviewsService } from '@Services/reviews.service';
 
 @Controller('reviews')
@@ -26,6 +27,7 @@ export class ReviewsController {
    * @returns APIResponse<ProductRatingReviewDTO>
    */
   @Post()
+  @UseGuards(JwtAuthGuard)
   async review(
     @UserId() userId: bigint,
     @Body() review: ProductRatingReviewDTO,
