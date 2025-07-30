@@ -1,10 +1,10 @@
-import { JwtAuthGuard } from "@Auth/jwt-auth.guard";
-import { GetAllQueryDTO } from "@DTO/get-all-query.dto";
-import { UserId } from "@Helper/decorators/userId.decorator";
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
-import { CartService } from "@Services/cart.service";
+import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
+import { GetAllQueryDTO } from '@DTO/get-all-query.dto';
+import { UserId } from '@Helper/decorators/userId.decorator';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { CartService } from '@Services/cart.service';
 
-@Controller("cart")
+@Controller('cart')
 export class CartController {
   constructor(private readonly cartService: CartService) {}
 
@@ -18,7 +18,7 @@ export class CartController {
       pageSize,
       orderBy,
       where,
-      select
+      select,
     );
   }
 }

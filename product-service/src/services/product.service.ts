@@ -10,8 +10,7 @@ import { CustomFilterConfiguratorService } from './custom-filter-configurator.se
 import { CustomProductVariantCategoryService } from './custom-product-category.service';
 import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
 import { ProductImageOutput } from '@DTO/product.images.info.dto';
-// Define a new DTO type for this specific minimal response
-// You should define this interface/class in a DTO file, e.g., products/dtos/minimal-product-variant-response.dto.ts
+
 interface MinimalProductVariantResponseDto {
   product_variant_id: bigint;
   productName: string;
@@ -65,11 +64,7 @@ export class ProductService {
     const firstActiveVariant = productData.productVariants.find(
       (variant: any) => !variant.is_deleted,
     );
-    const price = firstActiveVariant
-      ? `${
-          firstActiveVariant.currency?.symbol || '$'
-        }${firstActiveVariant.price.toFixed(2)}`
-      : 'N/A';
+    const price = firstActiveVariant.price.toFixed(2);
 
     // 3. Extract Unique Color Information
     const uniqueColorsMap = new Map<
@@ -79,6 +74,8 @@ export class ProductService {
         variantId: number;
         name: string;
         hexCode?: string;
+        price: number;
+        discount: number;
         inStock: boolean;
       }
     >();
@@ -90,6 +87,8 @@ export class ProductService {
           id: variant.color.id,
           name: variant.color.name,
           hexCode: variant.color.hex_code || '#000000',
+          price: variant.price.toFixed(2),
+          discount: variant.discount ? variant.discount.toFixed(2) : 0,
           inStock: variant.quantity > 0,
         });
       }
@@ -114,13 +113,15 @@ export class ProductService {
 
     const images = Array.from(uniqueImagesMap.values());
 
-    // Construct the final output
+    // Construct the final output.
+    // Will adjust later if we can have mult-currency feature.
     const summary: ProductSummaryOutputDTO = {
       id: productData.id,
       name: productData.name,
       title: productData.title || null,
       averageRating: averageRating,
       price: price,
+      symbol: firstActiveVariant.currency?.symbol || '$',
       colors: colors,
       images: images,
     };
@@ -133,6 +134,7 @@ export class ProductService {
   }
 
   // TODO: High Priority: Need to optimize this method in such a way only one request must be done on the DB side.
+  // TODO: Move queries into repository class
   async getProductListingFiltered(
     pageNumber: number,
     pageSize: number,

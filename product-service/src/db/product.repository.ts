@@ -18,12 +18,19 @@ export class ProductRepository extends BaseRepository<
     super(prisma, prisma.product);
   }
 
+  /**
+   *
+   * @param productId It is the main productId to fetch it's summary. Also it returns the color in asending order so that the details can be fetched sequentially in order to enhance the performance.
+   * @returns product summary with price, discount, variant, images and average ratings
+   */
   async getProductSummary(productId: bigint) {
     return this.model.findUnique({
       where: {
         id: productId,
       },
-      include: {
+      select: {
+        name: true,
+        title: true,
         productReviews: {
           select: {
             ratings: true,
@@ -37,6 +44,8 @@ export class ProductRepository extends BaseRepository<
             price: true,
             id: true,
             quantity: true,
+            discount: true,
+            sku: true,
             currency: {
               select: {
                 curr: true,
@@ -69,6 +78,11 @@ export class ProductRepository extends BaseRepository<
           },
           where: {
             is_deleted: false,
+          },
+          orderBy: {
+            color: {
+              name: 'asc', // Order variants by color name
+            },
           },
         },
       },

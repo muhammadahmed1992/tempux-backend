@@ -24,6 +24,7 @@ import Constants from '@Helper/constants';
 import ResponseHelper from '@Helper/response-helper';
 import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
 import ApiResponse from '@Helper/api-response';
+import Meta from '@Helper/meta';
 
 @Controller()
 export class ProductController {
@@ -37,9 +38,9 @@ export class ProductController {
    *
    * @param query This is the query filter provided by the client-side. Details are available in the Readme.MD
    * @param productType This tells us whether the queried param is product or accessory. Always pass p for poduct and a for accessory
-   * @returns
+   * @returns ProductDetails
    */
-  @Get(':p')
+  @Get('/list/:p')
   async getAll(
     @Query() query: GetAllQueryDTO,
     @Param('p') productType: ProductType,
@@ -78,12 +79,13 @@ export class ProductController {
   /**
    *
    * @param productId This is the productId provided by the client-side.
+   * @param sku This is the variant specific information which needs to be provided by client-side
    * @returns Detailed Information of a product.
    */
-  @Get(':id/:variantId/details')
+  @Get(':id/details')
   async getProductInformation(
     @Param('id', ParseIntPipe) id: string,
-    @Param('variantId', ParseIntPipe) variantId: string,
+    @Query('sku') sku: string,
   ) {
     return ResponseHelper.CreateResponse<any>(
       '',
@@ -130,13 +132,13 @@ export class ProductController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('favorite/:productId/:itemId')
+  @UseGuards(JwtAuthGuard)
   async favorite(
     @UserId() userId: bigint,
     @Param('productId') productId: bigint,
     @Param('itemId') itemId: bigint,
-    @Body() flag: boolean,
+    @Body('flag') flag: boolean,
   ) {
     return this.favoriteService.markProductAsFavorite(
       userId,
@@ -156,13 +158,11 @@ export class ProductController {
 
   // TODO: Need to Make it put
   @UseGuards(JwtAuthGuard)
-  @Post('cart')
+  @Post('cart/remove')
   async removeFromCart(
     @UserId() userId: bigint,
-    @Body() cart: RemoveCartItemRequestDTO,
+    @Body() cart: RemoveCartItemRequestDTO[],
   ) {
-    // Adding userId
-    cart.userId = userId;
-    return this.cartService.removeFromCart(cart);
+    return this.cartService.removeFromCart(userId, cart);
   }
 }

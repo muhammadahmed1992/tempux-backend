@@ -1,6 +1,17 @@
-export interface AddToCartRequestDTO {
-  userId: bigint;
-  productId: bigint;
-  product_variant_Id: bigint;
-  quantity: number;
+import { IsNotEmpty, IsNumber, Min } from 'class-validator';
+
+export class AddToCartRequestDTO {
+  userId!: bigint;
+
+  @IsNotEmpty()
+  @IsNumber()
+  productId!: bigint;
+  @IsNotEmpty()
+  @IsNumber()
+  product_variant_Id!: bigint;
+  @Min(1, {
+    message: `Quantity can't be 0. Enter atleast 1.`,
+  })
+  @IsNumber()
+  quantity!: number;
 }

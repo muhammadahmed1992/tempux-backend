@@ -5,7 +5,8 @@ export interface ProductSummaryOutputDTO {
   name: string;
   title: string | null;
   averageRating: number;
-  price: string;
+  price: number;
+  symbol: string;
   colors: {
     id: number;
     name: string;

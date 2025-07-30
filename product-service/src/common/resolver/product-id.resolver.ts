@@ -7,9 +7,9 @@ export class ProductIdResolver {
 
   resolve(hashid: string): number {
     const decoded = this.hashidsService.decode(hashid);
-    if (!decoded.length) {
+    if (!decoded) {
       throw new BadRequestException(`Invalid product_public_id: ${hashid}`);
     }
-    return decoded[0];
+    return Number(decoded);
   }
 }
