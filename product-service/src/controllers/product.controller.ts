@@ -24,7 +24,7 @@ import Constants from '@Helper/constants';
 import ResponseHelper from '@Helper/response-helper';
 import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
 import ApiResponse from '@Helper/api-response';
-import Meta from '@Helper/meta';
+import { ProductAnalyticsService } from '@Services/product-analytics.service';
 
 @Controller()
 export class ProductController {
@@ -32,6 +32,7 @@ export class ProductController {
     private readonly productService: ProductService,
     private readonly favoriteService: FavoriteService,
     private readonly cartService: CartService,
+    private readonly productAnalyticsService: ProductAnalyticsService,
   ) {}
 
   /**
@@ -156,13 +157,27 @@ export class ProductController {
     return this.cartService.addProductToCart(cart);
   }
 
-  // TODO: Need to Make it put
-  @UseGuards(JwtAuthGuard)
+  // TODO: Need to Make it Delete
   @Post('cart/remove')
+  @UseGuards(JwtAuthGuard)
   async removeFromCart(
     @UserId() userId: bigint,
     @Body() cart: RemoveCartItemRequestDTO[],
   ) {
     return this.cartService.removeFromCart(userId, cart);
+  }
+
+  @Post('/analytics')
+  @UseGuards(JwtAuthGuard)
+  async createViewerShipAnalytics(
+    @UserId() userId: bigint,
+    @Body() analytics: { productId: bigint; itemId: bigint },
+  ) {
+    return this.productAnalyticsService.recordProductView(
+      userId,
+      analytics.productId,
+      analytics.itemId,
+      userId,
+    );
   }
 }

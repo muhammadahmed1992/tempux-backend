@@ -24,6 +24,7 @@ import { CartController } from '@Controllers/cart.controller';
 import { ConfigModule } from '@nestjs/config';
 import { SlugModule } from './slug/slug.module';
 import { HashidsModule } from './hash-ids/hash-ids.module';
+import { GlobalConfigurationService } from '@Services/global.configuration.service';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { HashidsModule } from './hash-ids/hash-ids.module';
     CustomProductVariantCategoryService,
     FavoriteService,
     CartService,
+    GlobalConfigurationService,
   ],
 })
 export class AppModule {}
