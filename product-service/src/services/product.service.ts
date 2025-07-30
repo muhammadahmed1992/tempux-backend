@@ -11,13 +11,6 @@ import { CustomProductVariantCategoryService } from './custom-product-category.s
 import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
 import { ProductImageOutput } from '@DTO/product.images.info.dto';
 
-interface MinimalProductVariantResponseDto {
-  product_variant_id: bigint;
-  productName: string;
-  productTitle?: string; // Title is optional in your schema
-  productDescription?: string; // Description is optional in your schema
-  currencySymbol: string;
-}
 @Injectable()
 export class ProductService {
   constructor(
@@ -254,7 +247,7 @@ export class ProductService {
         id: pv.product.id,
         name: pv.product.name,
         title: pv.product.Title,
-        currencySymbol: pv.currency.curr,
+        symb: pv.currency.curr,
         image_url: pv.base_image_url,
         price: pv.price.toFixed(2),
       }),
