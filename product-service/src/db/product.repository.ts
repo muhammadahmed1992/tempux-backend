@@ -19,11 +19,11 @@ export class ProductRepository extends BaseRepository<
   }
 
   /**
-   *
-   * @param productId It is the main productId to fetch it's summary. Also it returns the color in asending order so that the details can be fetched sequentially in order to enhance the performance.
+   * @param userId It is an optional parameter if user is authenticated.
+   * @param productId It is the main productId to fetch it's summary. Also it returns the color in asending order so that the   details can be fetched sequentially in order to enhance the performance.
    * @returns product summary with price, discount, variant, images and average ratings
    */
-  async getProductSummary(productId: bigint) {
+  async getProductSummary(userId: bigint | null, productId: bigint) {
     return this.model.findUnique({
       where: {
         id: productId,
@@ -75,13 +75,24 @@ export class ProductRepository extends BaseRepository<
                 order: 'asc',
               },
             },
+            productVariantFavorite: userId
+              ? {
+                  where: {
+                    user_id: userId,
+                    is_deleted: false,
+                  },
+                  select: {
+                    id: true,
+                  },
+                }
+              : false,
           },
           where: {
             is_deleted: false,
           },
           orderBy: {
             color: {
-              name: 'asc', // Order variants by color name
+              name: 'asc',
             },
           },
         },

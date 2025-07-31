@@ -1,5 +1,10 @@
 /* eslint-disable no-case-declarations */
-import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
@@ -10,6 +15,13 @@ import { CustomFilterConfiguratorService } from './custom-filter-configurator.se
 import { CustomProductVariantCategoryService } from './custom-product-category.service';
 import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
 import { ProductImageOutput } from '@DTO/product.images.info.dto';
+import { ProductAnalyticsService } from './product-analytics.service';
+
+/**
+ * Define types used only in this service
+ */
+type ProductSummaryResult = any;
+type ViewershipCountResult = number;
 
 @Injectable()
 export class ProductService {
@@ -18,6 +30,7 @@ export class ProductService {
     private readonly productVariantService: ProductVariantService,
     private readonly customFilterConfiguratorService: CustomFilterConfiguratorService,
     private readonly customProductCategoryService: CustomProductVariantCategoryService,
+    private readonly productAnalytics: ProductAnalyticsService,
   ) {}
 
   /**
@@ -28,15 +41,46 @@ export class ProductService {
    * @throws NotFoundException if the product is not found or is deleted.
    */
   async getProductSummary(
+    userId: bigint | null,
     productId: bigint,
   ): Promise<ApiResponse<ProductSummaryOutputDTO>> {
-    const productData = (await this.repository.getProductSummary(
-      productId,
-    )) as any;
+    // Initialize default values
+    let productData: ProductSummaryResult | null = null;
+    let viewershipCount: ViewershipCountResult = 0;
 
-    if (!productData) {
-      throw new NotFoundException(
-        `Product with ID ${productId} not found or is deleted.`,
+    const [productResult, viewerShipCountResult] = await Promise.allSettled([
+      this.repository.getProductSummary(userId, productId),
+      this.productAnalytics.getProductUniqueViewershipCount(productId),
+    ]);
+
+    // Handle product data result
+    if (productResult.status === 'fulfilled') {
+      productData = productResult.value;
+      if (!productData) {
+        console.warn(`Product with ID ${productId} not found.`);
+        throw new NotFoundException(`Product with ID ${productId} not found.`);
+      }
+    } else {
+      // Product data fetching failed
+      // TODO: This can be improved later on
+      console.error(
+        `Error fetching product summary for ID ${productId}:`,
+        productResult.reason,
+      );
+      // TODO: This can be improved later on
+      console.error(productResult.reason);
+      throw new InternalServerErrorException(
+        `There is an error while making a request`,
+      );
+    }
+
+    // Failure should not block the main product processing...
+    if (viewerShipCountResult.status === 'fulfilled') {
+      viewershipCount = viewerShipCountResult?.value?.data;
+    } else {
+      console.warn(
+        `Could not fetch viewership count for product ID ${productId}:`,
+        viewerShipCountResult.reason,
       );
     }
 
@@ -70,10 +114,11 @@ export class ProductService {
         price: number;
         discount: number;
         inStock: boolean;
+        isFavorite: boolean | null;
       }
     >();
 
-    productData.productVariants.forEach((variant: any) => {
+    productData.productVariants.forEach((variant: any, idx: number) => {
       if (variant.color) {
         uniqueColorsMap.set(variant.id, {
           variantId: variant.id,
@@ -83,6 +128,9 @@ export class ProductService {
           price: variant.price.toFixed(2),
           discount: variant.discount ? variant.discount.toFixed(2) : 0,
           inStock: variant.quantity > 0,
+          isFavorite: variant.productVariantFavorite
+            ? !!variant.productVariantFavorite[idx]?.id
+            : null,
         });
       }
     });
@@ -117,6 +165,7 @@ export class ProductService {
       symbol: firstActiveVariant.currency?.symbol || '$',
       colors: colors,
       images: images,
+      viewerShipCount: viewershipCount || 0,
     };
 
     return ResponseHelper.CreateResponse<ProductSummaryOutputDTO>(
@@ -132,6 +181,7 @@ export class ProductService {
     pageNumber: number,
     pageSize: number,
     isAccessory: boolean,
+    userId?: bigint,
     order?: object,
     where?: object,
     select?: object,
@@ -209,8 +259,31 @@ export class ProductService {
       base_image_url: true,
       price: true,
       product: {
-        select: { id: true, ...select },
+        select: {
+          id: true,
+          ...select,
+          productTags: {
+            select: {
+              tags: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       },
+      ...(userId && {
+        productVariantFavorite: {
+          where: {
+            user_id: userId,
+            is_deleted: false,
+          },
+          select: {
+            id: true,
+          },
+        },
+      }),
       currency: {
         select: {
           // Use select on currency_exchange to get only curr (currency symbol)
@@ -239,9 +312,11 @@ export class ProductService {
           name: string;
           description: string;
           Title: string;
+          productTags: any[];
         };
         price: number;
         currency: { curr: string };
+        productVariantFavorite: any;
       }) => ({
         product_variant_id: pv.id,
         id: pv.product.id,
@@ -250,6 +325,8 @@ export class ProductService {
         symb: pv.currency.curr,
         image_url: pv.base_image_url,
         price: pv.price.toFixed(2),
+        isFavorite: userId ? !!pv.productVariantFavorite?.[0]?.id : null,
+        tags: pv.product?.productTags?.map((p) => p.tags),
       }),
     );
 
