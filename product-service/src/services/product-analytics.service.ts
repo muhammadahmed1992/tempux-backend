@@ -32,7 +32,7 @@ export class ProductAnalyticsService {
 
     // 2. Calculate the cutoff time for considering a view "unique"
     const cutoffTime = new Date();
-    cutoffTime.setHours(cutoffTime.getHours() - viewershipWindowHours);
+    cutoffTime.setHours(cutoffTime.getHours() - viewershipWindowHours.data);
 
     // 3. Check if a view for this user, product, and variant exists within the window
     const existingView = await this.repository.findFirst({
@@ -68,5 +68,18 @@ export class ProductAnalyticsService {
     }
 
     return ResponseHelper.CreateResponse<boolean>('', true, HttpStatus.OK);
+  }
+
+  /**
+   * @param productId Particular product which is being viewed by the user
+   * @param variantId Particular product variant which is being viewed by the user
+   * @returns The unique count against this passed product and variant within cut-off time i.e in last 48 hours.
+   */
+  async getProductUniqueViewershipCount(productId: bigint, variantId?: bigint) {
+    const count = await this.repository.getViewershipUniqueCount(
+      productId,
+      variantId,
+    );
+    return ResponseHelper.CreateResponse<number>('', count, HttpStatus.OK);
   }
 }

@@ -9,6 +9,7 @@ import { CustomProductVariantCategoryRepository } from '@Repository/custom-produ
 import { FavoriteRepository } from '@Repository/favorite.repository';
 import { GlobalConfigurationRepository } from '@Repository/global.configuration.repository';
 import { ProductVariantRepository } from '@Repository/product-variant.repository';
+import { ProductAnalyticsRepository } from '@Repository/product.analytics.repository';
 import { ProductRepository } from '@Repository/product.repository';
 import { SizeRepository } from '@Repository/size.repository';
 import { TypeRepository } from '@Repository/types.repository';
@@ -30,6 +31,7 @@ import { PrismaService } from '@Services/prisma.service';
     FavoriteRepository,
     CartRepository,
     GlobalConfigurationRepository,
+    ProductAnalyticsRepository,
   ],
   exports: [
     PrismaService,
@@ -46,6 +48,7 @@ import { PrismaService } from '@Services/prisma.service';
     FavoriteRepository,
     CartRepository,
     GlobalConfigurationRepository,
+    ProductAnalyticsRepository,
   ],
 })
 export class RepositoryModule {}

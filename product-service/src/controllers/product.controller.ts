@@ -1,5 +1,5 @@
 import { GetAllQueryDTO } from '@DTO/get-all-query.dto';
-import { UserId } from '@Decorators/userId.decorator';
+import { UserId } from '@Auth/decorators/userId.decorator';
 import {
   BadRequestException,
   Body,
@@ -25,6 +25,8 @@ import ResponseHelper from '@Helper/response-helper';
 import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
 import ApiResponse from '@Helper/api-response';
 import { ProductAnalyticsService } from '@Services/product-analytics.service';
+import { OptionalJwtAuthGuard } from '@Auth/optional.jwt-auth.guard';
+import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
 
 @Controller()
 export class ProductController {
@@ -42,9 +44,11 @@ export class ProductController {
    * @returns ProductDetails
    */
   @Get('/list/:p')
+  @UseGuards(OptionalJwtAuthGuard)
   async getAll(
     @Query() query: GetAllQueryDTO,
     @Param('p') productType: ProductType,
+    @OptionalUser() userId?: bigint,
   ) {
     if (!Utils.IsEnumValue(ProductType, productType))
       throw new BadRequestException(Constants.INVALID_PRODUCT_PARAMETER);
@@ -55,6 +59,7 @@ export class ProductController {
       page,
       pageSize,
       pType,
+      userId,
       orderBy,
       where,
       select,
@@ -69,12 +74,14 @@ export class ProductController {
    */
   // Example route: GET /products/123/summary
   @Get(':id/summary')
+  @UseGuards(OptionalJwtAuthGuard)
   async getProductSummary(
     @Param('id', ParseIntPipe) id: string,
+    @OptionalUser() userId: bigint | null,
   ): Promise<ApiResponse<ProductSummaryOutputDTO>> {
     // Convert string ID from URL to BigInt
     const productId = BigInt(id);
-    return this.productService.getProductSummary(productId);
+    return this.productService.getProductSummary(userId, productId);
   }
 
   /**

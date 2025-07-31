@@ -25,6 +25,8 @@ import { ConfigModule } from '@nestjs/config';
 import { SlugModule } from './slug/slug.module';
 import { HashidsModule } from './hash-ids/hash-ids.module';
 import { GlobalConfigurationService } from '@Services/global.configuration.service';
+import { ProductAnalyticsService } from '@Services/product-analytics.service';
+import { GlobalConfigurationController } from '@Controllers/global.configuration.controller';
 
 @Module({
   imports: [
@@ -46,6 +48,7 @@ import { GlobalConfigurationService } from '@Services/global.configuration.servi
     ColorController,
     ProductController,
     CartController,
+    GlobalConfigurationController,
   ],
   providers: [
     BrandService,
@@ -60,6 +63,7 @@ import { GlobalConfigurationService } from '@Services/global.configuration.servi
     FavoriteService,
     CartService,
     GlobalConfigurationService,
+    ProductAnalyticsService,
   ],
 })
 export class AppModule {}
