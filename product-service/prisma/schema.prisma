@@ -295,7 +295,7 @@ model product {
   productCart cart[] @relation("ProductCart")
   productOwnership ownership_proof[] @relation("ProductOwnership")
   productSignOfWear sign_of_wear[] @relation("ProductSignOfWear")
-
+  productAnalytics product_analytics[]
   @@unique([product_public_id])
 }
 model product_images {
@@ -380,6 +380,7 @@ model product_variants {
   productVariantOwnership ownership_proof[] @relation("ProductVariantOwnership")
   productVariantSignOfWear sign_of_wear[] @relation("ProductVariantSignOfWear")
   productVariantCart cart[] @relation("ProductVariantCart")
+  productAnalytics product_analytics[]
 }
 
 model movement {
@@ -502,4 +503,23 @@ model GlobalConfiguration {
   is_deleted   Boolean      @default(false)
 
   @@map("global_configuration")
+}
+model product_analytics {
+  id                 BigInt      @id @default(autoincrement())
+  user_id            BigInt
+  product_id         BigInt
+  product_variant_id BigInt
+  viewed_at          DateTime    @default(now()) @db.Timestamptz(6)
+
+  product        product   @relation(fields: [product_id], references: [id])
+  productVariant product_variants @relation(fields: [product_variant_id], references: [id])
+
+  created_by         BigInt
+  created_at         DateTime    @default(now()) @db.Timestamptz(6)
+  updated_by         BigInt?
+  updated_at         DateTime?   @db.Timestamptz(6)
+  is_deleted         Boolean     @default(false)
+
+  @@index([user_id, product_id, viewed_at])
+  @@unique([user_id, product_id, viewed_at])
 }

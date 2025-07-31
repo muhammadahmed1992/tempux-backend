@@ -1,6 +1,6 @@
 import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import { GetAllQueryDTO } from '@DTO/get-all-query.dto';
-import { UserId } from '@Helper/decorators/userId.decorator';
+import { UserId } from '@Auth/decorators/userId.decorator';
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { CartService } from '@Services/cart.service';
 

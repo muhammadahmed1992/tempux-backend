@@ -13,4 +13,5 @@ export interface ProductSummaryOutputDTO {
     hexCode?: string;
   }[];
   images: ProductImageOutput[];
+  viewerShipCount: number;
 }
