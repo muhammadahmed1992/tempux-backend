@@ -83,7 +83,6 @@ export class ReviewsRepository extends BaseRepository<
    * @returns id of the newly created record.
    */
   async review(userId: bigint, review: ProductRatingReviewDTO) {
-    console.log(`userId: ${userId}`);
     return this.prisma.reviews_ratings.upsert({
       where: {
         product_id_reviewedBy: {

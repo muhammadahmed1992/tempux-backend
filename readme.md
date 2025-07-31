@@ -122,3 +122,12 @@ To get the 3rd page, with 15 items, sorted by `updated_at` descending, selecting
 ```
 /api/products?page=3&pageSize=15&sortBy=updated_at&sortDir=desc&select=id,name,status&filter[status][eq]=active&filter[or][1][category][contains][in]=shoes&expression=new_arrivals
 ```
+
+#### **Nested Relation Filtering (every, some, none) Request URL**
+
+This is used for filtering products based on conditions within their related tables (e.g., productTags).
+Filtering by a specific tag: ?filter[productTags][every][tag_id][eq]=123
+
+Finds products where every associated tag has an ID of 123.
+
+Note: You can use [some] to find products where at least one associated tag meets the condition. For example, ?filter[product][productTags][some][tag_id][eq]=123

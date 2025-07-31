@@ -24,7 +24,7 @@
       "@Common/*": ["src/common/*"],
       "@Auth/*": ["src/auth/*"],
       "@Proxy/*": ["src/proxy/*"],
-      "@Decorators/*": ["src/common/helper/decorators/*"],
+      "@Decorators/*": ["src/auth/decorators/*"],
       "@HashIds/*": ["src/hash-ids/*"]
     }
   },
