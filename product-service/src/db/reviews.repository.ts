@@ -4,7 +4,7 @@ import { BaseRepository } from './base.repository';
 import {
   ProductRatingReviewDTO,
   ProductRatingReviewsDTO,
-} from '@DTO/product.rating.reviews';
+} from '@DTO/product-rating-reviews';
 import { PrismaService } from '@Services/prisma.service';
 
 @Injectable()

@@ -13,8 +13,8 @@ import { CustomFilter } from '@Common/enums/custom-filter.enum';
 import { ProductVariantService } from './product-variant.service';
 import { CustomFilterConfiguratorService } from './custom-filter-configurator.service';
 import { CustomProductVariantCategoryService } from './custom-product-category.service';
-import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
-import { ProductImageOutput } from '@DTO/product.images.info.dto';
+import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
+import { ProductImageOutput } from '@DTO/product-images-info.dto';
 import { ProductAnalyticsService } from './product-analytics.service';
 
 /**
@@ -256,11 +256,14 @@ export class ProductService {
     // This ensures all necessary related data is fetched.
     const selectOptions: any = {
       id: true,
+      sku: true,
       base_image_url: true,
       price: true,
       product: {
         select: {
           id: true,
+          product_public_id: true,
+          product_slug: true,
           ...select,
           productTags: {
             select: {
@@ -309,17 +312,20 @@ export class ProductService {
         base_image_url: string;
         product: {
           id: bigint;
+          product_public_id: string;
           name: string;
           description: string;
           Title: string;
+          product_slug: string;
           productTags: any[];
         };
         price: number;
         currency: { curr: string };
         productVariantFavorite: any;
       }) => ({
-        product_variant_id: pv.id,
-        id: pv.product.id,
+        item_id: pv.id,
+        id: pv.product.product_public_id,
+        slug: pv.product.product_slug,
         name: pv.product.name,
         title: pv.product.Title,
         symb: pv.currency.curr,

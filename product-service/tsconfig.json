@@ -25,7 +25,9 @@
       "@Auth/*": ["src/auth/*"],
       "@Proxy/*": ["src/proxy/*"],
       "@Decorators/*": ["src/auth/decorators/*"],
-      "@HashIds/*": ["src/hash-ids/*"]
+      "@HashIds/*": ["src/hash-ids/*"],
+      "@Resolvers/*": ["src/common/resolver/*"],
+      "@Pipes/*": ["src/common/pipes/*"]
     }
   },
   "include": ["src/**/*.ts", "node_modules/@prisma/client"],
