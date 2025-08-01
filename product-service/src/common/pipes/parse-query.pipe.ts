@@ -1,4 +1,5 @@
 import { CustomFilter } from '@Common/enums/custom-filter.enum';
+import { HashidsService } from '@HashIds/hashids.service';
 import Constants from '@Helper/constants';
 import {
   PipeTransform,
@@ -84,6 +85,7 @@ const operatorMap: Record<string, PrismaOperator> = {
 export class ParseQueryPipe
   implements PipeTransform<RawQueryParams, TransformedQuery>
 {
+  constructor(private readonly hashIds: HashidsService) {}
   transform(
     value: RawQueryParams,
     metadata: ArgumentMetadata,
@@ -181,7 +183,15 @@ export class ParseQueryPipe
       return;
     }
 
+    /**
+     * Here I'm replacing product_id's value from obfuscated product_public_id with actual DB value by
+     * decoding using hashIds for now.
+     */
+
     const currentPart = parts.shift()!;
+    if (currentPart === 'product_id') {
+      rawValue = this.hashIds.decode(rawValue);
+    }
     const prismaOperator = operatorMap[currentPart];
 
     // Check for logical operators (AND, OR, NOT)

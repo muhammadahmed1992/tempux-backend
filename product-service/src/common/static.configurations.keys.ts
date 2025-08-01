@@ -8,9 +8,6 @@ export class StaticConfiguration {
    */
   public static get viewershipWindowHours(): number {
     if (StaticConfiguration._viewershipWindowHours === undefined) {
-      console.warn(
-        '[StaticConfigurationKeys] StaticConfiguration.viewershipWindowHours accessed before initialization.',
-      );
       // TOOD: Need to implement proper fallback..
       return 48;
     }
