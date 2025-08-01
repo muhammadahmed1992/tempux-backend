@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma, cart } from '@prisma/client';
 import { BaseRepository } from './base.repository';
-import { AddToCartRequestDTO } from '@DTO/add.to.cart.request.dto';
-import { RemoveCartItemRequestDTO } from '@DTO/remove.cart.request.dto';
+import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
+import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { PrismaService } from '../services/prisma.service';
 
 @Injectable()
@@ -130,7 +130,7 @@ export class CartRepository extends BaseRepository<
             },
             product: {
               select: {
-                id: true,
+                product_public_id: true,
                 name: true,
                 title: true,
                 reference_number: true,

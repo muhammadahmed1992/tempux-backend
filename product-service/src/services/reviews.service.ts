@@ -9,12 +9,12 @@ import { ReviewsRepository } from '@Repository/reviews.repository';
 import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
-import { AverageProductRatingDTO } from '@DTO/average.product.rating';
+import { AverageProductRatingDTO } from '@DTO/average-product-rating';
 import {
   ProductRatingReviewDTO,
   ProductRatingReviewsDTO,
   ProductRatingReviewsUserDTO,
-} from '@DTO/product.rating.reviews';
+} from '@DTO/product-rating-reviews';
 
 @Injectable()
 export class ReviewsService {

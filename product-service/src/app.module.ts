@@ -27,6 +27,11 @@ import { HashidsModule } from './hash-ids/hash-ids.module';
 import { GlobalConfigurationService } from '@Services/global.configuration.service';
 import { ProductAnalyticsService } from '@Services/product-analytics.service';
 import { GlobalConfigurationController } from '@Controllers/global.configuration.controller';
+import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
+import { APP_PIPE } from '@nestjs/core';
+import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
+import { ProductIdResolver } from '@Common/resolver/product-id.resolver';
+import { ParseAddToCartPipe } from '@Common/pipes/parse-add-to-cart-dto.pipe';
 
 @Module({
   imports: [
@@ -51,6 +56,10 @@ import { GlobalConfigurationController } from '@Controllers/global.configuration
     GlobalConfigurationController,
   ],
   providers: [
+    {
+      provide: APP_PIPE,
+      useClass: ParseQueryPipe,
+    },
     BrandService,
     TypesService,
     CategoryService,
@@ -64,6 +73,8 @@ import { GlobalConfigurationController } from '@Controllers/global.configuration
     CartService,
     GlobalConfigurationService,
     ProductAnalyticsService,
+    ProductIdResolver,
+    ParseProductIdPipe,
   ],
 })
 export class AppModule {}

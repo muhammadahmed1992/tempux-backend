@@ -5,11 +5,11 @@ import { HashidsService } from '@HashIds/hashids.service'; // adjust path
 export class ProductIdResolver {
   constructor(private readonly hashidsService: HashidsService) {}
 
-  resolve(hashid: string): number {
+  resolve(hashid: string): bigint {
     const decoded = this.hashidsService.decode(hashid);
     if (!decoded) {
       throw new BadRequestException(`Invalid product_public_id: ${hashid}`);
     }
-    return Number(decoded);
+    return decoded;
   }
 }
