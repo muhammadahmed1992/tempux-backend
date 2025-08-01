@@ -1,4 +1,9 @@
-import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import { CartRepository } from '@Repository/cart.repository';
@@ -6,9 +11,13 @@ import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
 import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { CartDetailsResponseDTO } from '@DTO/cart-details-response.dto';
 import Constants from '@Helper/constants';
+import { ProductVariantService } from './product-variant.service';
 @Injectable()
 export class CartService {
-  constructor(private readonly repository: CartRepository) {}
+  constructor(
+    private readonly repository: CartRepository,
+    private readonly productVariantService: ProductVariantService,
+  ) {}
 
   /**
    * This method will add user's product to the cart.
@@ -18,6 +27,17 @@ export class CartService {
   async addProductToCart(
     cart: AddToCartRequestDTO,
   ): Promise<ApiResponse<number>> {
+    const stockExistanceValidation =
+      await this.productVariantService.checkIfStockAvailable(
+        cart.productId,
+        cart.product_variant_Id,
+        cart.quantity,
+      );
+
+    if (!stockExistanceValidation)
+      throw new BadRequestException(
+        `Specific product/variant doesn't have such quantity available in the stock`,
+      );
     const result = (await this.repository.addProductInCart(cart)).id;
     return ResponseHelper.CreateResponse<number>(
       '',
@@ -80,7 +100,7 @@ export class CartService {
           !item.product_variant.color ||
           !item.product_variant.size
         ) {
-          // Log a warning if data is inconsistent, or handle as per your application's error policy
+          // Log a warning if data is inconsistent, or handle as per application's error policy
           console.warn(
             `Cart item ${item.id} has missing product, variant, color, or size data.`,
           );

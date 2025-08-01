@@ -30,6 +30,8 @@ import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { ParseAddToCartPipe } from '@Pipes/parse-add-to-cart-dto.pipe';
 import { ParseRemoveCartItemPipe } from '@Pipes/parse-remove-to-cart-dto.pipe';
 import { ParseAddToAnalyticsPipe } from '@Common/pipes/parse-add-to-analytics-dto.pipe';
+import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
+import { ParseOrderSummaryPipe } from '@Common/pipes/parse-order-summary-request-dto.pipe';
 
 @Controller()
 export class ProductController {
@@ -187,4 +189,10 @@ export class ProductController {
       userId,
     );
   }
+
+  @Get('/order-summary')
+  @UseGuards(JwtAuthGuard)
+  async fetchOrderSummary(
+    @Body(ParseOrderSummaryPipe) summary: OrderSummaryRequestDTO[],
+  ) {}
 }

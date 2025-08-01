@@ -1,8 +1,5 @@
-import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
 import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
 import { ProductIdResolver } from '@Resolvers/product-id.resolver';
-import { plainToClass } from 'class-transformer';
-import { validate } from 'class-validator';
 
 @Injectable()
 export class ParseAddToAnalyticsPipe implements PipeTransform {

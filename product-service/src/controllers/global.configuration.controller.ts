@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { GlobalConfigurationService } from '@Services/global.configuration.service';
+import { GlobalConfigurationService } from '@Services/global-configuration.service';
 
 @Controller('global-config')
 export class GlobalConfigurationController {
