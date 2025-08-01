@@ -10,7 +10,6 @@ import { ConfigService } from '@nestjs/config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalPipes(new ParseQueryPipe());
   app.useGlobalPipes(
     new ValidationPipe({
       // Strips properties not defined in the DTO

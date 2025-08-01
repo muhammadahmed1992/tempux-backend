@@ -2,9 +2,9 @@ import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import { CartRepository } from '@Repository/cart.repository';
-import { AddToCartRequestDTO } from '@DTO/add.to.cart.request.dto';
-import { RemoveCartItemRequestDTO } from '@DTO/remove.cart.request.dto';
-import { CartDetailsResponseDTO } from '@DTO/cart.details.response.dto';
+import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
+import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
+import { CartDetailsResponseDTO } from '@DTO/cart-details-response.dto';
 import Constants from '@Helper/constants';
 @Injectable()
 export class CartService {
@@ -90,7 +90,7 @@ export class CartService {
         // Return the shaped object conforming to CartDetailsResponseDTO
         return {
           id: item.id, // This is the ID of the cart entry itself
-          productId: item.product_variant.product.id,
+          productId: item.product_variant.product.product_public_id,
           productName: item.product_variant.product.name,
           productTitle: item.product_variant.product.title,
           reference_number: item.product_variant.product.reference_number,

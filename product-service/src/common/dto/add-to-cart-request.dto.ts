@@ -2,9 +2,7 @@ import { IsNotEmpty, IsNumber, Min } from 'class-validator';
 
 export class AddToCartRequestDTO {
   userId!: bigint;
-
   @IsNotEmpty()
-  @IsNumber()
   productId!: bigint;
   @IsNotEmpty()
   @IsNumber()

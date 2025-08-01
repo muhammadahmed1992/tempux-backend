@@ -7,26 +7,29 @@ import {
   Get,
   HttpStatus,
   Param,
-  ParseIntPipe,
   Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ProductService } from '@Services/product.service';
 import { FavoriteService } from '@Services/favorite.service';
-import { AddToCartRequestDTO } from '@DTO/add.to.cart.request.dto';
+import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
 import { CartService } from '@Services/cart.service';
-import { RemoveCartItemRequestDTO } from '@DTO/remove.cart.request.dto';
+import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { ProductType } from '@Common/enums/product.type.enum';
 import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import Utils from '@Common/utils';
 import Constants from '@Helper/constants';
 import ResponseHelper from '@Helper/response-helper';
-import { ProductSummaryOutputDTO } from '@DTO/product.summary.info.dto';
+import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import ApiResponse from '@Helper/api-response';
 import { ProductAnalyticsService } from '@Services/product-analytics.service';
 import { OptionalJwtAuthGuard } from '@Auth/optional.jwt-auth.guard';
 import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
+import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
+import { ParseAddToCartPipe } from '@Pipes/parse-add-to-cart-dto.pipe';
+import { ParseRemoveCartItemPipe } from '@Pipes/parse-remove-to-cart-dto.pipe';
+import { ParseAddToAnalyticsPipe } from '@Common/pipes/parse-add-to-analytics-dto.pipe';
 
 @Controller()
 export class ProductController {
@@ -76,12 +79,10 @@ export class ProductController {
   @Get(':id/summary')
   @UseGuards(OptionalJwtAuthGuard)
   async getProductSummary(
-    @Param('id', ParseIntPipe) id: string,
+    @Param('id', ParseProductIdPipe) id: bigint,
     @OptionalUser() userId: bigint | null,
   ): Promise<ApiResponse<ProductSummaryOutputDTO>> {
-    // Convert string ID from URL to BigInt
-    const productId = BigInt(id);
-    return this.productService.getProductSummary(userId, productId);
+    return this.productService.getProductSummary(userId, id);
   }
 
   /**
@@ -92,7 +93,7 @@ export class ProductController {
    */
   @Get(':id/details')
   async getProductInformation(
-    @Param('id', ParseIntPipe) id: string,
+    @Param('id', ParseProductIdPipe) id: bigint,
     @Query('sku') sku: string,
   ) {
     return ResponseHelper.CreateResponse<any>(
@@ -140,25 +141,23 @@ export class ProductController {
     );
   }
 
-  @Post('favorite/:productId/:itemId')
+  @Post('favorite/:id/:itemId')
   @UseGuards(JwtAuthGuard)
   async favorite(
     @UserId() userId: bigint,
-    @Param('productId') productId: bigint,
+    @Param('id', ParseProductIdPipe) id: bigint,
     @Param('itemId') itemId: bigint,
     @Body('flag') flag: boolean,
   ) {
-    return this.favoriteService.markProductAsFavorite(
-      userId,
-      productId,
-      itemId,
-      flag,
-    );
+    return this.favoriteService.markProductAsFavorite(userId, id, itemId, flag);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('cart')
-  async addToCart(@UserId() userId: bigint, @Body() cart: AddToCartRequestDTO) {
+  @UseGuards(JwtAuthGuard)
+  async addToCart(
+    @UserId() userId: bigint,
+    @Body(ParseAddToCartPipe) cart: AddToCartRequestDTO,
+  ) {
     // Adding userId
     cart.userId = userId;
     return this.cartService.addProductToCart(cart);
@@ -169,7 +168,7 @@ export class ProductController {
   @UseGuards(JwtAuthGuard)
   async removeFromCart(
     @UserId() userId: bigint,
-    @Body() cart: RemoveCartItemRequestDTO[],
+    @Body(ParseRemoveCartItemPipe) cart: RemoveCartItemRequestDTO[],
   ) {
     return this.cartService.removeFromCart(userId, cart);
   }
@@ -178,12 +177,13 @@ export class ProductController {
   @UseGuards(JwtAuthGuard)
   async createViewerShipAnalytics(
     @UserId() userId: bigint,
-    @Body() analytics: { productId: bigint; itemId: bigint },
+    @Body(ParseAddToAnalyticsPipe)
+    analytics: { productId: bigint; product_variant_Id: bigint },
   ) {
     return this.productAnalyticsService.recordProductView(
       userId,
       analytics.productId,
-      analytics.itemId,
+      analytics.product_variant_Id,
       userId,
     );
   }

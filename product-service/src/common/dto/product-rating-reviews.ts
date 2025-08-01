@@ -36,6 +36,5 @@ export class ProductRatingReviewDTO {
   review?: string;
 
   @IsNotEmpty({ message: 'Product ID is required.' })
-  @IsInt({ message: 'Product ID must be a valid number.' })
-  productId: any;
+  productId!: bigint;
 }

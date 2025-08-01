@@ -1,4 +1,4 @@
-import { ProductImageOutput } from './product.images.info.dto';
+import { ProductImageOutput } from './product-images-info.dto';
 
 export interface ProductSummaryOutputDTO {
   id: BigInt;
