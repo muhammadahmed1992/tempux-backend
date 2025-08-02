@@ -2,11 +2,12 @@ import { IsNotEmpty, IsNumber, Min } from 'class-validator';
 
 export class OrderSummaryRequestDTO {
   @IsNotEmpty()
+  @IsNumber()
   productId!: bigint;
 
   @IsNotEmpty()
   @IsNumber()
-  product_variant_Id!: bigint;
+  itemId!: bigint;
 
   @IsNotEmpty()
   @Min(1, {

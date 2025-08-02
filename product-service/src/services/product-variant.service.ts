@@ -4,6 +4,11 @@ import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
 import { ProductVariantRepository } from '@Repository/product-variant.repository';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
+import {
+  TaxLineItemDTO,
+  OrderSummaryItemDTO,
+  OrderSummaryDTO,
+} from '@DTO/order-summary-response.dto';
 @Injectable()
 export class ProductVariantService {
   constructor(private readonly repository: ProductVariantRepository) {}
@@ -59,18 +64,20 @@ export class ProductVariantService {
    * @param summary The request dto object which contains selected productId, variantId and the quantity
    * @returns Promise<ApiResponse<OrderSummaryDTO>>
    */
-  async getOrderSummary(summary: OrderSummaryRequestDTO[]) {
-    if (!summary || summary?.length === 0)
+  async getOrderSummary(
+    cartItems: OrderSummaryRequestDTO[],
+  ): Promise<ApiResponse<OrderSummaryDTO>> {
+    if (!cartItems || cartItems?.length === 0)
       throw new BadRequestException(
         "Cart is empty. Summary can't be calculated",
       );
 
-    const uniqueVariants = summary.map((s) => s.product_variant_Id);
+    const uniqueVariantIds = cartItems.map((i) => i.itemId);
     const variantsInfo = await this.repository.getProductVariantsWithTax(
-      uniqueVariants,
+      uniqueVariantIds,
     );
 
-    if (variantsInfo.length !== uniqueVariants.length) {
+    if (variantsInfo.length !== uniqueVariantIds.length) {
       throw new BadRequestException('One or more product variants not found.');
     }
 
@@ -78,7 +85,7 @@ export class ProductVariantService {
       variantsInfo.map((variant) => [variant.id, variant]),
     );
     const cartItemMap = new Map(
-      summary.map((item) => [item.product_variant_Id, item]),
+      cartItems.map((item) => [BigInt(item.itemId), item]),
     );
 
     // TODO: Later will move inside a stored procedure probably
@@ -97,42 +104,64 @@ export class ProductVariantService {
 
     let totalSubtotal = 0;
     let totalDiscount = 0;
-    let totalTax = 0;
-    const summaryItems = [];
+    const taxMap = new Map<string, number>();
+    const summaryItems: OrderSummaryItemDTO[] = [];
 
-    for (const cartItem of summary) {
-      const variant = variantMap.get(cartItem.product_variant_Id);
+    for (const cartItem of cartItems) {
+      const variant = variantMap.get(cartItem.itemId)!;
+      const currency = variant.currency;
+      const currencyRate = currency?.exchangeRate?.toFixed(2) || 1;
+      const price = variant.price.toFixed(2) * currencyRate;
+      const discount = variant.discount.toFixed(2) * currencyRate;
 
-      const price = variant?.price;
-      const discount = variant?.discount;
-      const taxRate = variant?.tax?.taxRate || 0;
+      const taxRate = variant.tax?.taxRate.toFixed(2) || 0 * currencyRate;
+      const taxName = variant.tax?.description || 'N/A';
 
       const itemSubtotal = (price - discount) * cartItem.quantity;
       const itemTaxAmount = itemSubtotal * taxRate;
       const itemTotal = itemSubtotal + itemTaxAmount;
 
-      totalSubtotal += itemSubtotal;
+      totalSubtotal += itemSubtotal * currencyRate;
       totalDiscount += discount * cartItem.quantity;
-      totalTax += itemTaxAmount;
+
+      const currentTaxAmount = taxMap.get(taxName) || 0;
+      taxMap.set(taxName, currentTaxAmount + itemTaxAmount);
 
       summaryItems.push({
+        symb: currency?.curr || '$',
         productId: cartItem.productId,
-        product_variant_Id: BigInt(variant.id),
+        itemId: variant.id,
         quantity: cartItem.quantity,
         price: price,
         discount: discount,
         subtotal: itemSubtotal,
         taxAmount: itemTaxAmount,
+        taxName: taxName,
         total: itemTotal,
       });
     }
 
-    return {
-      items: summaryItems,
-      subtotal: totalSubtotal,
-      totalDiscount: totalDiscount,
-      totalTax: totalTax,
-      grandTotal: totalSubtotal + totalTax,
-    };
+    const taxSummary: TaxLineItemDTO[] = Array.from(
+      taxMap,
+      ([taxName, amount]) => ({
+        taxName: taxName,
+        amount: amount,
+      }),
+    );
+
+    const totalTax = taxSummary.reduce((sum, tax) => sum + tax.amount, 0);
+    const grandTotal = totalSubtotal + totalTax;
+
+    return ResponseHelper.CreateResponse<OrderSummaryDTO>(
+      '',
+      {
+        items: summaryItems,
+        subtotal: totalSubtotal,
+        totalDiscount: totalDiscount,
+        taxSummary: taxSummary,
+        grandTotal: grandTotal,
+      },
+      HttpStatus.OK,
+    );
   }
 }

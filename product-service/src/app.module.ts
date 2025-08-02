@@ -31,7 +31,6 @@ import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 import { APP_PIPE } from '@nestjs/core';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { ProductIdResolver } from '@Common/resolver/product-id.resolver';
-import { ParseAddToCartPipe } from '@Common/pipes/parse-add-to-cart-dto.pipe';
 
 @Module({
   imports: [

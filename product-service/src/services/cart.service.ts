@@ -30,7 +30,7 @@ export class CartService {
     const stockExistanceValidation =
       await this.productVariantService.checkIfStockAvailable(
         cart.productId,
-        cart.product_variant_Id,
+        cart.itemId,
         cart.quantity,
       );
 
@@ -88,7 +88,12 @@ export class CartService {
         select,
         order,
       );
-    if (!totalCount) throw new NotFoundException(Constants.NO_CART_DATA_FOUND);
+    if (!totalCount)
+      ResponseHelper.CreateResponse<CartDetailsResponseDTO[]>(
+        Constants.NO_CART_DATA_FOUND,
+        [],
+        HttpStatus.OK,
+      );
     // Map the raw Prisma result to the CartDetailsResponseDTO format
     const detailedCartItems: CartDetailsResponseDTO[] = data
       .map((item) => {

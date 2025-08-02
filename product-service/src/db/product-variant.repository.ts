@@ -35,13 +35,15 @@ export class ProductVariantRepository extends BaseRepository<
           id: productId,
         },
         id: product_variant_Id,
-        quantity,
+        quantity: {
+          gte: quantity,
+        },
       },
       select: {
-        id: true,
+        quantity: true,
       },
     });
-    if (result && result?.id) return true;
+    if (result && result.quantity > 0) return true;
     return false;
   }
 
@@ -67,6 +69,12 @@ export class ProductVariantRepository extends BaseRepository<
           select: {
             description: true,
             taxRate: true,
+          },
+        },
+        currency: {
+          select: {
+            curr: true,
+            exchangeRate: true,
           },
         },
       },

@@ -13,9 +13,6 @@ import {
 } from '@nestjs/common';
 import { ProductService } from '@Services/product.service';
 import { FavoriteService } from '@Services/favorite.service';
-import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
-import { CartService } from '@Services/cart.service';
-import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { ProductType } from '@Common/enums/product.type.enum';
 import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import Utils from '@Common/utils';
@@ -27,19 +24,16 @@ import { ProductAnalyticsService } from '@Services/product-analytics.service';
 import { OptionalJwtAuthGuard } from '@Auth/optional.jwt-auth.guard';
 import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
-import { ParseAddToCartPipe } from '@Pipes/parse-add-to-cart-dto.pipe';
-import { ParseRemoveCartItemPipe } from '@Pipes/parse-remove-to-cart-dto.pipe';
-import { ParseAddToAnalyticsPipe } from '@Common/pipes/parse-add-to-analytics-dto.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
-import { ParseOrderSummaryPipe } from '@Common/pipes/parse-order-summary-request-dto.pipe';
+import { ProductVariantService } from '@Services/product-variant.service';
 
 @Controller()
 export class ProductController {
   constructor(
     private readonly productService: ProductService,
     private readonly favoriteService: FavoriteService,
-    private readonly cartService: CartService,
     private readonly productAnalyticsService: ProductAnalyticsService,
+    private readonly productVariantSerice: ProductVariantService,
   ) {}
 
   /**
@@ -154,45 +148,24 @@ export class ProductController {
     return this.favoriteService.markProductAsFavorite(userId, id, itemId, flag);
   }
 
-  @Post('cart')
-  @UseGuards(JwtAuthGuard)
-  async addToCart(
-    @UserId() userId: bigint,
-    @Body(ParseAddToCartPipe) cart: AddToCartRequestDTO,
-  ) {
-    // Adding userId
-    cart.userId = userId;
-    return this.cartService.addProductToCart(cart);
-  }
-
-  // TODO: Need to Make it Delete
-  @Post('cart/remove')
-  @UseGuards(JwtAuthGuard)
-  async removeFromCart(
-    @UserId() userId: bigint,
-    @Body(ParseRemoveCartItemPipe) cart: RemoveCartItemRequestDTO[],
-  ) {
-    return this.cartService.removeFromCart(userId, cart);
-  }
-
   @Post('/analytics')
   @UseGuards(JwtAuthGuard)
   async createViewerShipAnalytics(
     @UserId() userId: bigint,
-    @Body(ParseAddToAnalyticsPipe)
-    analytics: { productId: bigint; product_variant_Id: bigint },
+    @Body()
+    analytics: { productId: bigint; itemId: bigint },
   ) {
     return this.productAnalyticsService.recordProductView(
       userId,
       analytics.productId,
-      analytics.product_variant_Id,
+      analytics.itemId,
       userId,
     );
   }
 
-  @Get('/order-summary')
+  @Post('/order-summary')
   @UseGuards(JwtAuthGuard)
-  async fetchOrderSummary(
-    @Body(ParseOrderSummaryPipe) summary: OrderSummaryRequestDTO[],
-  ) {}
+  async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
+    return this.productVariantSerice.getOrderSummary(summary);
+  }
 }
