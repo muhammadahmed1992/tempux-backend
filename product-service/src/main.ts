@@ -4,12 +4,12 @@ import ResponseHandlerInterceptor from './interceptor/response-handler.intercept
 import { AllExceptionsFilter } from './filters/global.exception.filter';
 import { ValidationPipe } from '@nestjs/common';
 import { BigIntInterceptor } from './interceptor/big.int.interceptor';
-import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
-import { ConfigService } from '@nestjs/config';
+import { HashidsInterceptor } from './interceptor/encode-decode-senstive-data.interceptor';
+import { HashidsService } from '@HashIds/hashids.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
+  const hashidsService = app.get(HashidsService);
   app.useGlobalPipes(
     new ValidationPipe({
       // Strips properties not defined in the DTO
@@ -39,6 +39,7 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalInterceptors(new BigIntInterceptor());
+  app.useGlobalInterceptors(new HashidsInterceptor(hashidsService));
   app.useGlobalFilters(new AllExceptionsFilter());
   await app.listen(3003);
 }

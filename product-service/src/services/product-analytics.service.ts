@@ -2,7 +2,7 @@ import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ProductAnalyticsRepository } from '@Repository/product.analytics.repository';
-import { GlobalConfigurationService } from '@Services/global.configuration.service';
+import { GlobalConfigurationService } from '@Services/global-configuration.service';
 
 @Injectable()
 export class ProductAnalyticsService {
