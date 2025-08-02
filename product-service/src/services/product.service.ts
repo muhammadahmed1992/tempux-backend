@@ -108,7 +108,7 @@ export class ProductService {
       number,
       {
         id: number;
-        variantId: number;
+        itemId: number;
         name: string;
         hexCode?: string;
         price: number;
@@ -121,7 +121,7 @@ export class ProductService {
     productData.productVariants.forEach((variant: any, idx: number) => {
       if (variant.color) {
         uniqueColorsMap.set(variant.id, {
-          variantId: variant.id,
+          itemId: variant.id,
           id: variant.color.id,
           name: variant.color.name,
           hexCode: variant.color.hex_code || '#000000',
@@ -312,7 +312,6 @@ export class ProductService {
         base_image_url: string;
         product: {
           id: bigint;
-          product_public_id: string;
           name: string;
           description: string;
           Title: string;
@@ -323,8 +322,8 @@ export class ProductService {
         currency: { curr: string };
         productVariantFavorite: any;
       }) => ({
-        item_id: pv.id,
-        id: pv.product.product_public_id,
+        itemId: pv.id,
+        productId: pv.product.id,
         slug: pv.product.product_slug,
         name: pv.product.name,
         title: pv.product.Title,

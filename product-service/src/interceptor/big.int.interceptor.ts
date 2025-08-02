@@ -3,8 +3,8 @@ import {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-} from "@nestjs/common";
-import { Observable, map } from "rxjs";
+} from '@nestjs/common';
+import { Observable, map } from 'rxjs';
 
 @Injectable()
 export class BigIntInterceptor implements NestInterceptor {
@@ -15,11 +15,11 @@ export class BigIntInterceptor implements NestInterceptor {
   private replaceBigInts(obj: any): any {
     if (Array.isArray(obj)) {
       return obj.map((i) => this.replaceBigInts(i));
-    } else if (typeof obj === "object" && obj !== null) {
+    } else if (typeof obj === 'object' && obj !== null) {
       return Object.entries(obj).reduce((acc, [key, value]) => {
         acc[key] =
-          typeof value === "bigint"
-            ? value.toString()
+          typeof value === 'bigint'
+            ? parseInt(value.toString())
             : this.replaceBigInts(value);
         return acc;
       }, {} as Record<string, any>);

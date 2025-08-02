@@ -30,35 +30,45 @@ export class FavoriteRepository extends BaseRepository<
     itemId: bigint,
     flag: boolean,
   ) {
-    console.log(flag);
-    if (flag) {
-      return this.model.create({
-        data: {
+    return this.prisma.favorite.upsert({
+      where: {
+        user_id_product_id_product_variant_id: {
           user_id: userId,
-          product: {
-            connect: {
-              id: productId,
-            },
-          },
-          product_variant: {
-            connect: {
-              id: itemId,
-            },
-          },
-          created_by: userId,
-          created_at: new Date(),
+          product_id: productId,
+          product_variant_id: itemId,
         },
-      });
-    } else {
-      return this.model.delete({
-        where: {
-          user_id_product_id_product_variant_id: {
-            user_id: userId,
-            product_id: productId,
-            product_variant_id: itemId,
+      },
+      create: {
+        user_id: userId,
+        product: {
+          connect: {
+            id: productId,
           },
         },
-      });
-    }
+        product_variant: {
+          connect: {
+            id: itemId,
+          },
+        },
+        created_by: userId,
+        created_at: new Date(),
+      },
+      update: {
+        user_id: userId,
+        product: {
+          connect: {
+            id: productId,
+          },
+        },
+        product_variant: {
+          connect: {
+            id: itemId,
+          },
+        },
+        updated_by: userId,
+        updated_at: new Date(),
+        is_deleted: !flag,
+      },
+    });
   }
 }
