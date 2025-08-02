@@ -24,14 +24,13 @@ import { CartController } from '@Controllers/cart.controller';
 import { ConfigModule } from '@nestjs/config';
 import { SlugModule } from './slug/slug.module';
 import { HashidsModule } from './hash-ids/hash-ids.module';
-import { GlobalConfigurationService } from '@Services/global.configuration.service';
+import { GlobalConfigurationService } from '@Services/global-configuration.service';
 import { ProductAnalyticsService } from '@Services/product-analytics.service';
 import { GlobalConfigurationController } from '@Controllers/global.configuration.controller';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 import { APP_PIPE } from '@nestjs/core';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { ProductIdResolver } from '@Common/resolver/product-id.resolver';
-import { ParseAddToCartPipe } from '@Common/pipes/parse-add-to-cart-dto.pipe';
 
 @Module({
   imports: [

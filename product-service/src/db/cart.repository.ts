@@ -31,7 +31,7 @@ export class CartRepository extends BaseRepository<
         user_id_product_id_product_variant_id: {
           user_id: create.userId,
           product_id: create.productId,
-          product_variant_id: create.product_variant_Id,
+          product_variant_id: create.itemId,
         },
       },
       update: {
@@ -48,7 +48,7 @@ export class CartRepository extends BaseRepository<
         },
         product_variant: {
           connect: {
-            id: create.product_variant_Id,
+            id: create.itemId,
           },
         },
         quantity: create.quantity,

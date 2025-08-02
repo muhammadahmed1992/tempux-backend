@@ -189,7 +189,7 @@ export class ParseQueryPipe
      */
 
     const currentPart = parts.shift()!;
-    if (currentPart === 'product_id') {
+    if (currentPart === 'product_id' || currentPart === 'productId') {
       rawValue = this.hashIds.decode(rawValue);
     }
     const prismaOperator = operatorMap[currentPart];
