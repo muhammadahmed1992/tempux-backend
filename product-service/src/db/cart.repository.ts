@@ -77,7 +77,8 @@ export class CartRepository extends BaseRepository<
       product_id: item.productId,
       product_variant_id: item.product_variant_Id,
     }));
-
+    console.log(`printing the orCondition for debugging`);
+    console.log(orConditions);
     return this.prisma.cart.deleteMany({
       where: {
         OR: orConditions,
