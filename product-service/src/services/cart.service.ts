@@ -115,11 +115,11 @@ export class CartService {
         // Return the shaped object conforming to CartDetailsResponseDTO
         return {
           id: item.id, // This is the ID of the cart entry itself
-          productId: item.product_variant.product.product_public_id,
+          productId: item.product_variant.product.id,
           productName: item.product_variant.product.name,
           productTitle: item.product_variant.product.title,
           reference_number: item.product_variant.product.reference_number,
-          product_variant_Id: item.product_variant.id,
+          itemId: item.product_variant.id,
           base_image_url: item.product_variant.base_image_url,
           price: item.product_variant.price.toNumber(),
           size: item.product_variant.size.value,
@@ -128,6 +128,7 @@ export class CartService {
         };
       })
       .filter((item) => item != null);
+    console.log(detailedCartItems);
     return ResponseHelper.CreateResponse(
       '',
       detailedCartItems,
