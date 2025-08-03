@@ -130,7 +130,7 @@ export class CartRepository extends BaseRepository<
             },
             product: {
               select: {
-                product_public_id: true,
+                id: true,
                 name: true,
                 title: true,
                 reference_number: true,
