@@ -1,7 +1,7 @@
-import { ConfigService } from "@nestjs/config";
-import { EmailCreator } from "./email.creator";
-import { EmailMessage } from "./email.message.interface";
-import { Injectable } from "@nestjs/common";
+import { ConfigService } from '@nestjs/config';
+import { EmailCreator } from './email.creator';
+import { EmailMessage } from './email.message.interface';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class OtpEmailCreator extends EmailCreator {
@@ -13,10 +13,10 @@ export class OtpEmailCreator extends EmailCreator {
     otp: string;
     resetToken: string;
   }): EmailMessage {
-    const baseUrl = this.configService.get<string>("FRONTEND_URL");
+    const baseUrl = this.configService.get<string>('FRONTEND_URL');
     return {
       to: data.to,
-      subject: "Your One-Time Password (OTP) - Verify Your Account",
+      subject: 'Your One-Time Password (OTP) - Verify Your Account',
       body:
         `
         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -27,13 +27,15 @@ export class OtpEmailCreator extends EmailCreator {
             data.otp
           }</h1>
           <p>This OTP is valid for the next ${
-            this.configService.get<number>("OTP_EXPIRY_DURATION") || 20
+            this.configService.get<number>('OTP_EXPIRY_DURATION') || 20
           } minutes. Please do not share it with anyone.</p>
           <p>Please click on this link <a href="` +
         baseUrl +
-        `verify-account/` +
+        `/verify-account/` +
         data.resetToken +
         `">Click Here</a></p>
+          <p>In-case if above link is not working then copy and paste this url into your browser's new tab or window.</p>
+          <p>${baseUrl}/verify-account/${data.resetToken}</p>
           <p>If you did not request this, please ignore this email.</p>
           <p>Best regards,<br>Your Application Team</p>
         </div>

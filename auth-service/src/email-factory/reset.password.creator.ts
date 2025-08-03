@@ -31,9 +31,11 @@ export class ResetPasswordEmailCreator extends EmailCreator {
           <p>You have requested a password forgot. Please click the link below to forgot your password by entering above OTP:</p>
           <p><a href="` +
         baseUrl +
-        `reset-password/` +
+        `/reset-password/` +
         data.resetToken +
         `" style="color: #007bff;">Forgot Your Password</a></p>
+          <p>In-case if above link is not working then copy and paste this url into your browser's new tab or window.</p>
+          <p>${baseUrl}/reset-password/${data.resetToken}</p>
           <p>If you did not request a password forgot, please ignore this email.</p>
           <p>Best regards,<br>Your Application Team</p>
         </div>
