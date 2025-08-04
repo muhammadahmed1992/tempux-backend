@@ -3,3 +3,7 @@ export interface SocialLoginResponseDTO {
   email: string;
   userType: number;
 }
+
+export interface SocialLoginVerifyUserResponseDTO {
+  resetToken: string;
+}
