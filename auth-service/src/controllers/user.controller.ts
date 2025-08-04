@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  InternalServerErrorException,
   Post,
   Req,
   Res,
@@ -20,6 +21,10 @@ import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { EmailTemplateType } from '@EmailFactory/email.template.type';
 import { ForgotPasswordDTO } from '@DTO/update.password.dto';
+import {
+  SocialLoginResponseDTO,
+  SocialLoginVerifyUserResponseDTO,
+} from '@DTO/social-login-response.dto';
 
 @Controller('user')
 export class UserController {
@@ -34,8 +39,24 @@ export class UserController {
   }
 
   @Post('login')
-  async login(@Body() login: LoginRequestDTO): Promise<ApiResponse<LoginDTO>> {
-    return await this.userService.login(login);
+  async login(
+    @Body() login: LoginRequestDTO,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<ApiResponse<LoginDTO>> {
+    const response = await this.userService.login(login);
+
+    // If it is a valid user then store inside cookie.
+    if (response.success) {
+      // Set the JWT in a secure, HTTP-only cookie.
+      res.cookie('access_token', response.data.accessToken, {
+        httpOnly: true,
+        secure: this.configService.get<string>('NODE_ENV') === 'production',
+        sameSite: 'lax',
+        maxAge: 15552000000, // 180 days
+      });
+    }
+
+    return response;
   }
 
   @Post('verify-otp')
@@ -121,33 +142,86 @@ export class UserController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+  async googleAuthRedirect(
+    @Req()
+    req: Request & {
+      user: ApiResponse<
+        SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
+      >;
+    },
+    @Res() res: Response,
+  ) {
     console.log('Callback endpoint hit!'); // Add this line
-    console.log('Request Query:', req.url); // Add this to see what's in the query
+    console.log('Request Query:', req.query); // Add this to see what's in the query
     // This endpoint is hit after Google authenticates the user.
     // The 'user' object is populated by GoogleStrategy.validate()
     // Cast to your social login response dto...
     // TODO: Will refactor any to strongly typed object
-    const user = (req as any).user;
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
 
-    if (!user.data || !user.success) {
-      throw new BadRequestException(user);
+    if (!frontendUrl)
+      throw new InternalServerErrorException(
+        'url is not defined on for front-end',
+      );
+
+    try {
+      // The 'user' object is populated by GoogleStrategy.validate().
+      // If `validate` calls `done(err, ...)` the guard will throw an exception here.
+      const apiResponse = req.user;
+      console.log('Google Auth Redirect endpoint hit!');
+      console.log('API Response from validate:', apiResponse);
+
+      // Handle the case where the user object is not as expected after a successful guard run
+      if (!apiResponse || !apiResponse.data || !apiResponse.success) {
+        // This case should ideally be caught by the try/catch, but this is a final check.
+        return res.redirect(
+          `${frontendUrl}?error=${encodeURIComponent(
+            'Social login failed due to an unexpected response.',
+          )}`,
+        );
+      }
+
+      const responseData = apiResponse.data;
+      let redirectUrl = frontendUrl;
+
+      // Check which DTO was returned and get the corresponding token
+      // Case 1: The user is fully verified, and we received a SocialLoginResponseDTO.
+      if ('email' in responseData) {
+        const result = await this.userService.login(responseData);
+        const accessToken = result.data.accessToken;
+
+        // Set the JWT in a secure, HTTP-only cookie
+        res.cookie('access_token', accessToken, {
+          httpOnly: true, // Prevents JavaScript from accessing the cookie
+          secure: this.configService.get<string>('NODE_ENV') === 'production', // Use secure cookies in production
+          sameSite: 'lax', // Protects against CSRF attacks
+          maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+        });
+        return res.redirect(redirectUrl);
+      }
+
+      // Case 2: The user is newly created or needs OTP verification.
+      // We received a SocialLoginVerifyUserResponseDTO with a resetToken.
+      if ('resetToken' in responseData) {
+        const resetToken = responseData.resetToken;
+        redirectUrl = `${redirectUrl}/verify-account/${resetToken}`;
+        return res.redirect(redirectUrl);
+      }
+
+      // Fallback for an invalid response from the service.
+      return res.redirect(
+        `${redirectUrl}?error=${encodeURIComponent(
+          'Invalid response from authentication service.',
+        )}`,
+      );
+    } catch (err: any) {
+      // This block catches exceptions thrown by the GoogleAuthGuard when `done` is called with an error.
+      console.error('Error during social login redirect:', err);
+      // Redirect to the frontend with the error message from the exception.
+      return res.redirect(
+        `${frontendUrl}?error=${encodeURIComponent(err.message)}`,
+      );
     }
-
-    // Generate your application's JWT
-    const result = await this.userService.login(user);
-    return result;
-    // // TOOD: If user is created but it is not verified.
-    // if (!result.success) {
-    //   return result;
-    // }
-    // const { accessToken } = result.data;
-
-    // // Redirect to your frontend with the JWT (e.g., as a query parameter or in a cookie)
-    // // For simplicity, using query parameter. In production, consider HttpOnly cookies.
-    // return res.redirect(
-    //   `${this.configService.get<string>('FRONTEND_URL')}?token=${accessToken}`,
-    // );
   }
 
   /**
@@ -212,33 +286,80 @@ export class UserController {
    */
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook')) // Use AuthGuard for 'facebook' strategy
-  async facebookAuthRedirect(@Req() req: Request, @Res() res: Response) {
-    console.log('Facebook Callback endpoint hit!'); // Add this line
-    console.log('Request Query:', req.url); // Add this to see what's in the query
+  async facebookAuthRedirect(
+    @Req()
+    req: Request & {
+      user: ApiResponse<
+        SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
+      >;
+    },
+    @Res() res: Response,
+  ) {
+    console.log('Callback endpoint hit!'); // Add this line
+    console.log('Request Query:', req.query); // Add this to see what's in the query
+    // This endpoint is hit after Facebook authenticates the user.
+    // The 'user' object is populated by FacebookStrategy.validate()
+    // Cast to your social login response dto...
+    // TODO: Will refactor any to strongly typed object
+    console.log('Callback endpoint hit!'); // Add this line
+    console.log('Request Query:', req.query); // Add this to see what's in the query
     // This endpoint is hit after Google authenticates the user.
     // The 'user' object is populated by GoogleStrategy.validate()
     // Cast to your social login response dto...
     // TODO: Will refactor any to strongly typed object
-    const user = (req as any).user;
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
 
-    if (!user.data || !user.success) {
-      throw new BadRequestException(user.message);
+    try {
+      // The 'user' object is populated by GoogleStrategy.validate().
+      // If `validate` calls `done(err, ...)` the guard will throw an exception here.
+      const apiResponse = req.user;
+      console.log('Google Auth Redirect endpoint hit!');
+      console.log('API Response from validate:', apiResponse);
+
+      // Handle the case where the user object is not as expected after a successful guard run
+      if (!apiResponse || !apiResponse.data || !apiResponse.success) {
+        // This case should ideally be caught by the try/catch, but this is a final check.
+        return res.redirect(
+          `${frontendUrl}?error=${encodeURIComponent(
+            'Social login failed due to an unexpected response.',
+          )}`,
+        );
+      }
+
+      const responseData = apiResponse.data;
+      let redirectUrl = frontendUrl;
+
+      // Check which DTO was returned and get the corresponding token
+      // Case 1: The user is fully verified, and we received a SocialLoginResponseDTO.
+      if ('email' in responseData) {
+        const result = await this.userService.login(responseData);
+        const accessToken = result.data.accessToken;
+        redirectUrl = `${redirectUrl}?token=${accessToken}`;
+        return res.redirect(redirectUrl);
+      }
+
+      // Case 2: The user is newly created or needs OTP verification.
+      // We received a SocialLoginVerifyUserResponseDTO with a resetToken.
+      if ('resetToken' in responseData) {
+        const resetToken = responseData.resetToken;
+        redirectUrl = `${redirectUrl}/verify-account/${resetToken}`;
+        return res.redirect(redirectUrl);
+      }
+
+      // Fallback for an invalid response from the service.
+      return res.redirect(
+        `${redirectUrl}?error=${encodeURIComponent(
+          'Invalid response from authentication service.',
+        )}`,
+      );
+    } catch (err: any) {
+      // This block catches exceptions thrown by the GoogleAuthGuard when `done` is called with an error.
+      console.error('Error during social login redirect:', err);
+      // Redirect to the frontend with the error message from the exception.
+      return res.redirect(
+        `${frontendUrl}?error=${encodeURIComponent(err.message)}`,
+      );
     }
-
-    // Generate your application's JWT
-    const result = await this.userService.login(user);
-    return result;
-    // // TOOD: If user is created but it is not verified.
-    // if (!result.success) {
-    //   return result;
-    // }
-    // const { accessToken } = result.data;
-
-    // // Redirect to your frontend with the JWT (e.g., as a query parameter or in a cookie)
-    // // For simplicity, using query parameter. In production, consider HttpOnly cookies.
-    // return res.redirect(
-    //   `${this.configService.get<string>('FRONTEND_URL')}?token=${accessToken}`,
-    // );
   }
   @Post('details-by-ids')
   async getUsersDetailsByIdsPost(@Body('ids') userIds: number[]) {
