@@ -18,7 +18,10 @@ import { EmailService } from '@Services/email.service';
 
 import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
 import { ResendOTPDTO } from '@DTO/resend.otp.dto';
-import { SocialLoginResponseDTO } from '@DTO/social-login-response.dto';
+import {
+  SocialLoginResponseDTO,
+  SocialLoginVerifyUserResponseDTO,
+} from '@DTO/social-login-response.dto';
 import { CreateUserDto } from '@DTO/create.user.dto';
 import { LoginRequestDTO } from '@DTO/login-request.dto';
 import { LoginDTO } from '@DTO/login.dto';
@@ -113,13 +116,13 @@ export class UserService {
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,
-        { accessToken: '' },
+        { accessToken: '', userName: '' },
         HttpStatus.NOT_FOUND,
       );
     if (!user.otp_verified) {
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_VERIFIED,
-        { accessToken: '' },
+        { accessToken: '', userName: '' },
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -132,7 +135,7 @@ export class UserService {
       if (!isPasswordValid)
         return ResponseHelper.CreateResponse<LoginDTO>(
           Constants.USER_NOT_FOUND,
-          { accessToken: '' },
+          { accessToken: '', userName: '' },
           HttpStatus.NOT_FOUND,
         );
     }
@@ -145,7 +148,7 @@ export class UserService {
     const token = await this.jwtService.signAsync(payload);
     return ResponseHelper.CreateResponse<LoginDTO>(
       Constants.USER_LOGGED_IN_SUCCESSFULLY,
-      { accessToken: token },
+      { accessToken: token, userName: user.full_name || 'N/A' },
       HttpStatus.OK,
     );
   }
@@ -287,7 +290,9 @@ export class UserService {
     socialId: string,
     email: string,
     userType: number,
-  ): Promise<ApiResponse<SocialLoginResponseDTO>> {
+  ): Promise<
+    ApiResponse<SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO>
+  > {
     const socialLoginFields = {
       google: 'googleId',
       facebook: 'facebookId',
@@ -322,9 +327,7 @@ export class UserService {
       // TODO: Code optimization...
       // Send OTP to the user's email.
       const otpResponse = await this.generateOTPAndExpiry();
-      console.log(`[Auth-Service][Social-Login] user-email: ${user.email}`);
       const token = this.encryptionHelper.encrypt(user.email);
-      console.log(`[Auth-Service][Social-Login] token: ${token}`);
       this.sendOTPInEmail(
         email,
         { otp: otpResponse.plainOTP, resetToken: token },
@@ -342,14 +345,12 @@ export class UserService {
           otp_expires_at: otpResponse.otp_expiry_date_time,
         },
       );
-      return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+      return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
         Constants.OTP_SENT,
         {
-          id: Number(user.id),
-          email: user.email,
-          userType: user.user_type,
+          resetToken: token,
         },
-        HttpStatus.BAD_GATEWAY,
+        HttpStatus.OK,
       );
     }
 
@@ -406,14 +407,12 @@ export class UserService {
             otp_expires_at: otpResponse.otp_expiry_date_time,
           },
         );
-        return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+        return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
           Constants.OTP_SENT,
           {
-            id: Number(result.id),
-            email: result.email,
-            userType: result.user_type,
+            resetToken: token,
           },
-          HttpStatus.BAD_GATEWAY,
+          HttpStatus.OK,
         );
       }
     }
@@ -455,12 +454,10 @@ export class UserService {
       { otp: otpResponse.plainOTP, resetToken: token },
       EmailTemplateType.OTP_VERIFICATION,
     );
-    return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+    return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
       Constants.USER_CREATED_SUCCESS,
       {
-        id: Number(newUser.id),
-        email: newUser.email,
-        userType: newUser.user_type,
+        resetToken: token,
       },
       HttpStatus.CREATED,
     );
