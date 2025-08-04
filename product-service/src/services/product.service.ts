@@ -262,8 +262,9 @@ export class ProductService {
       product: {
         select: {
           id: true,
-          product_public_id: true,
           product_slug: true,
+          title: true,
+          description: true,
           ...select,
           productTags: {
             select: {
@@ -314,11 +315,13 @@ export class ProductService {
           id: bigint;
           name: string;
           description: string;
-          Title: string;
+          title: string;
           product_slug: string;
           productTags: any[];
         };
         price: number;
+        description: string;
+        title: string;
         currency: { curr: string };
         productVariantFavorite: any;
       }) => ({
@@ -326,7 +329,8 @@ export class ProductService {
         productId: pv.product.id,
         slug: pv.product.product_slug,
         name: pv.product.name,
-        title: pv.product.Title,
+        title: pv.product.title,
+        description: pv.product.description,
         symb: pv.currency.curr,
         image_url: pv.base_image_url,
         price: pv.price.toFixed(2),

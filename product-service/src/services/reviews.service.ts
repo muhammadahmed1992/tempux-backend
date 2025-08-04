@@ -35,6 +35,7 @@ export class ReviewsService {
     where?: object,
     select?: object,
   ): Promise<ApiResponse<EnrichedReviewResponseDto[]>> {
+    console.log(select);
     const { data, totalCount } = await this.repository.findManyPaginated(
       pageNumber,
       pageSize,
@@ -48,8 +49,7 @@ export class ReviewsService {
       ...new Set(data.map((review) => review.reviewedBy.toString())),
     ];
     const userDetailsMap = await this.fetchUserDetailsInBatch(uniqueUserIds);
-    console.log(userDetailsMap);
-    console.log(uniqueUserIds);
+
     // Enrich reviews with user details
     const enrichedReviews: EnrichedReviewResponseDto[] = data.map((review) => ({
       review: review.review,
@@ -59,7 +59,7 @@ export class ReviewsService {
         name: 'Unknown User',
         fullName: 'Unknow User - Full Name',
       },
-      created_at: review.created_at,
+      created_at: review.created_at.toISOString(),
     }));
 
     return ResponseHelper.CreateResponse<EnrichedReviewResponseDto[]>(
