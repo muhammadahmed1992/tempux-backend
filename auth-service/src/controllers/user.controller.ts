@@ -43,7 +43,7 @@ export class UserController {
   async login(
     @Body() login: LoginRequestDTO,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<void | ApiResponse<LoginDTO>> {
+  ): Promise<ApiResponse<LoginDTO>> {
     const response = await this.userService.login(login);
     // If it is a valid user then store inside cookie.
     if (response.statusCode === HttpStatus.OK) {
