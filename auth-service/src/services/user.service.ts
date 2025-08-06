@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import {
+  BadRequestException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -289,11 +290,9 @@ export class UserService {
     if (checkEmail) {
       const otpRes = await this.generateOTPAndExpiry();
       const token = await this.encryptionHelper.encrypt(email);
-      Promise.all([
+      const [updateResult, emailResult] = await Promise.allSettled([
         this.userRepository.update(
-          {
-            id: checkEmail.id,
-          },
+          { id: checkEmail.id },
           {
             otp: otpRes.otp,
             otp_expires_at: otpRes.otp_expiry_date_time,
@@ -306,6 +305,25 @@ export class UserService {
           emailType,
         ),
       ]);
+
+      // Check the status of the email sending promise
+      if (emailResult.status === 'rejected') {
+        console.error('Failed to send email:', emailResult.reason);
+        // You might still decide to throw an error here,
+        // or handle the failure in a different way.
+        throw new BadRequestException(
+          'Failed to send OTP email. Please try again.',
+        );
+      }
+
+      // Check the status of the database update promise
+      if (updateResult.status === 'rejected') {
+        console.error('Failed to update user:', updateResult.reason);
+        // Handle the database error
+        throw new BadRequestException(
+          'Failed to update user record. Please contact support.',
+        );
+      }
 
       return ResponseHelper.CreateResponse<boolean>(
         Constants.OTP_RESEND,
