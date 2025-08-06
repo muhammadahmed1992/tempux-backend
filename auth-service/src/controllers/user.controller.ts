@@ -45,7 +45,6 @@ export class UserController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<void | ApiResponse<LoginDTO>> {
     const response = await this.userService.login(login);
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     // If it is a valid user then store inside cookie.
     if (response.statusCode === HttpStatus.OK) {
       // Set the JWT in a secure, HTTP-only cookie.
@@ -55,9 +54,6 @@ export class UserController {
         sameSite: 'lax',
         maxAge: 15552000000, // 180 days
       });
-    } else if (response.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
-      const resetToken = response.data.resetToken;
-      return res.redirect(`${frontendUrl}/verify-account/${resetToken}`);
     }
 
     return response;
