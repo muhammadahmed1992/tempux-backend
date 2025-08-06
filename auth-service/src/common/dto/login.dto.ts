@@ -1,4 +1,5 @@
 export class LoginDTO {
-  accessToken!: string;
+  accessToken?: string;
   userName?: string;
+  resetToken?: string;
 }
