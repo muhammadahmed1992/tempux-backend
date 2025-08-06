@@ -15,7 +15,7 @@ import ApiResponse from 'src/common/helper/api-response';
 import { LoginRequestDTO } from '@DTO/login-request.dto';
 import { LoginDTO } from '@DTO/login.dto';
 import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
-import { ResendOTPDTO } from '@DTO/resend.otp.dto';
+import { ResendOTPDTO, ResetPasswordRequestDTO } from '@DTO/resend.otp.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
@@ -69,7 +69,7 @@ export class UserController {
   @Post('resend-otp')
   async resendOTP(@Body() resend: ResendOTPDTO): Promise<ApiResponse<boolean>> {
     if (!resend.token) throw new BadRequestException('Invalid otp reset token');
-    return await this.userService.resendOTP(
+    return this.userService.resendOTP(
       resend,
       EmailTemplateType.OTP_VERIFICATION,
     );
@@ -77,9 +77,9 @@ export class UserController {
 
   @Post('reset/password')
   async generatePasswordResetLink(
-    @Body() resend: ResendOTPDTO,
+    @Body() resend: ResetPasswordRequestDTO,
   ): Promise<ApiResponse<boolean>> {
-    return await this.userService.resendOTP(
+    return this.userService.generateResetPasswordLink(
       resend,
       EmailTemplateType.PASSWORD_RESET,
     );
