@@ -68,6 +68,7 @@ export class UserController {
 
   @Post('resend-otp')
   async resendOTP(@Body() resend: ResendOTPDTO): Promise<ApiResponse<boolean>> {
+    if (!resend.token) throw new BadRequestException('Invalid otp reset token');
     return await this.userService.resendOTP(
       resend,
       EmailTemplateType.OTP_VERIFICATION,
