@@ -196,10 +196,8 @@ export class UserService {
     request: ResendOTPDTO,
     emailType: EmailTemplateType,
   ): Promise<ApiResponse<boolean>> {
-    const email = this.encryptionHelper.encrypt(request.email);
-    const checkEmail = await this.userRepository.findFirstUserByEmail(
-      request.email,
-    );
+    const email = this.encryptionHelper.decrypt(request.token);
+    const checkEmail = await this.userRepository.findFirstUserByEmail(email);
     if (checkEmail) {
       const otpRes = await this.generateOTPAndExpiry();
 
@@ -215,7 +213,7 @@ export class UserService {
           },
         ),
         this.sendOTPInEmail(
-          request.email,
+          checkEmail.email,
           { otp: otpRes.plainOTP, resetToken: email },
           emailType,
         ),
@@ -308,6 +306,7 @@ export class UserService {
         id: true,
         email: true,
         user_type: true,
+        otp_verified: true,
       },
     );
 
@@ -361,6 +360,7 @@ export class UserService {
       id: true,
       email: true,
       user_type: true,
+      otp_verified: true,
     });
 
     if (result) {
