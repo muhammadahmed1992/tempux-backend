@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpStatus,
   InternalServerErrorException,
   Post,
   Req,
@@ -42,11 +43,11 @@ export class UserController {
   async login(
     @Body() login: LoginRequestDTO,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<ApiResponse<LoginDTO>> {
+  ): Promise<void | ApiResponse<LoginDTO>> {
     const response = await this.userService.login(login);
-
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     // If it is a valid user then store inside cookie.
-    if (response.success) {
+    if (response.statusCode === HttpStatus.OK) {
       // Set the JWT in a secure, HTTP-only cookie.
       res.cookie('access_token', response.data.accessToken, {
         httpOnly: true,
@@ -54,6 +55,9 @@ export class UserController {
         sameSite: 'lax',
         maxAge: 15552000000, // 180 days
       });
+    } else if (response.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
+      const resetToken = response.data.resetToken;
+      return res.redirect(`${frontendUrl}/verify-account/${resetToken}`);
     }
 
     return response;

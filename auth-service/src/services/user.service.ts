@@ -120,10 +120,38 @@ export class UserService {
         HttpStatus.NOT_FOUND,
       );
     if (!user.otp_verified) {
+      // return ResponseHelper.CreateResponse<LoginDTO>(
+      //   Constants.USER_NOT_VERIFIED,
+      //   { accessToken: '', userName: '' },
+      //   HttpStatus.BAD_REQUEST,
+      // );
+      // TODO: Code optimization...
+      // Send OTP to the user's email.
+      const otpResponse = await this.generateOTPAndExpiry();
+      const token = this.encryptionHelper.encrypt(user.email);
+      this.sendOTPInEmail(
+        user.email,
+        { otp: otpResponse.plainOTP, resetToken: token },
+        EmailTemplateType.OTP_VERIFICATION,
+      );
+      await this.userRepository.update(
+        {
+          email_user_type: {
+            user_type: user.user_type,
+            email: user.email,
+          },
+        },
+        {
+          otp: otpResponse.otp,
+          otp_expires_at: otpResponse.otp_expiry_date_time,
+        },
+      );
       return ResponseHelper.CreateResponse<LoginDTO>(
-        Constants.USER_NOT_VERIFIED,
-        { accessToken: '', userName: '' },
-        HttpStatus.BAD_REQUEST,
+        '',
+        {
+          resetToken: token,
+        },
+        HttpStatus.TEMPORARY_REDIRECT,
       );
     }
     if (request instanceof LoginRequestDTO) {
