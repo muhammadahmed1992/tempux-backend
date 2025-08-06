@@ -17,7 +17,7 @@ import { Utils } from '@Common/utils';
 import { EmailService } from '@Services/email.service';
 
 import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
-import { ResendOTPDTO } from '@DTO/resend.otp.dto';
+import { ResendOTPDTO, ResetPasswordRequestDTO } from '@DTO/resend.otp.dto';
 import {
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
@@ -192,45 +192,19 @@ export class UserService {
     }
   }
 
+  async generateResetPasswordLink(
+    request: ResetPasswordRequestDTO,
+    emailType: EmailTemplateType,
+  ): Promise<ApiResponse<boolean>> {
+    return this.resentOTPHelper(request.email, emailType);
+  }
+
   async resendOTP(
     request: ResendOTPDTO,
     emailType: EmailTemplateType,
   ): Promise<ApiResponse<boolean>> {
     const email = this.encryptionHelper.decrypt(request.token);
-    const checkEmail = await this.userRepository.findFirstUserByEmail(email);
-    if (checkEmail) {
-      const otpRes = await this.generateOTPAndExpiry();
-      const token = await this.encryptionHelper.encrypt(email);
-      Promise.all([
-        this.userRepository.update(
-          {
-            id: checkEmail.id,
-          },
-          {
-            otp: otpRes.otp,
-            otp_expires_at: otpRes.otp_expiry_date_time,
-            otp_verified: false,
-          },
-        ),
-        this.sendOTPInEmail(
-          checkEmail.email,
-          { otp: otpRes.plainOTP, resetToken: token },
-          emailType,
-        ),
-      ]);
-
-      return ResponseHelper.CreateResponse<boolean>(
-        Constants.OTP_RESEND,
-        true,
-        HttpStatus.ACCEPTED,
-      );
-    } else {
-      return ResponseHelper.CreateResponse<boolean>(
-        Constants.SOMETHING_WENT_WRONG,
-        false,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return this.resentOTPHelper(email, emailType);
   }
 
   async forgotPassword(
@@ -270,6 +244,51 @@ export class UserService {
         Constants.INVALID_EMAIL,
         false,
         HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  /**
+   * @param email. Accepts an email of the user which is requesting otp for reset-password or verify-user/account
+   * @param emailTemplateType: Accepts a template type of the email which will be send to the user.
+   * @returns Promise<Apiresponse<boolean>> which will shows if the user exists/operation succeed properly or not.
+   */
+  private async resentOTPHelper(
+    email: string,
+    emailType: EmailTemplateType,
+  ): Promise<ApiResponse<boolean>> {
+    const checkEmail = await this.userRepository.findFirstUserByEmail(email);
+    if (checkEmail) {
+      const otpRes = await this.generateOTPAndExpiry();
+      const token = await this.encryptionHelper.encrypt(email);
+      Promise.all([
+        this.userRepository.update(
+          {
+            id: checkEmail.id,
+          },
+          {
+            otp: otpRes.otp,
+            otp_expires_at: otpRes.otp_expiry_date_time,
+            otp_verified: false,
+          },
+        ),
+        this.sendOTPInEmail(
+          checkEmail.email,
+          { otp: otpRes.plainOTP, resetToken: token },
+          emailType,
+        ),
+      ]);
+
+      return ResponseHelper.CreateResponse<boolean>(
+        Constants.OTP_RESEND,
+        true,
+        HttpStatus.ACCEPTED,
+      );
+    } else {
+      return ResponseHelper.CreateResponse<boolean>(
+        Constants.SOMETHING_WENT_WRONG,
+        false,
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
