@@ -200,7 +200,7 @@ export class UserService {
     const checkEmail = await this.userRepository.findFirstUserByEmail(email);
     if (checkEmail) {
       const otpRes = await this.generateOTPAndExpiry();
-
+      const token = await this.encryptionHelper.encrypt(email);
       Promise.all([
         this.userRepository.update(
           {
@@ -214,7 +214,7 @@ export class UserService {
         ),
         this.sendOTPInEmail(
           checkEmail.email,
-          { otp: otpRes.plainOTP, resetToken: email },
+          { otp: otpRes.plainOTP, resetToken: token },
           emailType,
         ),
       ]);
