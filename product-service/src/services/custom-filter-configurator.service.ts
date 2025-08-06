@@ -1,30 +1,26 @@
-import { HttpStatus, Injectable } from "@nestjs/common";
-import ApiResponse from "@Helper/api-response";
-import ResponseHelper from "@Helper/response-helper";
-import Constants from "@Helper/constants";
-import { CustomFilterConfiguratorRepository } from "@Repository/custom-filter-configurator.repository";
+import { HttpStatus, Injectable } from '@nestjs/common';
+import ApiResponse from '@Helper/api-response';
+import ResponseHelper from '@Helper/response-helper';
+import Constants from '@Helper/constants';
+import { CustomFilterConfiguratorRepository } from '@Repository/custom-filter-configurator.repository';
 @Injectable()
 export class CustomFilterConfiguratorService {
   constructor(
-    private readonly repository: CustomFilterConfiguratorRepository
+    private readonly repository: CustomFilterConfiguratorRepository,
   ) {}
   async getAllPagedData(
     pageNumber: number,
     pageSize: number,
-    options?: {
-      order?: object;
-      where?: object;
-      select?: object;
-      include?: object;
-    }
+    order?: object,
+    where?: object,
+    select?: object,
   ): Promise<ApiResponse<any[]>> {
     const { data, totalCount } = await this.repository.findManyPaginated(
       pageNumber,
       pageSize,
-      options?.where,
-      options?.select,
-      options?.order,
-      options?.include
+      where,
+      select,
+      order,
     );
     return ResponseHelper.CreateResponse<any[]>(
       Constants.DATA_SUCCESS,
@@ -35,7 +31,7 @@ export class CustomFilterConfiguratorService {
         pageSize,
         totalCount,
         numberOfTotalPages: Math.ceil(totalCount / pageSize),
-      }
+      },
     );
   }
 }

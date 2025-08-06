@@ -14,7 +14,6 @@ export class ServiceResolver {
    * @throws InternalServerErrorException if the service URL is not configured.
    */
   public getServiceUrl(serviceKey: string): string {
-    console.log(`Testing: inside getServiceUrl ${serviceKey}`);
     let serviceUrl: string | undefined;
 
     // Map service keys to their respective environment variable names
