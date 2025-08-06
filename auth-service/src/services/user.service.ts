@@ -148,7 +148,7 @@ export class UserService {
         },
       );
       return ResponseHelper.CreateResponse<LoginDTO>(
-        '',
+        Constants.USER_NOT_VERIFIED,
         {
           resetToken: token,
         },
