@@ -40,8 +40,4 @@ export class CreateUserDto {
   @IsString()
   @MaxLength(100)
   fullName!: string;
-
-  @IsNotEmpty()
-  @IsIn([1, 2, 3, 4])
-  userType!: number;
 }

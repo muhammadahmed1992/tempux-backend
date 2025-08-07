@@ -49,14 +49,11 @@ export class UserService {
 
   async create(user: CreateUserDto): Promise<ApiResponse<boolean>> {
     try {
+      // TOOD: Will discuss about role implementation...
       //If user already exists returns an error
-      const isExists = await this.userRepository.validateUser(
-        user.email,
-        user.userType,
-        {
-          id: true,
-        },
-      );
+      const isExists = await this.userRepository.validateUser(user.email, {
+        id: true,
+      });
       if (isExists) {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
@@ -66,19 +63,19 @@ export class UserService {
       }
       const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
       const otpResponse = await this.generateOTPAndExpiry();
+      // By Default assigning it buyer and seller
+      const roleIds: number[] = [3, 4];
       const result = await this.userRepository.createUser(
         {
           name: user.username || user.email,
           email: user.email,
           password: hashedPassword,
           full_name: user.fullName,
-          userType: {
-            connect: {
-              id: user.userType,
-            },
-          },
           otp: otpResponse.otp,
           otp_expires_at: otpResponse.otp_expiry_date_time,
+          user_roles: {
+            connect: roleIds.map((id) => ({ id })),
+          },
         },
         {
           id: true,
@@ -110,10 +107,9 @@ export class UserService {
   async login(
     request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
-    const user = await this.userRepository.validateUser(
-      request.email,
-      request.userType,
-    );
+    const user = await this.userRepository.validateUser(request.email, {
+      user_roles: true,
+    });
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,
@@ -121,11 +117,6 @@ export class UserService {
         HttpStatus.NOT_FOUND,
       );
     if (!user.otp_verified) {
-      // return ResponseHelper.CreateResponse<LoginDTO>(
-      //   Constants.USER_NOT_VERIFIED,
-      //   { accessToken: '', userName: '' },
-      //   HttpStatus.BAD_REQUEST,
-      // );
       // TODO: Code optimization...
       // Send OTP to the user's email.
       const otpResponse = await this.generateOTPAndExpiry();
@@ -137,10 +128,7 @@ export class UserService {
       );
       await this.userRepository.update(
         {
-          email_user_type: {
-            user_type: user.user_type,
-            email: user.email,
-          },
+          email: user.email,
         },
         {
           otp: otpResponse.otp,
@@ -168,11 +156,13 @@ export class UserService {
           HttpStatus.NOT_FOUND,
         );
     }
-
+    // Extract the role IDs from the user_roles array
+    const roleIds = (user as any).user_roles.map((role: any) => role.id);
+    console.log(`userRoles: ${roleIds}`);
     const payload = {
       sub: Number(user.id),
       email: user.email,
-      userType: user.user_type,
+      user_roles: roleIds,
     };
     const token = await this.jwtService.signAsync(payload);
     return ResponseHelper.CreateResponse<LoginDTO>(
@@ -417,18 +407,22 @@ export class UserService {
         email: true,
         user_type: true,
         otp_verified: true,
+        user_roles: true,
       },
     );
 
     if (user) {
       // User found, return it
+      // Extract the role IDs from the user_roles array
+      const roleIds = (user as any).user_roles.map((role: any) => role.id);
+      console.log(`userRoles: ${roleIds}`);
       if (user.otp_verified) {
         return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
           Constants.USER_ALREADY_VERIFIED,
           {
             id: Number(user.id),
             email: user.email,
-            userType: user.user_type,
+            userRoles: roleIds,
           },
           HttpStatus.OK,
         );
@@ -444,10 +438,7 @@ export class UserService {
       );
       await this.userRepository.update(
         {
-          email_user_type: {
-            user_type: user.user_type,
-            email: user.email,
-          },
+          email: user.email,
         },
         {
           otp: otpResponse.otp,
@@ -495,11 +486,12 @@ export class UserService {
     // If user not found by social ID, check if an account with this email already exists
     // This handles cases where a user might register with email/password, then try social login with the same email.
     // You might want to link accounts here, or prevent login if email already exists without social link.
-    const result = await this.userRepository.validateUser(email, userType, {
+    const result = await this.userRepository.validateUser(email, {
       id: true,
       email: true,
       user_type: true,
       otp_verified: true,
+      user_roles: true,
     });
 
     if (result) {
@@ -515,10 +507,7 @@ export class UserService {
       );
       await this.userRepository.update(
         {
-          email_user_type: {
-            user_type: result.user_type,
-            email: result.email,
-          },
+          email: result.email,
         },
         {
           [socialIdField]: socialEmail,
@@ -560,14 +549,14 @@ export class UserService {
       'SOCIAL_LOGIN_PASSWORD_PLACEH',
       this.SALT_ROUND,
     );
+    // By Default assigning it buyer and seller
+    const roleIds: number[] = [3, 4];
     const newUserCreateData: Prisma.UserCreateInput = {
       name: 'SOCIAL_LOGIN_USER_NAME',
       email: socialEmail,
       password: password,
-      userType: {
-        connect: {
-          id: userType,
-        },
+      user_roles: {
+        connect: roleIds.map((id) => ({ id })),
       },
       otp: otpResponse.otp,
       otp_expires_at: otpResponse.otp_expiry_date_time,

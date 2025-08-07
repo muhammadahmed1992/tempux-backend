@@ -1,7 +1,7 @@
 export interface SocialLoginResponseDTO {
   id: number;
   email: string;
-  userType: number;
+  userRoles: number[];
 }
 
 export interface SocialLoginVerifyUserResponseDTO {
