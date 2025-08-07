@@ -109,6 +109,9 @@ export class UserService {
     request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
     const user = await this.userRepository.validateUser(request.email, {
+      otp_verified: true,
+      email: true,
+      password: true,
       user_roles: true,
     });
     if (!user)
@@ -158,8 +161,9 @@ export class UserService {
         );
     }
     // Extract the role IDs from the user_roles array
-    const roleIds = (user as any).user_roles.map((role: any) => role.id);
-    console.log(`userRoles: ${roleIds}`);
+    const roleIds = (user as any).user_roles.map((role: any) =>
+      Number(role.id),
+    );
     const payload = {
       sub: Number(user.id),
       email: user.email,
