@@ -393,4 +393,19 @@ export class UserController {
       'Your session has been expired. Please re-login again',
     );
   }
+
+  @Post('/social-media')
+  async createUserBySocialMedia(@Req() req: Request) {
+    const session = req.session as any;
+    if (session && session.user) {
+      return this.userService.createUserBySocialLoginEmail(
+        session.socialEmail,
+        session.provider,
+        session.userType,
+      );
+    }
+    throw new BadRequestException(
+      'Your session has been expired. Please re-login again',
+    );
+  }
 }
