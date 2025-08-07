@@ -9,6 +9,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from '@Services/user.service';
@@ -374,22 +375,20 @@ export class UserController {
     return this.userService.findUsersByIds(userIds);
   }
 
-  @Get('account-existance')
+  @Post('account-existance')
   async validateAssociatedAccount(
     @Req() req: Request,
-    @Param('email') email: string,
+    @Body('email') email: string,
   ) {
     const session = req.session as any;
     if (session && session.user) {
-      const userType = session.userType;
       return this.userService.validateExistingAccount(
         email,
         session.socialEmail,
         session.provider,
-        userType,
       );
     }
-    throw new BadRequestException(
+    throw new UnauthorizedException(
       'Your session has been expired. Please re-login again',
     );
   }

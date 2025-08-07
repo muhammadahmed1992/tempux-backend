@@ -479,7 +479,6 @@ export class UserService {
     email: string,
     socialEmail: string,
     provider: 'google' | 'facebook',
-    userType: number,
   ) {
     const socialLoginFields = {
       google: 'googleId',
@@ -493,7 +492,6 @@ export class UserService {
     const result = await this.userRepository.validateUser(email, {
       id: true,
       email: true,
-      user_type: true,
       otp_verified: true,
       user_roles: true,
     });
