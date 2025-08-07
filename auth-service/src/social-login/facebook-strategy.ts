@@ -98,7 +98,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
         'facebook',
         id,
         userEmail,
-        userType,
       );
       done(null, user); // Pass the user object to the request (req.user)
     } catch (err) {
