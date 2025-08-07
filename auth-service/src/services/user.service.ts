@@ -64,7 +64,8 @@ export class UserService {
       const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
       const otpResponse = await this.generateOTPAndExpiry();
       // By Default assigning it buyer and seller
-      const roleIds: number[] = [3, 4];
+      // The `id` in your schema is a BigInt, so you must use BigInts in your code.
+      const roleIds: bigint[] = [3n, 4n];
       const result = await this.userRepository.createUser(
         {
           name: user.username || user.email,
@@ -405,7 +406,6 @@ export class UserService {
       {
         id: true,
         email: true,
-        user_type: true,
         otp_verified: true,
         user_roles: true,
       },
@@ -538,7 +538,6 @@ export class UserService {
   async createUserBySocialLoginEmail(
     socialEmail: string,
     provider: 'google' | 'facebook',
-    userType: number,
   ) {
     // No existing user found, create a new one
     // generating OTP as well which will needed

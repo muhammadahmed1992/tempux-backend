@@ -401,7 +401,6 @@ export class UserController {
       return this.userService.createUserBySocialLoginEmail(
         session.socialEmail,
         session.provider,
-        session.userType,
       );
     }
     throw new BadRequestException(
