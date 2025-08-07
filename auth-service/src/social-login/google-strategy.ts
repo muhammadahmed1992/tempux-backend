@@ -2,7 +2,7 @@
 
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '@Services/user.service';
 import { Request } from 'express'; // Import Request from express
@@ -86,10 +86,19 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       // Pass the userType to your UserService
       const user = await this.userService.validateSocialUser(
         'google',
-        id,
         userEmail,
         Number(userType),
       );
+
+      // Just storing the information inside session in case of redirect to consent form.
+      if (user.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
+        const session = req.session as any;
+        session.user = {
+          socialEmail: userEmail,
+          provider: 'google',
+          userType,
+        };
+      }
       done(null, user);
     } catch (err) {
       console.error('Error during Google social user validation:', err);

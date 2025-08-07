@@ -5,6 +5,7 @@ import {
   Get,
   HttpStatus,
   InternalServerErrorException,
+  Param,
   Post,
   Req,
   Res,
@@ -174,6 +175,11 @@ export class UserController {
 
       // Handle the case where the user object is not as expected after a successful guard run
       if (!apiResponse || !apiResponse.data || !apiResponse.success) {
+        // If it is being redirected from social Login where user doesn't exists in socialId field
+        if (apiResponse.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
+          // Re-directing to the consent form.
+          return res.redirect(`${frontendUrl}/account-check`);
+        }
         // This case should ideally be caught by the try/catch, but this is a final check.
         return res.redirect(
           `${frontendUrl}?error=${encodeURIComponent(
@@ -366,5 +372,25 @@ export class UserController {
   async getUsersDetailsByIdsPost(@Body('ids') userIds: number[]) {
     // This is generally preferred for a large number of IDs.
     return this.userService.findUsersByIds(userIds);
+  }
+
+  @Get('account-existance')
+  async validateAssociatedAccount(
+    @Req() req: Request,
+    @Param('email') email: string,
+  ) {
+    const session = req.session as any;
+    if (session && session.user) {
+      const userType = session.userType;
+      return this.userService.validateExistingAccount(
+        email,
+        session.socialEmail,
+        session.provider,
+        userType,
+      );
+    }
+    throw new BadRequestException(
+      'Your session has been expired. Please re-login again',
+    );
   }
 }

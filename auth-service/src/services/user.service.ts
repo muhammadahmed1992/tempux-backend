@@ -340,6 +340,51 @@ export class UserService {
   }
 
   /**
+   * Finds multiple users by their number IDs and returns their basic details.
+   * This method is intended for internal service-to-service communication.
+   * @param userIds An array of user IDs (number).
+   * @returns A promise that resolves to an array of UserDetailsResponseDto.
+   */
+  async findUsersByIds(
+    userIds: number[],
+  ): Promise<ApiResponse<UserDetailsResponseDto[]>> {
+    if (!userIds || userIds.length === 0) {
+      return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
+        '',
+        [],
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    // Ensure unique IDs to avoid redundant queries
+    const uniqueUserIds = [...new Set(userIds)];
+    const users = await this.userRepository.findMany({
+      where: {
+        id: {
+          in: uniqueUserIds,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        full_name: true,
+      },
+    });
+
+    return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
+      Constants.DATA_RETRIEVED_SUCCESSFULLY,
+      users.map((user) => ({
+        id: user.id.toString(),
+        name: user.name,
+        fullName: user.full_name || '',
+        email: user.email,
+      })),
+      HttpStatus.OK,
+    );
+  }
+
+  /**
    * Validates a social user (Google/Facebook).
    * Finds an existing user by socialId, or creates a new one.
    * @param provider - 'google' or 'facebook'
@@ -350,9 +395,8 @@ export class UserService {
    */
   async validateSocialUser(
     provider: 'google' | 'facebook',
-    socialId: string,
     email: string,
-    userType: number,
+    userType: number, //TODO: Need to discuss.
   ): Promise<
     ApiResponse<SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO>
   > {
@@ -364,9 +408,10 @@ export class UserService {
     const socialIdField = socialLoginFields[provider];
 
     // Try to find the user by their social ID
+    //TODO: Need to discuss userType issue with client.
     const user = await this.userRepository.findUserBySocialId(
       socialIdField,
-      socialId,
+      email,
       {
         id: true,
         email: true,
@@ -416,8 +461,37 @@ export class UserService {
         },
         HttpStatus.OK,
       );
+    } else {
+      /**
+       * If user doesn't exists while checking the mapping... Then redirect to consent account mapping form.
+       */
+      return ResponseHelper.CreateResponse<any>(
+        'You will be redirecting to consent form',
+        null,
+        HttpStatus.TEMPORARY_REDIRECT,
+      );
     }
+  }
 
+  /**
+   * @param email Email needs to be checked if exists or not. if exists then send a verification email on it.
+   * @param socialEmail Email that will be going to map in socialId field
+   * @param socialId The service provider i.e google/facebook.
+   * @param userType This the user type which will be gona registered.
+   * @returns Promise<ApiResponse<SocialLoginVerifyUserResponseDTO>> which will contains the resetToken for verification.
+   */
+  async validateExistingAccount(
+    email: string,
+    socialEmail: string,
+    provider: 'google' | 'facebook',
+    userType: number,
+  ) {
+    const socialLoginFields = {
+      google: 'googleId',
+      facebook: 'facebookId',
+    };
+    // Determine which ID field to use
+    const socialIdField = socialLoginFields[provider];
     // If user not found by social ID, check if an account with this email already exists
     // This handles cases where a user might register with email/password, then try social login with the same email.
     // You might want to link accounts here, or prevent login if email already exists without social link.
@@ -429,58 +503,54 @@ export class UserService {
     });
 
     if (result) {
-      // User with this email exists, link the social ID only if it's not linked.
-      if (!(result.googleId && result.facebookId)) {
-        if (result.otp_verified) {
-          const updatedUser = await this.userRepository.update(
-            { id: result.id },
-            { [socialIdField]: socialId },
-            { id: true, email: true, user_type: true },
-          );
-          // User found, return it
-          return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-            Constants.USER_ALREADY_VERIFIED,
-            {
-              id: Number(result.id),
-              email: result.email,
-              userType: result.user_type,
-            },
-            HttpStatus.OK,
-          );
-        }
-        // User found, but not verified return it
-        // TODO: Code optimization...
-        // Send OTP to the user's email.
-        const otpResponse = await this.generateOTPAndExpiry();
-        console.log(`[Auth-Service][User-Email] user-email: ${result.email}`);
-        const token = this.encryptionHelper.encrypt(result.email);
-        console.log(`[Auth-Service][User-Email] token: ${token}`);
-        this.sendOTPInEmail(
-          email,
-          { otp: otpResponse.plainOTP, resetToken: token },
-          EmailTemplateType.OTP_VERIFICATION,
-        );
-        await this.userRepository.update(
-          {
-            email_user_type: {
-              user_type: result.user_type,
-              email: result.email,
-            },
+      // User found, but we are doing mapping so we need to actually send an email again to verify.
+      // TODO: Code optimization...
+      // Send OTP to the user's email.
+      const otpResponse = await this.generateOTPAndExpiry();
+      const token = this.encryptionHelper.encrypt(result.email);
+      this.sendOTPInEmail(
+        email,
+        { otp: otpResponse.plainOTP, resetToken: token },
+        EmailTemplateType.OTP_VERIFICATION,
+      );
+      await this.userRepository.update(
+        {
+          email_user_type: {
+            user_type: result.user_type,
+            email: result.email,
           },
-          {
-            otp: otpResponse.otp,
-            otp_expires_at: otpResponse.otp_expiry_date_time,
-          },
-        );
-        return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
-          Constants.OTP_SENT,
-          {
-            resetToken: token,
-          },
-          HttpStatus.OK,
-        );
-      }
+        },
+        {
+          [socialIdField]: socialEmail,
+          otp_verified: false,
+          otp: otpResponse.otp,
+          otp_expires_at: otpResponse.otp_expiry_date_time,
+        },
+      );
+      return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
+        Constants.OTP_SENT,
+        {
+          resetToken: token,
+        },
+        HttpStatus.OK,
+      );
     }
+    throw new BadRequestException(
+      'No account is associated with this email address',
+    );
+  }
+
+  /**
+   * @param socialEmail Email that will be going to map in socialId field
+   * @param socialId The service provider i.e google/facebook.
+   * @param userType This the user type which will be gona registered.
+   * @returns
+   */
+  async createUserBySocialLoginEmail(
+    socialEmail: string,
+    provider: 'google' | 'facebook',
+    userType: number,
+  ) {
     // No existing user found, create a new one
     // generating OTP as well which will needed
     // TODO: Will refactor later with actual create method of user service
@@ -492,7 +562,7 @@ export class UserService {
     );
     const newUserCreateData: Prisma.UserCreateInput = {
       name: 'SOCIAL_LOGIN_USER_NAME',
-      email: email,
+      email: socialEmail,
       password: password,
       userType: {
         connect: {
@@ -506,16 +576,16 @@ export class UserService {
     // Conditionally add the social ID field to the data object.
     // Because Prisma doesn't allow dynamic column.
     if (provider === 'google') {
-      newUserCreateData.googleId = socialId;
+      newUserCreateData.googleId = socialEmail;
     } else if (provider === 'facebook') {
-      newUserCreateData.facebookId = socialId;
+      newUserCreateData.facebookId = socialEmail;
     }
 
     const newUser = await this.userRepository.createUser(newUserCreateData);
 
-    const token = this.encryptionHelper.encrypt(email);
+    const token = this.encryptionHelper.encrypt(socialEmail);
     this.sendOTPInEmail(
-      email,
+      socialEmail,
       { otp: otpResponse.plainOTP, resetToken: token },
       EmailTemplateType.OTP_VERIFICATION,
     );
@@ -525,51 +595,6 @@ export class UserService {
         resetToken: token,
       },
       HttpStatus.CREATED,
-    );
-  }
-
-  /**
-   * Finds multiple users by their number IDs and returns their basic details.
-   * This method is intended for internal service-to-service communication.
-   * @param userIds An array of user IDs (number).
-   * @returns A promise that resolves to an array of UserDetailsResponseDto.
-   */
-  async findUsersByIds(
-    userIds: number[],
-  ): Promise<ApiResponse<UserDetailsResponseDto[]>> {
-    if (!userIds || userIds.length === 0) {
-      return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
-        '',
-        [],
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    // Ensure unique IDs to avoid redundant queries
-    const uniqueUserIds = [...new Set(userIds)];
-    const users = await this.userRepository.findMany({
-      where: {
-        id: {
-          in: uniqueUserIds,
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        full_name: true,
-      },
-    });
-
-    return ResponseHelper.CreateResponse<UserDetailsResponseDto[]>(
-      Constants.DATA_RETRIEVED_SUCCESSFULLY,
-      users.map((user) => ({
-        id: user.id.toString(),
-        name: user.name,
-        fullName: user.full_name || '',
-        email: user.email,
-      })),
-      HttpStatus.OK,
     );
   }
   /**
