@@ -192,7 +192,7 @@ export class UserService {
         //Update Flag inside the DB
         await this.verifyOTPUpdate(user.id);
         return ResponseHelper.CreateResponse<boolean>(
-          Constants.USER_VERIFIED,
+          Constants.OTP_VERIFIED,
           true,
           HttpStatus.OK,
         );

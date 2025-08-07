@@ -10,6 +10,7 @@ export default class Constants {
     'User has been logged-in successfully';
   public static readonly USER_VERIFIED =
     "User has been verified successfully!. You'll be redirecting in couple of seconds.";
+  public static readonly OTP_VERIFIED = 'OTP has been verified successfully!.';
   public static readonly INVALID_OTP = 'You have entered an invalid OTP';
   public static readonly EXPIRED_OTP =
     'Your OTP has been expired. Please regenerate this';
