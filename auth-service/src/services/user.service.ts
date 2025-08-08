@@ -553,7 +553,7 @@ export class UserService {
       this.SALT_ROUND,
     );
     // By Default assigning it buyer and seller
-    const roleIds: number[] = [3, 4];
+    const roleIds: bigint[] = [3n, 4n];
     const newUserCreateData: Prisma.UserCreateInput = {
       name: 'SOCIAL_LOGIN_USER_NAME',
       email: socialEmail,
