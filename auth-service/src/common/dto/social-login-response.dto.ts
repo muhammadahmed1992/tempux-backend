@@ -7,3 +7,7 @@ export interface SocialLoginResponseDTO {
 export interface SocialLoginVerifyUserResponseDTO {
   resetToken: string;
 }
+
+export interface SocialLoginLoggedInUserResponseDTO {
+  token: string;
+}
