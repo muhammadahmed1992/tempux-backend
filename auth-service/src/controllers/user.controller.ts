@@ -203,7 +203,7 @@ export class UserController {
         // Set the JWT in a secure, HTTP-only cookie
         res.cookie('access_token', accessToken, {
           httpOnly: true, // Prevents JavaScript from accessing the cookie
-          secure: this.configService.get<string>('NODE_ENV') === 'production', // Use secure cookies in production
+          secure: this.configService.get<string>('NODE_ENV') === 'production',
           sameSite: 'lax', // Protects against CSRF attacks
           maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
         });
@@ -396,16 +396,25 @@ export class UserController {
   }
 
   @Post('/social-media')
-  async createUserBySocialMedia(@Req() req: Request) {
+  async createUserBySocialMedia(@Req() req: Request, @Res() res: Response) {
     const session = (req.session as any)?.user;
-    console.log(session);
     if (session) {
-      return this.userService.createUserBySocialLoginEmail(
+      const result = await this.userService.createUserBySocialLoginEmail(
         session.socialEmail,
         session.provider,
       );
+      if (result?.statusCode === HttpStatus.CREATED) {
+        // Set the JWT in a secure, HTTP-only cookie
+        res.cookie('access_token', result.data.token, {
+          httpOnly: true, // Prevents JavaScript from accessing the cookie
+          secure: this.configService.get<string>('NODE_ENV') === 'production',
+          sameSite: 'lax', // Protects against CSRF attacks
+          maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+        });
+      }
+      return result;
     }
-    throw new BadRequestException(
+    throw new UnauthorizedException(
       'Your session has been expired. Please re-login again',
     );
   }
