@@ -553,7 +553,7 @@ export class UserService {
       return ResponseHelper.CreateResponse<boolean>(
         Constants.USER_ALREADY_EXISTS,
         false,
-        HttpStatus.FOUND,
+        HttpStatus.BAD_REQUEST,
       );
     }
     const otpResponse = await this.generateOTPAndExpiry();
