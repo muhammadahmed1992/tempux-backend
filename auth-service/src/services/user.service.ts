@@ -580,7 +580,7 @@ export class UserService {
       EmailTemplateType.OTP_VERIFICATION,
     );
     return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
-      Constants.USER_CREATED_SUCCESS,
+      Constants.USER_CREATED_SOCIALMEDIA_SUCCESS,
       {
         resetToken: token,
       },

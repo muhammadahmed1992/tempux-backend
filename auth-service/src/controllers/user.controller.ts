@@ -382,12 +382,12 @@ export class UserController {
     @Req() req: Request,
     @Body('email') email: string,
   ) {
-    const session = req.session as any;
-    if (session && session.user) {
+    const session = (req.session as any).user;
+    if (session) {
       return this.userService.validateExistingAccount(
         email,
-        session.socialEmail,
-        session.provider,
+        session?.socialEmail,
+        session?.provider,
       );
     }
     throw new UnauthorizedException(
@@ -397,8 +397,9 @@ export class UserController {
 
   @Post('/social-media')
   async createUserBySocialMedia(@Req() req: Request) {
-    const session = req.session as any;
-    if (session && session.user) {
+    const session = (req.session as any)?.user;
+    console.log(session);
+    if (session) {
       return this.userService.createUserBySocialLoginEmail(
         session.socialEmail,
         session.provider,

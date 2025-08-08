@@ -52,10 +52,11 @@ export class UserRepository extends BaseRepository<
    * @param email - The user's email address.
    * @returns The user object or null if not found.
    */
-  async findFirstUserByEmail(email: string) {
+  async findFirstUserByEmail(email: string, select?: object) {
     // Changed from findUnique to findFirst to allow querying by non-unique fields
     return this.model.findFirst({
       where: { email },
+      select,
     });
   }
 }
