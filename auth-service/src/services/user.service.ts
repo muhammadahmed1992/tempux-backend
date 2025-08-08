@@ -545,7 +545,17 @@ export class UserService {
     // TOOD: Refactoring Needed.
     // No existing user found, create a new one
     // generating OTP as well which will needed
+
     // TODO: Will refactor later with actual create method of user service
+    // Check if user exists
+    const isExists = await this.userRepository.validateUser(socialEmail);
+    if (isExists) {
+      return ResponseHelper.CreateResponse<boolean>(
+        Constants.USER_ALREADY_EXISTS,
+        false,
+        HttpStatus.FOUND,
+      );
+    }
     const otpResponse = await this.generateOTPAndExpiry();
     // Construct the data object for createUser
     const password = await bcrypt.hash(
