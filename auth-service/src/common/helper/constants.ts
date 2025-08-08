@@ -1,6 +1,8 @@
 export default class Constants {
   public static readonly USER_CREATED_SUCCESS =
     'User has been created successfully. Please check your email for OTP verification';
+  public static readonly USER_CREATED_SOCIALMEDIA_SUCCESS =
+    'We have created your user with your social media email address. Please check your email for OTP verification';
   public static readonly USER_CREATED_ERROR =
     'An error occurred while creating user.';
   public static readonly ERROR_MESSAGE =
