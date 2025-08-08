@@ -56,6 +56,12 @@ export class UserController {
         sameSite: 'lax',
         maxAge: 15552000000, // 180 days
       });
+      res.cookie('display_email', login.email, {
+        httpOnly: true,
+        secure: this.configService.get<string>('NODE_ENV') === 'production',
+        sameSite: 'lax',
+        maxAge: 15552000000, // 180 days
+      });
     }
 
     return response;
@@ -179,9 +185,7 @@ export class UserController {
         // If it is being redirected from social Login where user doesn't exists in socialId field
         if (apiResponse.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
           // Re-directing to the consent form.
-          return res.redirect(
-            `${frontendUrl}/account-check?provider=google`,
-          );
+          return res.redirect(`${frontendUrl}/account-check?provider=google`);
         }
         // This case should ideally be caught by the try/catch, but this is a final check.
         return res.redirect(
@@ -202,6 +206,12 @@ export class UserController {
 
         // Set the JWT in a secure, HTTP-only cookie
         res.cookie('access_token', accessToken, {
+          httpOnly: true, // Prevents JavaScript from accessing the cookie
+          secure: this.configService.get<string>('NODE_ENV') === 'production',
+          sameSite: 'lax', // Protects against CSRF attacks
+          maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+        });
+        res.cookie('display_email', responseData.email, {
           httpOnly: true, // Prevents JavaScript from accessing the cookie
           secure: this.configService.get<string>('NODE_ENV') === 'production',
           sameSite: 'lax', // Protects against CSRF attacks
@@ -403,6 +413,14 @@ export class UserController {
         session.socialEmail,
         session.provider,
       );
+      if (result.statusCode === HttpStatus.CREATED) {
+        res.cookie('display_email', session.socialEmail, {
+          httpOnly: true,
+          secure: this.configService.get<string>('NODE_ENV') === 'production',
+          sameSite: 'lax',
+          maxAge: 15552000000, // 180 days
+        });
+      }
       return result;
     }
     throw new UnauthorizedException(
