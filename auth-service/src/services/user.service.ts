@@ -20,6 +20,7 @@ import { EmailService } from '@Services/email.service';
 import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
 import { ResendOTPDTO, ResetPasswordRequestDTO } from '@DTO/resend.otp.dto';
 import {
+  SocialLoginLoggedInUserResponseDTO,
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
 } from '@DTO/social-login-response.dto';
@@ -540,7 +541,7 @@ export class UserService {
   async createUserBySocialLoginEmail(
     socialEmail: string,
     provider: 'google' | 'facebook',
-  ) {
+  ): Promise<ApiResponse<SocialLoginLoggedInUserResponseDTO>> {
     // No existing user found, create a new one
     // generating OTP as well which will needed
     // TODO: Will refactor later with actual create method of user service
@@ -579,10 +580,10 @@ export class UserService {
       { otp: otpResponse.plainOTP, resetToken: token },
       EmailTemplateType.OTP_VERIFICATION,
     );
-    return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
+    return ResponseHelper.CreateResponse<SocialLoginLoggedInUserResponseDTO>(
       Constants.USER_CREATED_SOCIALMEDIA_SUCCESS,
       {
-        resetToken: token,
+        token: token,
       },
       HttpStatus.CREATED,
     );
