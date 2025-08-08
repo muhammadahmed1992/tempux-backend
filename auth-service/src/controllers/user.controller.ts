@@ -406,25 +406,31 @@ export class UserController {
   }
 
   @Post('/social-media')
-  async createUserBySocialMedia(@Req() req: Request, @Res() res: Response) {
+  async createUserBySocialMedia(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const session = (req.session as any)?.user;
-    if (session) {
-      const result = await this.userService.createUserBySocialLoginEmail(
-        session.socialEmail,
-        session.provider,
+    if (!session) {
+      throw new UnauthorizedException(
+        'Your session has been expired. Please re-login again',
       );
-      if (result.statusCode === HttpStatus.CREATED) {
-        res.cookie('display_email', session.socialEmail, {
-          httpOnly: true,
-          secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax',
-          maxAge: 15552000000, // 180 days
-        });
-      }
-      return result;
     }
-    throw new UnauthorizedException(
-      'Your session has been expired. Please re-login again',
+
+    const result = await this.userService.createUserBySocialLoginEmail(
+      session.socialEmail,
+      session.provider,
     );
+
+    if (result.statusCode === HttpStatus.CREATED) {
+      res.cookie('display_email', session.socialEmail, {
+        httpOnly: true,
+        secure: this.configService.get<string>('NODE_ENV') === 'production',
+        sameSite: 'lax',
+        maxAge: 15552000000, // 180 days
+      });
+    }
+
+    return result;
   }
 }

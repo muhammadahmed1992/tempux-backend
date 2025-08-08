@@ -76,7 +76,9 @@ export class UserService {
           otp: otpResponse.otp,
           otp_expires_at: otpResponse.otp_expiry_date_time,
           user_roles: {
-            connect: roleIds.map((id) => ({ id })),
+            create: roleIds.map((roleId) => ({
+              role_id: roleId, // use role_id, not id
+            })),
           },
         },
         {
@@ -569,7 +571,9 @@ export class UserService {
       email: socialEmail,
       password: password,
       user_roles: {
-        connect: roleIds.map((id) => ({ id })),
+        create: roleIds.map((roleId) => ({
+          role_id: roleId, // use role_id, not id
+        })),
       },
       otp: otpResponse.otp,
       otp_expires_at: otpResponse.otp_expiry_date_time,
@@ -583,7 +587,11 @@ export class UserService {
       newUserCreateData.facebookId = socialEmail;
     }
 
-    const newUser = await this.userRepository.createUser(newUserCreateData);
+    try {
+      const newUser = await this.userRepository.createUser(newUserCreateData);
+    } catch (error: any) {
+      console.log(error);
+    }
 
     const resetToken = this.encryptionHelper.encrypt(socialEmail);
     this.sendOTPInEmail(
