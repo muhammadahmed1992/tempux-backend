@@ -24,13 +24,10 @@ export class UserRepository extends BaseRepository<
     });
   }
 
-  async validateUser(email: string, userType: number, select?: object) {
+  async validateUser(email: string, select?: object) {
     return this.model.findUnique({
       where: {
-        email_user_type: {
-          email,
-          user_type: userType,
-        },
+        email,
       },
       select,
     });
@@ -55,10 +52,11 @@ export class UserRepository extends BaseRepository<
    * @param email - The user's email address.
    * @returns The user object or null if not found.
    */
-  async findFirstUserByEmail(email: string) {
+  async findFirstUserByEmail(email: string, select?: object) {
     // Changed from findUnique to findFirst to allow querying by non-unique fields
     return this.model.findFirst({
       where: { email },
+      select,
     });
   }
 }

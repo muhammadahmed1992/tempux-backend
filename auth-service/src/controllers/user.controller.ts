@@ -5,9 +5,11 @@ import {
   Get,
   HttpStatus,
   InternalServerErrorException,
+  Param,
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from '@Services/user.service';
@@ -49,6 +51,12 @@ export class UserController {
     if (response.statusCode === HttpStatus.OK) {
       // Set the JWT in a secure, HTTP-only cookie.
       res.cookie('access_token', response.data.accessToken, {
+        httpOnly: true,
+        secure: this.configService.get<string>('NODE_ENV') === 'production',
+        sameSite: 'lax',
+        maxAge: 15552000000, // 180 days
+      });
+      res.cookie('display_email', login.email, {
         httpOnly: true,
         secure: this.configService.get<string>('NODE_ENV') === 'production',
         sameSite: 'lax',
@@ -174,6 +182,11 @@ export class UserController {
 
       // Handle the case where the user object is not as expected after a successful guard run
       if (!apiResponse || !apiResponse.data || !apiResponse.success) {
+        // If it is being redirected from social Login where user doesn't exists in socialId field
+        if (apiResponse.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
+          // Re-directing to the consent form.
+          return res.redirect(`${frontendUrl}/account-check?provider=google`);
+        }
         // This case should ideally be caught by the try/catch, but this is a final check.
         return res.redirect(
           `${frontendUrl}?error=${encodeURIComponent(
@@ -194,7 +207,12 @@ export class UserController {
         // Set the JWT in a secure, HTTP-only cookie
         res.cookie('access_token', accessToken, {
           httpOnly: true, // Prevents JavaScript from accessing the cookie
-          secure: this.configService.get<string>('NODE_ENV') === 'production', // Use secure cookies in production
+          secure: this.configService.get<string>('NODE_ENV') === 'production',
+          sameSite: 'lax', // Protects against CSRF attacks
+          maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+        });
+        res.cookie('display_email', responseData.email, {
+          secure: this.configService.get<string>('NODE_ENV') === 'production',
           sameSite: 'lax', // Protects against CSRF attacks
           maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
         });
@@ -366,5 +384,52 @@ export class UserController {
   async getUsersDetailsByIdsPost(@Body('ids') userIds: number[]) {
     // This is generally preferred for a large number of IDs.
     return this.userService.findUsersByIds(userIds);
+  }
+
+  @Post('account-existance')
+  async validateAssociatedAccount(
+    @Req() req: Request,
+    @Body('email') email: string,
+  ) {
+    const session = (req.session as any).user;
+    if (session) {
+      return this.userService.validateExistingAccount(
+        email,
+        session?.socialEmail,
+        session?.provider,
+      );
+    }
+    throw new UnauthorizedException(
+      'Your session has been expired. Please re-login again',
+    );
+  }
+
+  @Post('/social-media')
+  async createUserBySocialMedia(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = (req.session as any)?.user;
+    if (!session) {
+      throw new UnauthorizedException(
+        'Your session has been expired. Please re-login again',
+      );
+    }
+
+    const result = await this.userService.createUserBySocialLoginEmail(
+      session.socialEmail,
+      session.provider,
+    );
+
+    if (result.statusCode === HttpStatus.CREATED) {
+      res.cookie('display_email', session.socialEmail, {
+        httpOnly: true,
+        secure: this.configService.get<string>('NODE_ENV') === 'production',
+        sameSite: 'lax',
+        maxAge: 15552000000, // 180 days
+      });
+    }
+
+    return result;
   }
 }

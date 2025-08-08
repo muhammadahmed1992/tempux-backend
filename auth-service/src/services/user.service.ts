@@ -20,6 +20,7 @@ import { EmailService } from '@Services/email.service';
 import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
 import { ResendOTPDTO, ResetPasswordRequestDTO } from '@DTO/resend.otp.dto';
 import {
+  SocialLoginLoggedInUserResponseDTO,
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
 } from '@DTO/social-login-response.dto';
@@ -49,14 +50,13 @@ export class UserService {
 
   async create(user: CreateUserDto): Promise<ApiResponse<boolean>> {
     try {
+      // TOOD: Will discuss about role implementation...
       //If user already exists returns an error
-      const isExists = await this.userRepository.validateUser(
-        user.email,
-        user.userType,
-        {
-          id: true,
-        },
-      );
+      console.log(user.email)
+      const isExists = await this.userRepository.validateUser(user.email, {
+        id: true,
+      });
+      console.log(isExists)
       if (isExists) {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
@@ -66,19 +66,22 @@ export class UserService {
       }
       const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
       const otpResponse = await this.generateOTPAndExpiry();
+      // By Default assigning it buyer and seller
+      // The `id` in your schema is a BigInt, so you must use BigInts in your code.
+      const roleIds: bigint[] = [3n, 4n];
       const result = await this.userRepository.createUser(
         {
           name: user.username || user.email,
           email: user.email,
           password: hashedPassword,
           full_name: user.fullName,
-          userType: {
-            connect: {
-              id: user.userType,
-            },
-          },
           otp: otpResponse.otp,
           otp_expires_at: otpResponse.otp_expiry_date_time,
+          user_roles: {
+            create: roleIds.map((roleId) => ({
+              role_id: roleId, // use role_id, not id
+            })),
+          },
         },
         {
           id: true,
@@ -110,10 +113,14 @@ export class UserService {
   async login(
     request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
-    const user = await this.userRepository.validateUser(
-      request.email,
-      request.userType,
-    );
+    console.log(request.email)
+    const user = await this.userRepository.validateUser(request.email, {
+      otp_verified: true,
+      email: true,
+      password: true,
+      user_roles: true,
+    });
+    console.log(user)
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,
@@ -121,11 +128,6 @@ export class UserService {
         HttpStatus.NOT_FOUND,
       );
     if (!user.otp_verified) {
-      // return ResponseHelper.CreateResponse<LoginDTO>(
-      //   Constants.USER_NOT_VERIFIED,
-      //   { accessToken: '', userName: '' },
-      //   HttpStatus.BAD_REQUEST,
-      // );
       // TODO: Code optimization...
       // Send OTP to the user's email.
       const otpResponse = await this.generateOTPAndExpiry();
@@ -137,10 +139,7 @@ export class UserService {
       );
       await this.userRepository.update(
         {
-          email_user_type: {
-            user_type: user.user_type,
-            email: user.email,
-          },
+          email: user.email,
         },
         {
           otp: otpResponse.otp,
@@ -168,11 +167,14 @@ export class UserService {
           HttpStatus.NOT_FOUND,
         );
     }
-
+    // Extract the role IDs from the user_roles array
+    const roleIds = (user as any).user_roles.map((role: any) =>
+      Number(role.id),
+    );
     const payload = {
       sub: Number(user.id),
       email: user.email,
-      userType: user.user_type,
+      user_roles: roleIds,
     };
     const token = await this.jwtService.signAsync(payload);
     return ResponseHelper.CreateResponse<LoginDTO>(
@@ -201,7 +203,7 @@ export class UserService {
         //Update Flag inside the DB
         await this.verifyOTPUpdate(user.id);
         return ResponseHelper.CreateResponse<boolean>(
-          Constants.USER_VERIFIED,
+          Constants.OTP_VERIFIED,
           true,
           HttpStatus.OK,
         );
@@ -340,195 +342,6 @@ export class UserService {
   }
 
   /**
-   * Validates a social user (Google/Facebook).
-   * Finds an existing user by socialId, or creates a new one.
-   * @param provider - 'google' or 'facebook'
-   * @param socialId - The unique ID from the social provider
-   * @param email - The user's email from the social profile
-   * @param name - The user's name from the social profile
-   * @returns The user object from your database.
-   */
-  async validateSocialUser(
-    provider: 'google' | 'facebook',
-    socialId: string,
-    email: string,
-    userType: number,
-  ): Promise<
-    ApiResponse<SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO>
-  > {
-    const socialLoginFields = {
-      google: 'googleId',
-      facebook: 'facebookId',
-    };
-    // Determine which ID field to use
-    const socialIdField = socialLoginFields[provider];
-
-    // Try to find the user by their social ID
-    const user = await this.userRepository.findUserBySocialId(
-      socialIdField,
-      socialId,
-      {
-        id: true,
-        email: true,
-        user_type: true,
-        otp_verified: true,
-      },
-    );
-
-    if (user) {
-      // User found, return it
-      if (user.otp_verified) {
-        return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-          Constants.USER_ALREADY_VERIFIED,
-          {
-            id: Number(user.id),
-            email: user.email,
-            userType: user.user_type,
-          },
-          HttpStatus.OK,
-        );
-      }
-      // TODO: Code optimization...
-      // Send OTP to the user's email.
-      const otpResponse = await this.generateOTPAndExpiry();
-      const token = this.encryptionHelper.encrypt(user.email);
-      this.sendOTPInEmail(
-        email,
-        { otp: otpResponse.plainOTP, resetToken: token },
-        EmailTemplateType.OTP_VERIFICATION,
-      );
-      await this.userRepository.update(
-        {
-          email_user_type: {
-            user_type: user.user_type,
-            email: user.email,
-          },
-        },
-        {
-          otp: otpResponse.otp,
-          otp_expires_at: otpResponse.otp_expiry_date_time,
-        },
-      );
-      return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
-        Constants.OTP_SENT,
-        {
-          resetToken: token,
-        },
-        HttpStatus.OK,
-      );
-    }
-
-    // If user not found by social ID, check if an account with this email already exists
-    // This handles cases where a user might register with email/password, then try social login with the same email.
-    // You might want to link accounts here, or prevent login if email already exists without social link.
-    const result = await this.userRepository.validateUser(email, userType, {
-      id: true,
-      email: true,
-      user_type: true,
-      otp_verified: true,
-    });
-
-    if (result) {
-      // User with this email exists, link the social ID only if it's not linked.
-      if (!(result.googleId && result.facebookId)) {
-        if (result.otp_verified) {
-          const updatedUser = await this.userRepository.update(
-            { id: result.id },
-            { [socialIdField]: socialId },
-            { id: true, email: true, user_type: true },
-          );
-          // User found, return it
-          return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
-            Constants.USER_ALREADY_VERIFIED,
-            {
-              id: Number(result.id),
-              email: result.email,
-              userType: result.user_type,
-            },
-            HttpStatus.OK,
-          );
-        }
-        // User found, but not verified return it
-        // TODO: Code optimization...
-        // Send OTP to the user's email.
-        const otpResponse = await this.generateOTPAndExpiry();
-        console.log(`[Auth-Service][User-Email] user-email: ${result.email}`);
-        const token = this.encryptionHelper.encrypt(result.email);
-        console.log(`[Auth-Service][User-Email] token: ${token}`);
-        this.sendOTPInEmail(
-          email,
-          { otp: otpResponse.plainOTP, resetToken: token },
-          EmailTemplateType.OTP_VERIFICATION,
-        );
-        await this.userRepository.update(
-          {
-            email_user_type: {
-              user_type: result.user_type,
-              email: result.email,
-            },
-          },
-          {
-            otp: otpResponse.otp,
-            otp_expires_at: otpResponse.otp_expiry_date_time,
-          },
-        );
-        return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
-          Constants.OTP_SENT,
-          {
-            resetToken: token,
-          },
-          HttpStatus.OK,
-        );
-      }
-    }
-    // No existing user found, create a new one
-    // generating OTP as well which will needed
-    // TODO: Will refactor later with actual create method of user service
-    const otpResponse = await this.generateOTPAndExpiry();
-    // Construct the data object for createUser
-    const password = await bcrypt.hash(
-      'SOCIAL_LOGIN_PASSWORD_PLACEH',
-      this.SALT_ROUND,
-    );
-    const newUserCreateData: Prisma.UserCreateInput = {
-      name: 'SOCIAL_LOGIN_USER_NAME',
-      email: email,
-      password: password,
-      userType: {
-        connect: {
-          id: userType,
-        },
-      },
-      otp: otpResponse.otp,
-      otp_expires_at: otpResponse.otp_expiry_date_time,
-    };
-
-    // Conditionally add the social ID field to the data object.
-    // Because Prisma doesn't allow dynamic column.
-    if (provider === 'google') {
-      newUserCreateData.googleId = socialId;
-    } else if (provider === 'facebook') {
-      newUserCreateData.facebookId = socialId;
-    }
-
-    const newUser = await this.userRepository.createUser(newUserCreateData);
-
-    const token = this.encryptionHelper.encrypt(email);
-    this.sendOTPInEmail(
-      email,
-      { otp: otpResponse.plainOTP, resetToken: token },
-      EmailTemplateType.OTP_VERIFICATION,
-    );
-    return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
-      Constants.USER_CREATED_SUCCESS,
-      {
-        resetToken: token,
-      },
-      HttpStatus.CREATED,
-    );
-  }
-
-  /**
    * Finds multiple users by their number IDs and returns their basic details.
    * This method is intended for internal service-to-service communication.
    * @param userIds An array of user IDs (number).
@@ -570,6 +383,231 @@ export class UserService {
         email: user.email,
       })),
       HttpStatus.OK,
+    );
+  }
+
+  /**
+   * Validates a social user (Google/Facebook).
+   * Finds an existing user by socialId, or creates a new one.
+   * @param provider - 'google' or 'facebook'
+   * @param socialId - The unique ID from the social provider
+   * @param email - The user's email from the social profile
+   * @param name - The user's name from the social profile
+   * @returns The user object from your database.
+   */
+  async validateSocialUser(
+    provider: 'google' | 'facebook',
+    email: string,
+    userType: number, //TODO: Need to discuss.
+  ): Promise<
+    ApiResponse<SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO>
+  > {
+    const socialLoginFields = {
+      google: 'googleId',
+      facebook: 'facebookId',
+    };
+    // Determine which ID field to use
+    const socialIdField = socialLoginFields[provider];
+
+    // Try to find the user by their social ID
+    //TODO: Need to discuss userType issue with client.
+    const user = await this.userRepository.findUserBySocialId(
+      socialIdField,
+      email,
+      {
+        id: true,
+        email: true,
+        otp_verified: true,
+        user_roles: true,
+      },
+    );
+
+    if (user) {
+      // User found, return it
+      // Extract the role IDs from the user_roles array
+      const roleIds = (user as any).user_roles.map((role: any) => role.id);
+      console.log(`userRoles: ${roleIds}`);
+      if (user.otp_verified) {
+        return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
+          Constants.USER_ALREADY_VERIFIED,
+          {
+            id: Number(user.id),
+            email: user.email,
+            userRoles: roleIds,
+          },
+          HttpStatus.OK,
+        );
+      }
+      // TODO: Code optimization...
+      // Send OTP to the user's email.
+      const otpResponse = await this.generateOTPAndExpiry();
+      const token = this.encryptionHelper.encrypt(user.email);
+      this.sendOTPInEmail(
+        email,
+        { otp: otpResponse.plainOTP, resetToken: token },
+        EmailTemplateType.OTP_VERIFICATION,
+      );
+      await this.userRepository.update(
+        {
+          email: user.email,
+        },
+        {
+          otp: otpResponse.otp,
+          otp_expires_at: otpResponse.otp_expiry_date_time,
+        },
+      );
+      return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
+        Constants.OTP_SENT,
+        {
+          resetToken: token,
+        },
+        HttpStatus.OK,
+      );
+    } else {
+      /**
+       * If user doesn't exists while checking the mapping... Then redirect to consent account mapping form.
+       */
+      return ResponseHelper.CreateResponse<any>(
+        'You will be redirecting to consent form',
+        null,
+        HttpStatus.TEMPORARY_REDIRECT,
+      );
+    }
+  }
+
+  /**
+   * @param email Email needs to be checked if exists or not. if exists then send a verification email on it.
+   * @param socialEmail Email that will be going to map in socialId field
+   * @param socialId The service provider i.e google/facebook.
+   * @param userType This the user type which will be gona registered.
+   * @returns Promise<ApiResponse<SocialLoginVerifyUserResponseDTO>> which will contains the resetToken for verification.
+   */
+  async validateExistingAccount(
+    email: string,
+    socialEmail: string,
+    provider: 'google' | 'facebook',
+  ) {
+    const socialLoginFields = {
+      google: 'googleId',
+      facebook: 'facebookId',
+    };
+    // Determine which ID field to use
+    const socialIdField = socialLoginFields[provider];
+    // If user not found by social ID, check if an account with this email already exists
+    // This handles cases where a user might register with email/password, then try social login with the same email.
+    // You might want to link accounts here, or prevent login if email already exists without social link.
+    const result = await this.userRepository.validateUser(email, {
+      id: true,
+      email: true,
+      otp_verified: true,
+      user_roles: true,
+    });
+
+    if (result) {
+      // User found, but we are doing mapping so we need to actually send an email again to verify.
+      // TODO: Code optimization...
+      // Send OTP to the user's email.
+      const otpResponse = await this.generateOTPAndExpiry();
+      const token = this.encryptionHelper.encrypt(result.email);
+      this.sendOTPInEmail(
+        email,
+        { otp: otpResponse.plainOTP, resetToken: token },
+        EmailTemplateType.OTP_VERIFICATION,
+      );
+      await this.userRepository.update(
+        {
+          email: result.email,
+        },
+        {
+          [socialIdField]: socialEmail,
+          otp_verified: false,
+          otp: otpResponse.otp,
+          otp_expires_at: otpResponse.otp_expiry_date_time,
+        },
+      );
+      return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
+        Constants.OTP_SENT,
+        {
+          resetToken: token,
+        },
+        HttpStatus.OK,
+      );
+    }
+    throw new BadRequestException(
+      'No account is associated with this email address',
+    );
+  }
+
+  /**
+   * @param socialEmail Email that will be going to map in socialId field
+   * @param socialId The service provider i.e google/facebook.
+   * @param userType This the user type which will be gona registered.
+   * @returns
+   */
+  async createUserBySocialLoginEmail(
+    socialEmail: string,
+    provider: 'google' | 'facebook',
+  ): Promise<ApiResponse<boolean>> {
+    // TOOD: Refactoring Needed.
+    // No existing user found, create a new one
+    // generating OTP as well which will needed
+
+    // TODO: Will refactor later with actual create method of user service
+    // Check if user exists
+    const isExists = await this.userRepository.validateUser(socialEmail);
+    if (isExists) {
+      return ResponseHelper.CreateResponse<boolean>(
+        Constants.USER_ALREADY_EXISTS,
+        false,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const otpResponse = await this.generateOTPAndExpiry();
+    // Construct the data object for createUser
+    const password = await bcrypt.hash(
+      'SOCIAL_LOGIN_PASSWORD_PLACEH',
+      this.SALT_ROUND,
+    );
+    // By Default assigning it buyer and seller
+    const roleIds: bigint[] = [3n, 4n];
+    const newUserCreateData: Prisma.UserCreateInput = {
+      name: 'SOCIAL_LOGIN_USER_NAME',
+      email: socialEmail,
+      password: password,
+      user_roles: {
+        create: roleIds.map((roleId) => ({
+          role_id: roleId, // use role_id, not id
+        })),
+      },
+      otp: otpResponse.otp,
+      otp_expires_at: otpResponse.otp_expiry_date_time,
+    };
+
+    // Conditionally add the social ID field to the data object.
+    // Because Prisma doesn't allow dynamic column.
+    if (provider === 'google') {
+      newUserCreateData.googleId = socialEmail;
+    } else if (provider === 'facebook') {
+      newUserCreateData.facebookId = socialEmail;
+    }
+
+    try {
+      const newUser = await this.userRepository.createUser(newUserCreateData);
+    } catch (error: any) {
+      console.log(error);
+    }
+
+    const resetToken = this.encryptionHelper.encrypt(socialEmail);
+    this.sendOTPInEmail(
+      socialEmail,
+      { otp: otpResponse.plainOTP, resetToken: resetToken },
+      EmailTemplateType.OTP_VERIFICATION,
+    );
+
+    return ResponseHelper.CreateResponse<boolean>(
+      Constants.USER_CREATED_SOCIALMEDIA_SUCCESS,
+      true,
+      HttpStatus.CREATED,
     );
   }
   /**
