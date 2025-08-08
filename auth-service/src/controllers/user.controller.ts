@@ -212,7 +212,6 @@ export class UserController {
           maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
         });
         res.cookie('display_email', responseData.email, {
-          httpOnly: true, // Prevents JavaScript from accessing the cookie
           secure: this.configService.get<string>('NODE_ENV') === 'production',
           sameSite: 'lax', // Protects against CSRF attacks
           maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)

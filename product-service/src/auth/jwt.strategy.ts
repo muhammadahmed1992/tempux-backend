@@ -1,27 +1,26 @@
 // products-service/src/auth/jwt.strategy.ts
-import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { PassportStrategy } from "@nestjs/passport";
-import { ExtractJwt, Strategy } from "passport-jwt";
-import { ConfigService } from "@nestjs/config";
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { PassportStrategy } from '@nestjs/passport';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { ConfigService } from '@nestjs/config';
 
 // Define the expected JWT payload structure
 // This should match the payload you sign in your auth-service
 export interface JwtPayload {
   email: string;
   sub: bigint; // User ID
-  userType: number; // User type ID
   // Add any other claims you include in your JWT
 }
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(private configService: ConfigService) {
-    const secret = configService.get<string>("JWT_SECRET");
+    const secret = configService.get<string>('JWT_SECRET');
 
     // Option A: Throw an error if the secret is not defined (recommended for critical config)
     if (!secret) {
       throw new UnauthorizedException(
-        "JWT_SECRET environment variable is not defined or not configured properly."
+        'JWT_SECRET environment variable is not defined or not configured properly.',
       );
     }
     super({
@@ -61,7 +60,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
     return {
       email: payload.email,
       sub: BigInt(payload.sub), // Convert back to BigInt for Prisma compatibility
-      userType: payload.userType,
     };
   }
 }
