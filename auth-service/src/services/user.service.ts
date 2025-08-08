@@ -541,7 +541,8 @@ export class UserService {
   async createUserBySocialLoginEmail(
     socialEmail: string,
     provider: 'google' | 'facebook',
-  ): Promise<ApiResponse<SocialLoginLoggedInUserResponseDTO>> {
+  ): Promise<ApiResponse<boolean>> {
+    // TOOD: Refactoring Needed.
     // No existing user found, create a new one
     // generating OTP as well which will needed
     // TODO: Will refactor later with actual create method of user service
@@ -574,17 +575,16 @@ export class UserService {
 
     const newUser = await this.userRepository.createUser(newUserCreateData);
 
-    const token = this.encryptionHelper.encrypt(socialEmail);
+    const resetToken = this.encryptionHelper.encrypt(socialEmail);
     this.sendOTPInEmail(
       socialEmail,
-      { otp: otpResponse.plainOTP, resetToken: token },
+      { otp: otpResponse.plainOTP, resetToken: resetToken },
       EmailTemplateType.OTP_VERIFICATION,
     );
-    return ResponseHelper.CreateResponse<SocialLoginLoggedInUserResponseDTO>(
+
+    return ResponseHelper.CreateResponse<boolean>(
       Constants.USER_CREATED_SOCIALMEDIA_SUCCESS,
-      {
-        token: token,
-      },
+      true,
       HttpStatus.CREATED,
     );
   }
