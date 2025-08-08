@@ -7,22 +7,38 @@ datasource db {
   url      = env("DATABASE_URL_DEV_USERS")
 }
 
+model RoleAccessManagement {
+  id                BigInt    @id @default(autoincrement())
+  role_id           BigInt    @db.BigInt
+  access_management_id BigInt @db.BigInt
+  description       String?   @db.VarChar(200)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  is_deleted        Boolean   @default(false)
+
+  role              Roles     @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  access_management AccessManagement @relation(fields: [access_management_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([role_id, access_management_id])
+  @@map("role_access_management")
+}
+
 model AccessManagement {
-  id           Int       @id @default(autoincrement())
+  id           BigInt    @id @default(autoincrement())
   access       String    @db.VarChar(50)
   description  String?   @db.VarChar(200)
-  user_type_id Int       @db.SmallInt
   created_at   DateTime  @default(now()) @db.Timestamptz(6)
   updated_at   DateTime  @default(now()) @db.Timestamptz(6)
   is_deleted   Boolean   @default(false)
-  user_type    UserType  @relation(fields: [user_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  role_access_management RoleAccessManagement[]
 
   @@map("access_management")
 }
 
 model SavedSearch {
   id           BigInt    @id @default(autoincrement())
-  user_id      BigInt
+  user_id      BigInt     @db.BigInt
   search_query Json
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   is_deleted   Boolean   @default(false)
@@ -35,7 +51,7 @@ model SellerProfileDetail {
   id                BigInt    @id @default(autoincrement())
   brand_name        String    @db.VarChar(50)
   brand_description String?   @db.VarChar(100)
-  user_id           BigInt
+  user_id           BigInt    @db.BigInt
   vat_number        String?   @db.VarChar(15)
   location_from     String?   @db.VarChar(1000)
   is_private        Boolean   @default(true)
@@ -51,8 +67,8 @@ model SellerProfileRating {
   id               BigInt   @id @default(autoincrement())
   rating_name      String   @db.VarChar(50)
   rating_value     Decimal? @db.Decimal(2, 1)
-  seller_id        BigInt?
-  reviewed_by      BigInt?
+  seller_id        BigInt?  @db.BigInt
+  reviewed_by      BigInt?  @db.BigInt
   created_at       DateTime  @default(now()) @db.Timestamptz(6)
   updated_at       DateTime? @db.Timestamptz(6)
   is_deleted       Boolean   @default(false)
@@ -62,44 +78,59 @@ model SellerProfileRating {
   @@map("seller_profile_rating")
 }
 
-model UserType {
-  id             Int              @id @db.SmallInt
-  name           String           @unique @db.VarChar(20)
-  created_at     DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime         @default(now()) @db.Timestamptz(6)
-  is_deleted     Boolean          @default(false)
-  access         AccessManagement[]
-  users          User[]           @relation("users_user_typeTouser_type")
+model Roles {
+  id             BigInt    @id @default(autoincrement())
+  name           String    @unique @db.VarChar(20)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
+  is_deleted     Boolean   @default(false)
 
-  @@map("user_type")
+  user_roles     UserRoles[]
+  role_access_management RoleAccessManagement[]
+
+  @@map("roles")
+}
+
+model UserRoles {
+  id           BigInt    @id @default(autoincrement())
+  user_id      BigInt     @db.BigInt
+  role_id      BigInt    @db.BigInt
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  is_deleted   Boolean   @default(false)
+
+  user         User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role         Roles     @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([user_id, role_id])
+  @@map("user_roles")
 }
 
 model User {
   id           BigInt     @id @default(autoincrement())
   name         String     @db.VarChar(100)
-  email        String     @db.VarChar(150)
+  email        String     @db.VarChar(150) @unique
   full_name    String?    @db.VarChar(100)
   password     String     @db.VarChar(150)
-  user_type    Int        @db.SmallInt
   telephone    String?    @db.VarChar(15)
   address      String?    @db.VarChar(150)
   created_at   DateTime   @default(now()) @db.Timestamptz(6)
   updated_at   DateTime   @default(now()) @db.Timestamptz(6)
   is_deleted   Boolean    @default(false)
   otp          String?    @db.Char(60)
-  otp_expires_at DateTime?
+  otp_expires_at DateTime?  @db.Timestamptz(6)
   otp_verified Boolean    @default(false)
 
   googleId     String?    @db.VarChar(400)
   facebookId   String?    @db.VarChar(400)
   onboarded    Boolean    @default(false)
+  is_seller_approved  Boolean   @default(false)
 
   saved_searches        SavedSearch[]
   seller_profile_detail SellerProfileDetail[]
   reviewedRatings       SellerProfileRating[] @relation("seller_profile_rating_reviewed_byTousers")
   sellerRatings         SellerProfileRating[] @relation("seller_profile_rating_seller_idTousers")
-  userType              UserType @relation("users_user_typeTouser_type", fields: [user_type], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  isApproved  Boolean   @default(false)
-  @@unique([email, user_type], map: "users_email_user_type_unique")
+  user_roles            UserRoles[]
+
   @@map("users")
 }
