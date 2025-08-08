@@ -403,15 +403,6 @@ export class UserController {
         session.socialEmail,
         session.provider,
       );
-      if (result?.statusCode === HttpStatus.CREATED) {
-        // Set the JWT in a secure, HTTP-only cookie
-        res.cookie('access_token', result.data.token, {
-          httpOnly: true, // Prevents JavaScript from accessing the cookie
-          secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax', // Protects against CSRF attacks
-          maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
-        });
-      }
       return result;
     }
     throw new UnauthorizedException(
