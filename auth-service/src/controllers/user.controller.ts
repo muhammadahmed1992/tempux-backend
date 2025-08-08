@@ -179,7 +179,9 @@ export class UserController {
         // If it is being redirected from social Login where user doesn't exists in socialId field
         if (apiResponse.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
           // Re-directing to the consent form.
-          return res.redirect(`${frontendUrl}/account-check`);
+          return res.redirect(
+            `${frontendUrl}/account-check?provider=google`,
+          );
         }
         // This case should ideally be caught by the try/catch, but this is a final check.
         return res.redirect(
