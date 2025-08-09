@@ -3,21 +3,12 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import ResponseHandlerInterceptor from './interceptor/response-handler.interceptor';
 import { AllExceptionsFilter } from './filters/global.exception.filter';
-import session from 'express-session';
 import { ConfigService } from '@nestjs/config';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  // Configure and apply the session middleware
-  const configService = app.get(ConfigService);
-  app.use(
-    session({
-      secret: configService.get<string>('JWT_SECRET') || 'www.tempus.com',
-      resave: false, // Don't save session if it wasn't modified
-      saveUninitialized: false, // Don't create session until something is stored
-      cookie: { maxAge: 3600000 }, // Set cookie expiration to 1 hour
-    }),
-  );
+  app.use(cookieParser);
 
   // Enable the ValidationPipe globally
   // Add this temporary middleware for debugging headers

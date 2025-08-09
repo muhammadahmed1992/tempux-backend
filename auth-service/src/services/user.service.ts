@@ -52,11 +52,11 @@ export class UserService {
     try {
       // TOOD: Will discuss about role implementation...
       //If user already exists returns an error
-      console.log(user.email)
+      console.log(user.email);
       const isExists = await this.userRepository.validateUser(user.email, {
         id: true,
       });
-      console.log(isExists)
+      console.log(isExists);
       if (isExists) {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
@@ -113,14 +113,14 @@ export class UserService {
   async login(
     request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
-    console.log(request.email)
+    console.log(request.email);
     const user = await this.userRepository.validateUser(request.email, {
       otp_verified: true,
       email: true,
       password: true,
       user_roles: true,
     });
-    console.log(user)
+    console.log(user);
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,
@@ -591,11 +591,7 @@ export class UserService {
       newUserCreateData.facebookId = socialEmail;
     }
 
-    try {
-      const newUser = await this.userRepository.createUser(newUserCreateData);
-    } catch (error: any) {
-      console.log(error);
-    }
+    const newUser = await this.userRepository.createUser(newUserCreateData);
 
     const resetToken = this.encryptionHelper.encrypt(socialEmail);
     this.sendOTPInEmail(

@@ -157,6 +157,8 @@ export class UserController {
       user: ApiResponse<
         SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
       >;
+      provider: string;
+      socialEmail: string;
     },
     @Res() res: Response,
   ) {
@@ -184,6 +186,18 @@ export class UserController {
       if (!apiResponse || !apiResponse.data || !apiResponse.success) {
         // If it is being redirected from social Login where user doesn't exists in socialId field
         if (apiResponse.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
+          res.cookie('provider', req.provider, {
+            httpOnly: true, // Prevents JavaScript from accessing the cookie
+            secure: this.configService.get<string>('NODE_ENV') === 'production',
+            sameSite: 'lax', // Protects against CSRF attacks
+            maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+          });
+          res.cookie('social_email', req.socialEmail, {
+            httpOnly: true, // Prevents JavaScript from accessing the cookie
+            secure: this.configService.get<string>('NODE_ENV') === 'production',
+            sameSite: 'lax', // Protects against CSRF attacks
+            maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+          });
           // Re-directing to the consent form.
           return res.redirect(`${frontendUrl}/account-check?provider=google`);
         }
@@ -391,18 +405,22 @@ export class UserController {
     @Req() req: Request,
     @Body('email') email: string,
   ) {
-    console.log(`printing session`);
-    console.dir((req.session as any)?.user);
-    const session = (req.session as any).user;
-    if (session) {
-      return this.userService.validateExistingAccount(
-        email,
-        session?.socialEmail,
-        session?.provider,
+    console.log(`printing cookies`);
+    // Read the cookies from the request object
+    const provider = req.cookies['provider'];
+    const socialEmail = req.cookies['social_email'];
+
+    console.log('Provider:', provider);
+    console.log('Social Email:', socialEmail);
+    if (!provider || socialEmail) {
+      throw new UnauthorizedException(
+        'Your session has been expired. Please re-login again',
       );
     }
-    throw new UnauthorizedException(
-      'Your session has been expired. Please re-login again',
+    return this.userService.validateExistingAccount(
+      email,
+      socialEmail,
+      provider,
     );
   }
 
@@ -411,22 +429,23 @@ export class UserController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    console.log(`printing session`);
-    console.dir((req.session as any)?.user);
-    const session = (req.session as any)?.user;
-    if (!session) {
+    console.log(`printing cookies`);
+    // Read the cookies from the request object
+    const provider = req.cookies['provider'];
+    const socialEmail = req.cookies['social_email'];
+    if (!provider || socialEmail) {
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
     }
 
     const result = await this.userService.createUserBySocialLoginEmail(
-      session.socialEmail,
-      session.provider,
+      socialEmail,
+      provider,
     );
 
     if (result.statusCode === HttpStatus.CREATED) {
-      res.cookie('display_email', session.socialEmail, {
+      res.cookie('display_email', socialEmail || 'N/A', {
         httpOnly: true,
         secure: this.configService.get<string>('NODE_ENV') === 'production',
         sameSite: 'lax',
