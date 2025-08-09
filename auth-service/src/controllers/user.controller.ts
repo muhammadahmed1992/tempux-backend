@@ -384,15 +384,15 @@ export class UserController {
 
   @Post('account-existance')
   async validateAssociatedAccount(
-    @Query('provider') provider: 'google' | 'facebook',
-    @Query('socialEmail') socialEmail: string,
+    @Body('provider') provider: 'google' | 'facebook',
+    @Body('socialEmail') socialEmail: string,
     @Body('email') email: string,
   ) {
     console.log(`printing params`);
 
     console.log('Provider:', provider);
     console.log('Social Email:', socialEmail);
-    if (!provider || socialEmail) {
+    if (!provider || !socialEmail) {
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -406,15 +406,15 @@ export class UserController {
 
   @Post('/social-media')
   async createUserBySocialMedia(
-    @Query('provider') provider: 'google' | 'facebook',
-    @Query('socialEmail') socialEmail: string,
+    @Body('provider') provider: 'google' | 'facebook',
+    @Body('socialEmail') socialEmail: string,
     @Res({ passthrough: true }) res: Response,
   ) {
     console.log(`printing params`);
 
     console.log('Provider:', provider);
     console.log('Social Email:', socialEmail);
-    if (!provider || socialEmail) {
+    if (!provider || !socialEmail) {
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
