@@ -391,6 +391,9 @@ export class UserController {
     @Req() req: Request,
     @Body('email') email: string,
   ) {
+    console.log(`printing session`);
+    console.table(req.session);
+    console.table((req.session as any)?.user);
     const session = (req.session as any).user;
     if (session) {
       return this.userService.validateExistingAccount(
@@ -409,6 +412,9 @@ export class UserController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    console.log(`printing session`);
+    console.table(req.session);
+    console.table((req.session as any)?.user);
     const session = (req.session as any)?.user;
     if (!session) {
       throw new UnauthorizedException(
