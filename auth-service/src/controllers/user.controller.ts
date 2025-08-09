@@ -107,30 +107,8 @@ export class UserController {
   // Google Auth
   @Get('google')
   async googleAuth(@Req() req: Request, @Res() res: Response) {
-    const userType = req.query?.userType as string;
-
-    if (!userType) {
-      console.error(
-        'User type is missing in the initial Google login request.',
-      );
-      return res.redirect(
-        `${this.configService.get<string>(
-          'FRONTEND_URL',
-        )}/login?error=user_type_missing`,
-      );
-    }
-
-    // Generate a state parameter that includes the userType
-    const state = encodeURIComponent(
-      JSON.stringify({
-        userType: userType,
-        csrf: Math.random().toString(36).substring(2, 15),
-      }),
-    );
-
     const clientID = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    const callbackURL = this.configService.get<string>('GOOGLE_CALLBACK_URL')!; // Must match GoogleStrategy's callbackURL
-    //"http://localhost:3001/user/google/callback";
+    const callbackURL = this.configService.get<string>('GOOGLE_CALLBACK_URL')!;
 
     // Manually construct the Google OAuth URL
     const googleAuthUrl =
@@ -139,13 +117,10 @@ export class UserController {
       `redirect_uri=${encodeURIComponent(callbackURL)}&` +
       `response_type=code&` +
       `scope=${encodeURIComponent('email profile')}&` +
-      `prompt=select_account&` +
-      `state=${state}`; // Pass the state parameter
+      `prompt=select_account&`;
 
     console.log(`--- AuthController.googleAuth() Redirecting ---`);
     console.log('Generated Google Auth URL:', googleAuthUrl); // Log the full URL being sent to Google
-    console.log('State parameter sent to Google:', state); // Log the encoded state
-    console.log('Request URL (before redirect):', req.url); // This will now print!
 
     return res.redirect(googleAuthUrl);
   }
@@ -248,29 +223,6 @@ export class UserController {
   @Get('facebook')
   async facebookAuth(@Req() req: Request, @Res() res: Response) {
     console.log('--- AuthController.facebookAuth() Initial Request ---');
-    const requestWithQuery = req as any;
-    console.log('Incoming Request Query:', requestWithQuery.query);
-
-    const userType = requestWithQuery.query.userType as string;
-
-    if (!userType) {
-      console.error(
-        'User type is missing in the initial Facebook login request.',
-      );
-      return res.redirect(
-        `${this.configService.get<string>(
-          'FRONTEND_URL',
-        )}login?error=user_type_missing`,
-      );
-    }
-
-    // Generate a state parameter that includes the userType
-    const state = encodeURIComponent(
-      JSON.stringify({
-        userType: userType,
-        csrf: Math.random().toString(36).substring(2, 15),
-      }),
-    );
 
     const clientID = this.configService.get<string>('FACEBOOK_APP_ID');
     const callbackURL = this.configService.get<string>(
@@ -280,17 +232,14 @@ export class UserController {
 
     // Manually construct the Facebook OAuth URL
     const facebookAuthUrl =
-      `https://www.facebook.com/v18.0/dialog/oauth?` + // Use a specific API version
+      `https://www.facebook.com/dialog/oauth?` + // Use a specific API version
       `client_id=${clientID}&` +
       `redirect_uri=${encodeURIComponent(callbackURL)}&` +
       `response_type=code&` +
-      `scope=${encodeURIComponent('email,public_profile')}&` + // Comma-separated scopes
-      `state=${state}`; // Pass the state parameter
+      `scope=${encodeURIComponent('email,public_profile')}`;
 
     console.log(`--- AuthController.facebookAuth() Redirecting ---`);
     console.log('Generated Facebook Auth URL:', facebookAuthUrl);
-    console.log('State parameter sent to Facebook:', state);
-    console.log('Request URL (before redirect):', requestWithQuery.url);
 
     return res.redirect(facebookAuthUrl);
   }
