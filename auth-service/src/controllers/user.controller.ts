@@ -168,6 +168,8 @@ export class UserController {
     console.log('Request Query:', req.query);
     console.log('Google Auth Redirect endpoint hit!');
     console.log('API Response from validate:', apiResponse);
+    console.log('provider:', provider);
+    console.log('social email:', socialEmail);
 
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     if (!frontendUrl) {
