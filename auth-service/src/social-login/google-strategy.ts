@@ -90,27 +90,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         Number(userType),
       );
 
-      // Just storing the information inside session in case of redirect to consent form.
-      if (user.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
-        const session = req.session as any;
-        session.user = {
-          socialEmail: userEmail,
-          provider: 'google',
-          userType,
-        };
-        await new Promise<void>((resolve, reject) => {
-          req.session.save((err) => {
-            if (err) {
-              console.log(`error while saving the session`);
-              reject(err);
-            } else {
-              console.log(`storing the session`);
-              resolve();
-            }
-          });
-        });
-      }
-      done(null, user);
+      done(null, { user, provider: 'google', socialEmail: userEmail });
     } catch (err) {
       console.error('Error during Google social user validation:', err);
       done(err, false); // Pass the error to Passport, indicating authentication failure
