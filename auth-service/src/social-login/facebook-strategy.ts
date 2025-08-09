@@ -99,7 +99,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
         id,
         userEmail,
       );
-      done(null, user); // Pass the user object to the request (req.user)
+      done(null, { user, provider: 'facebook', socialEmail: userEmail });
     } catch (err) {
       console.error('Error during Facebook social user validation:', err);
       done(err, false); // Pass the error to Passport, indicating authentication failure
