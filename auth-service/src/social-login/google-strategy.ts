@@ -104,6 +104,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
               console.log(`error while saving the session`);
               reject(err);
             } else {
+              console.log(`storing the session`);
               resolve();
             }
           });
