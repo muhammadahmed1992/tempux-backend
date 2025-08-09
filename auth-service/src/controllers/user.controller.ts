@@ -7,6 +7,7 @@ import {
   InternalServerErrorException,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UnauthorizedException,
@@ -183,19 +184,9 @@ export class UserController {
       if (!apiResponse || !apiResponse.data || !apiResponse.success) {
         // If user doesn't exist in socialId field and needs consent
         if (apiResponse?.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
-          res.cookie('provider', provider, {
-            httpOnly: true,
-            secure: this.configService.get<string>('NODE_ENV') === 'production',
-            sameSite: 'lax',
-            maxAge: 15552000000,
-          });
-          res.cookie('social_email', socialEmail, {
-            httpOnly: true,
-            secure: this.configService.get<string>('NODE_ENV') === 'production',
-            sameSite: 'lax',
-            maxAge: 15552000000,
-          });
-          return res.redirect(`${frontendUrl}/account-check?provider=google`);
+          return res.redirect(
+            `${frontendUrl}/account-check?provider=google&socialEmail=${socialEmail}`,
+          );
         }
         return res.redirect(
           `${frontendUrl}?error=${encodeURIComponent(
@@ -336,7 +327,7 @@ export class UserController {
       // The 'user' object is populated by GoogleStrategy.validate().
       // If `validate` calls `done(err, ...)` the guard will throw an exception here.
       const apiResponse = req.user;
-      console.log('Google Auth Redirect endpoint hit!');
+      console.log('Facbook Auth Redirect endpoint hit!');
       console.log('API Response from validate:', apiResponse);
 
       // Handle the case where the user object is not as expected after a successful guard run
@@ -384,6 +375,7 @@ export class UserController {
       );
     }
   }
+
   @Post('details-by-ids')
   async getUsersDetailsByIdsPost(@Body('ids') userIds: number[]) {
     // This is generally preferred for a large number of IDs.
@@ -392,17 +384,15 @@ export class UserController {
 
   @Post('account-existance')
   async validateAssociatedAccount(
-    @Req() req: Request,
+    @Body('provider') provider: 'google' | 'facebook',
+    @Body('socialEmail') socialEmail: string,
     @Body('email') email: string,
   ) {
-    console.log(`printing cookies`);
-    // Read the cookies from the request object
-    const provider = req.cookies['provider'];
-    const socialEmail = req.cookies['social_email'];
+    console.log(`printing params`);
 
     console.log('Provider:', provider);
     console.log('Social Email:', socialEmail);
-    if (!provider || socialEmail) {
+    if (!provider || !socialEmail) {
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -416,14 +406,15 @@ export class UserController {
 
   @Post('/social-media')
   async createUserBySocialMedia(
-    @Req() req: Request,
+    @Body('provider') provider: 'google' | 'facebook',
+    @Body('socialEmail') socialEmail: string,
     @Res({ passthrough: true }) res: Response,
   ) {
-    console.log(`printing cookies`);
-    // Read the cookies from the request object
-    const provider = req.cookies['provider'];
-    const socialEmail = req.cookies['social_email'];
-    if (!provider || socialEmail) {
+    console.log(`printing params`);
+
+    console.log('Provider:', provider);
+    console.log('Social Email:', socialEmail);
+    if (!provider || !socialEmail) {
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
