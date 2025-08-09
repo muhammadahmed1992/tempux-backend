@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(cookieParser);
+  app.use(cookieParser());
 
   // Enable the ValidationPipe globally
   // Add this temporary middleware for debugging headers
