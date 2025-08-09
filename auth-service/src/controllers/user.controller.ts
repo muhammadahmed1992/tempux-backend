@@ -185,7 +185,9 @@ export class UserController {
         // If user doesn't exist in socialId field and needs consent
         if (apiResponse?.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
           return res.redirect(
-            `${frontendUrl}/account-check?provider=google&socialEmail=${socialEmail}`,
+            `${frontendUrl}/account-check?provider=google&socialEmail=${encodeURIComponent(
+              socialEmail,
+            )}`,
           );
         }
         return res.redirect(
