@@ -98,6 +98,16 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
           provider: 'google',
           userType,
         };
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) {
+              console.log(`error while saving the session`);
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        });
       }
       done(null, user);
     } catch (err) {
