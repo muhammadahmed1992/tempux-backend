@@ -115,6 +115,7 @@ export class UserService {
   ): Promise<ApiResponse<LoginDTO>> {
     console.log(request.email);
     const user = await this.userRepository.validateUser(request.email, {
+      id: true,
       otp_verified: true,
       email: true,
       password: true,
