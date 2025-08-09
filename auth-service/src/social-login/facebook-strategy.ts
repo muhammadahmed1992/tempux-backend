@@ -39,13 +39,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     done: any,
   ): Promise<any> {
     console.log('--- FacebookStrategy.validate() called ---');
-    // Cast req to any to bypass TypeScript error if augmentation isn't working
-    const requestWithQuery = req as any;
-    console.log(
-      'Request Query (from Facebook callback):',
-      requestWithQuery.query,
-    ); // Log the entire query object received by validate
-    console.log('Raw State parameter:', requestWithQuery.query.state); // Log the raw state parameter
 
     const { id, emails, displayName, name } = profile; // Destructure profile data
     const userEmail = emails && emails.length > 0 ? emails[0].value : null;
@@ -57,46 +50,15 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
         ? `${name.givenName} ${name.familyName}`
         : 'Facebook User');
 
-    // Extract userType from the state parameter
-    let userType = 0;
-    if (requestWithQuery.query.state) {
-      try {
-        const stateDecoded = JSON.parse(
-          decodeURIComponent(requestWithQuery.query.state as string),
-        );
-        userType = parseInt(stateDecoded.userType);
-        console.log('Decoded State object:', stateDecoded);
-        console.log('Extracted userType from state:', userType);
-      } catch (e) {
-        return done(
-          new Error('Error parsing state parameter for Facebook:'),
-          null,
-        );
-      }
-    } else {
-      return done(
-        new Error('State parameter is missing from the Facebook callback URL.'),
-        null,
-      );
-    }
-
     if (!userEmail) {
       console.error('Facebook profile missing email:', profile);
       return done(new Error('Facebook profile missing email.'), null);
-    }
-
-    if (!userType) {
-      console.error(
-        'userType missing in Facebook login request (state parameter).',
-      );
-      return done(new Error('User type is required for social login.'), null);
     }
 
     try {
       // Pass the userType to your UserService for Facebook provider
       const user = await this.userService.validateSocialUser(
         'facebook',
-        id,
         userEmail,
       );
       done(null, { user, provider: 'facebook', socialEmail: userEmail });

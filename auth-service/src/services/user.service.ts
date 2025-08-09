@@ -398,7 +398,6 @@ export class UserService {
   async validateSocialUser(
     provider: 'google' | 'facebook',
     email: string,
-    userType: number, //TODO: Need to discuss.
   ): Promise<
     ApiResponse<SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO>
   > {
