@@ -151,57 +151,52 @@ export class UserController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(
-    @Req()
-    req: Request & {
+  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
+    const {
+      provider,
+      socialEmail,
+      user: apiResponse,
+    } = req.user as {
+      provider: string;
+      socialEmail: string;
       user: ApiResponse<
         SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
       >;
-      provider: string;
-      socialEmail: string;
-    },
-    @Res() res: Response,
-  ) {
-    console.log('Callback endpoint hit!'); // Add this line
-    console.log('Request Query:', req.query); // Add this to see what's in the query
-    // This endpoint is hit after Google authenticates the user.
-    // The 'user' object is populated by GoogleStrategy.validate()
-    // Cast to your social login response dto...
-    // TODO: Will refactor any to strongly typed object
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    };
 
-    if (!frontendUrl)
+    console.log('Callback endpoint hit!');
+    console.log('Request Query:', req.query);
+    console.log('Google Auth Redirect endpoint hit!');
+    console.log('API Response from validate:', apiResponse);
+    console.log('provider:', provider);
+    console.log('social email:', socialEmail);
+
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
+    if (!frontendUrl) {
       throw new InternalServerErrorException(
-        'url is not defined on for front-end',
+        'url is not defined for front-end',
       );
+    }
 
     try {
-      // The 'user' object is populated by GoogleStrategy.validate().
-      // If `validate` calls `done(err, ...)` the guard will throw an exception here.
-      const apiResponse = req.user;
-      console.log('Google Auth Redirect endpoint hit!');
-      console.log('API Response from validate:', apiResponse);
-
-      // Handle the case where the user object is not as expected after a successful guard run
+      // Handle the case where the user object is not as expected
       if (!apiResponse || !apiResponse.data || !apiResponse.success) {
-        // If it is being redirected from social Login where user doesn't exists in socialId field
-        if (apiResponse.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
-          res.cookie('provider', req.provider, {
-            httpOnly: true, // Prevents JavaScript from accessing the cookie
+        // If user doesn't exist in socialId field and needs consent
+        if (apiResponse?.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
+          res.cookie('provider', provider, {
+            httpOnly: true,
             secure: this.configService.get<string>('NODE_ENV') === 'production',
-            sameSite: 'lax', // Protects against CSRF attacks
-            maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+            sameSite: 'lax',
+            maxAge: 15552000000,
           });
-          res.cookie('social_email', req.socialEmail, {
-            httpOnly: true, // Prevents JavaScript from accessing the cookie
+          res.cookie('social_email', socialEmail, {
+            httpOnly: true,
             secure: this.configService.get<string>('NODE_ENV') === 'production',
-            sameSite: 'lax', // Protects against CSRF attacks
-            maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+            sameSite: 'lax',
+            maxAge: 15552000000,
           });
-          // Re-directing to the consent form.
           return res.redirect(`${frontendUrl}/account-check?provider=google`);
         }
-        // This case should ideally be caught by the try/catch, but this is a final check.
         return res.redirect(
           `${frontendUrl}?error=${encodeURIComponent(
             'Social login failed due to an unexpected response.',
@@ -212,45 +207,40 @@ export class UserController {
       const responseData = apiResponse.data;
       let redirectUrl = frontendUrl;
 
-      // Check which DTO was returned and get the corresponding token
-      // Case 1: The user is fully verified, and we received a SocialLoginResponseDTO.
+      // Case 1: Fully verified user
       if ('email' in responseData) {
         const result = await this.userService.login(responseData);
         const accessToken = result.data.accessToken;
 
-        // Set the JWT in a secure, HTTP-only cookie
         res.cookie('access_token', accessToken, {
-          httpOnly: true, // Prevents JavaScript from accessing the cookie
+          httpOnly: true,
           secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax', // Protects against CSRF attacks
-          maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+          sameSite: 'lax',
+          maxAge: 15552000000,
         });
         res.cookie('display_email', responseData.email, {
           secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax', // Protects against CSRF attacks
-          maxAge: 15552000000, // Cookie expiration time (e.g., 1 hour)
+          sameSite: 'lax',
+          maxAge: 15552000000,
         });
         return res.redirect(redirectUrl);
       }
 
-      // Case 2: The user is newly created or needs OTP verification.
-      // We received a SocialLoginVerifyUserResponseDTO with a resetToken.
+      // Case 2: Needs OTP verification
       if ('resetToken' in responseData) {
         const resetToken = responseData.resetToken;
         redirectUrl = `${redirectUrl}/verify-account/${resetToken}`;
         return res.redirect(redirectUrl);
       }
 
-      // Fallback for an invalid response from the service.
+      // Fallback
       return res.redirect(
         `${redirectUrl}?error=${encodeURIComponent(
           'Invalid response from authentication service.',
         )}`,
       );
     } catch (err: any) {
-      // This block catches exceptions thrown by the GoogleAuthGuard when `done` is called with an error.
       console.error('Error during social login redirect:', err);
-      // Redirect to the frontend with the error message from the exception.
       return res.redirect(
         `${frontendUrl}?error=${encodeURIComponent(err.message)}`,
       );
