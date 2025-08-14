@@ -9,26 +9,54 @@ import { AllExceptionsFilter } from './filters/global.exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // TODO: Need to upgrade this logic... Maybe use any cloud service i.e AWS Service Discovery etc.
-  const pattern = Utils.ReturnServicePaths();
+  // Parse body
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Handle OPTIONS preflight before anything else
+  app.use(
+    (
+      req: { method: string; headers: { origin: any } },
+      res: {
+        header: (arg0: string, arg1: string) => void;
+        sendStatus: (arg0: number) => any;
+      },
+      next: () => void,
+    ) => {
+      if (req.method === 'OPTIONS') {
+        res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+        res.header(
+          'Access-Control-Allow-Methods',
+          'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+        );
+        res.header(
+          'Access-Control-Allow-Headers',
+          'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key',
+        );
+        res.header('Access-Control-Allow-Credentials', 'true');
+        return res.sendStatus(204); // No content for preflight
+      }
+      next();
+    },
+  );
+
+  // Nest CORS config
   app.enableCors({
-    origin: (origin: any, callback: any) => {
-      // This function dynamically reflects the origin, effectively allowing all.
-      // It satisfies the CORS specification requirement for 'credentials: true'
-      // by not using the '*' wildcard for the 'Access-Control-Allow-Origin' header,
-      // but instead setting it to the actual requesting origin.
+    origin: (origin: any, callback: (arg0: null, arg1: boolean) => void) => {
       callback(null, true);
     },
-    methods: '*', // Explicitly allow all common HTTP methods
+    methods: '*',
     allowedHeaders:
-      'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key', // Explicitly list headers
-    credentials: true, // Allow cookies and authorization headers to be sent
+      'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key',
+    credentials: true,
   });
+
   const proxyMiddlewareInstance = app.get(ProxyMiddleware);
-  app.use(pattern, proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance));
+  app.use(
+    Utils.ReturnServicePaths(),
+    proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance),
+  );
+
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
 

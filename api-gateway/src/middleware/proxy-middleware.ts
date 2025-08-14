@@ -41,6 +41,7 @@ export class ProxyMiddleware implements NestMiddleware {
           const expressReq = req as express.Request &
             IncomingMessage & { readableBuffer?: Buffer };
           console.log(`Logging the incoming request method: ${req.method}`);
+
           if (
             expressReq.body &&
             Object.keys(expressReq.body).length &&
@@ -69,15 +70,15 @@ export class ProxyMiddleware implements NestMiddleware {
             );
 
             // Add listeners to the proxyReq for debugging stream completion
-            proxyReq.on('error', (err) => {
+            proxyReq.once('error', (err) => {
               console.error('ProxyReq Error:', err);
             });
-            proxyReq.on('close', () => {
+            proxyReq.once('close', () => {
               console.log(
                 'ProxyReq Closed (connection to target server closed)',
               );
             });
-            proxyReq.on('finish', () => {
+            proxyReq.once('finish', () => {
               console.log(
                 'ProxyReq Finished (all data written to target server)',
               );
