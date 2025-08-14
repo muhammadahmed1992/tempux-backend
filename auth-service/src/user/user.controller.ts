@@ -4,16 +4,14 @@ import {
   Controller,
   Get,
   HttpStatus,
-  InternalServerErrorException,
-  Param,
   Post,
-  Query,
   Req,
   Res,
   UnauthorizedException,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { UserService } from './user.service';
+import { UserService } from './services/user.service';
 import { CreateUserDto } from './dtos/create.user.dto';
 import ApiResponse from '@Helper/api-response';
 import { LoginRequestDTO } from './dtos/login-request.dto';
@@ -29,11 +27,20 @@ import {
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
 } from './dtos/social-login-response.dto';
+import { AuthCookieInterceptor } from './interceptor/auth.cookie.interceptor';
+import { SocialLoginService } from './services/social-login.service';
+import { SocialAuthRedirectInterceptor } from './interceptor/social-auth-redirect.interceptor';
+import ResponseHelper from '@Helper/response-helper';
+import CookieHelper from './helper/cookie.helper';
+import { ProviderType } from './dtos/user.details.response.dto';
+import { JwtCookieAuthGuard } from './guards/jwt-cookie.guard';
+import { Cookie } from 'express-session';
 
 @Controller('user')
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly socialLoginService: SocialLoginService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -43,29 +50,12 @@ export class UserController {
   }
 
   @Post('login')
+  @UseInterceptors(AuthCookieInterceptor)
   async login(
     @Body() login: LoginRequestDTO,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ApiResponse<LoginDTO>> {
-    const response = await this.userService.login(login);
-    // If it is a valid user then store inside cookie.
-    if (response.statusCode === HttpStatus.OK) {
-      // Set the JWT in a secure, HTTP-only cookie.
-      res.cookie('access_token', response.data.accessToken, {
-        httpOnly: true,
-        secure: this.configService.get<string>('NODE_ENV') === 'production',
-        sameSite: 'lax',
-        maxAge: 15552000000, // 180 days
-      });
-      res.cookie('display_email', login.email, {
-        httpOnly: true,
-        secure: this.configService.get<string>('NODE_ENV') === 'production',
-        sameSite: 'lax',
-        maxAge: 15552000000, // 180 days
-      });
-    }
-
-    return response;
+    return this.userService.login(login);
   }
 
   @Post('verify-otp')
@@ -106,142 +96,32 @@ export class UserController {
 
   // Google Auth
   @Get('google')
-  async googleAuth(@Req() req: Request, @Res() res: Response) {
-    const clientID = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    const callbackURL = this.configService.get<string>('GOOGLE_CALLBACK_URL')!;
-
-    // Manually construct the Google OAuth URL
-    const googleAuthUrl =
-      `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${clientID}&` +
-      `redirect_uri=${encodeURIComponent(callbackURL)}&` +
-      `response_type=code&` +
-      `scope=${encodeURIComponent('email profile')}&` +
-      `prompt=select_account&`;
-
-    console.log(`--- AuthController.googleAuth() Redirecting ---`);
-    console.log('Generated Google Auth URL:', googleAuthUrl); // Log the full URL being sent to Google
-
-    return res.redirect(googleAuthUrl);
+  async googleAuth(@Res() res: Response) {
+    console.log('--- AuthController.googleAuth() Initial Request ---');
+    const redirectUrl = this.socialLoginService.getGoogleLoginUrl();
+    console.log('Generated Google Auth URL:', redirectUrl);
+    return res.redirect(redirectUrl);
   }
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
-    const {
-      provider,
-      socialEmail,
-      user: apiResponse,
-    } = req.user as {
-      provider: string;
-      socialEmail: string;
-      user: ApiResponse<
-        SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
-      >;
-    };
-
-    console.log('Callback endpoint hit!');
-    console.log('Request Query:', req.query);
-    console.log('Google Auth Redirect endpoint hit!');
-    console.log('API Response from validate:', apiResponse);
-    console.log('provider:', provider);
-    console.log('social email:', socialEmail);
-
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-    if (!frontendUrl) {
-      throw new InternalServerErrorException(
-        'url is not defined for front-end',
-      );
-    }
-
-    try {
-      // Handle the case where the user object is not as expected
-      if (!apiResponse || !apiResponse.data || !apiResponse.success) {
-        // If user doesn't exist in socialId field and needs consent
-        if (apiResponse?.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
-          return res.redirect(
-            `${frontendUrl}/account-check?provider=google&socialEmail=${encodeURIComponent(
-              socialEmail,
-            )}`,
-          );
-        }
-        return res.redirect(
-          `${frontendUrl}?error=${encodeURIComponent(
-            'Social login failed due to an unexpected response.',
-          )}`,
-        );
-      }
-
-      const responseData = apiResponse.data;
-      let redirectUrl = frontendUrl;
-
-      // Case 1: Fully verified user
-      if ('email' in responseData) {
-        const result = await this.userService.login(responseData);
-        const accessToken = result.data.accessToken;
-
-        res.cookie('access_token', accessToken, {
-          httpOnly: true,
-          secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax',
-          maxAge: 15552000000,
-        });
-        res.cookie('display_email', responseData.email, {
-          secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax',
-          maxAge: 15552000000,
-        });
-        return res.redirect(redirectUrl);
-      }
-
-      // Case 2: Needs OTP verification
-      if ('resetToken' in responseData) {
-        const resetToken = responseData.resetToken;
-        redirectUrl = `${redirectUrl}/verify-account/${resetToken}`;
-        return res.redirect(redirectUrl);
-      }
-
-      // Fallback
-      return res.redirect(
-        `${redirectUrl}?error=${encodeURIComponent(
-          'Invalid response from authentication service.',
-        )}`,
-      );
-    } catch (err: any) {
-      console.error('Error during social login redirect:', err);
-      return res.redirect(
-        `${frontendUrl}?error=${encodeURIComponent(err.message)}`,
-      );
-    }
+  @UseInterceptors(SocialAuthRedirectInterceptor, AuthCookieInterceptor)
+  async googleAuthRedirect() {
+    console.log('Google callback endpoint hit!');
   }
 
   /**
    * Initiates the Facebook OAuth2 login flow.
-   * Frontend calls: GET http://localhost:3001/user/facebook?userType=3
+   * Frontend calls: GET http://localhost:3001/user/facebook
    * This endpoint manually constructs the Facebook OAuth URL with a 'state' parameter.
    */
   @Get('facebook')
-  async facebookAuth(@Req() req: Request, @Res() res: Response) {
+  async facebookAuth(@Res() res: Response) {
     console.log('--- AuthController.facebookAuth() Initial Request ---');
+    const redirectUrl = this.socialLoginService.getFacebookLoginUrl();
+    console.log('Generated Facebook Auth URL:', redirectUrl);
 
-    const clientID = this.configService.get<string>('FACEBOOK_APP_ID');
-    const callbackURL = this.configService.get<string>(
-      'FACEBOOK_CALLBACK_URL',
-    )!;
-    //"http://localhost:3001/user/facebook/callback"; // Must match FacebookStrategy's callbackURL
-
-    // Manually construct the Facebook OAuth URL
-    const facebookAuthUrl =
-      `https://www.facebook.com/dialog/oauth?` + // Use a specific API version
-      `client_id=${clientID}&` +
-      `redirect_uri=${encodeURIComponent(callbackURL)}&` +
-      `response_type=code&` +
-      `scope=${encodeURIComponent('email,public_profile')}`;
-
-    console.log(`--- AuthController.facebookAuth() Redirecting ---`);
-    console.log('Generated Facebook Auth URL:', facebookAuthUrl);
-
-    return res.redirect(facebookAuthUrl);
+    return res.redirect(redirectUrl);
   }
 
   /**
@@ -251,92 +131,9 @@ export class UserController {
    */
   @Get('facebook/callback')
   @UseGuards(AuthGuard('facebook')) // Use AuthGuard for 'facebook' strategy
-  async facebookAuthRedirect(@Req() req: Request, @Res() res: Response) {
-    const {
-      provider,
-      socialEmail,
-      user: apiResponse,
-    } = req.user as {
-      provider: string;
-      socialEmail: string;
-      user: ApiResponse<
-        SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
-      >;
-    };
-
-    console.log('Callback endpoint hit!');
-    console.log('Request Query:', req.query);
-    console.log('Facebook Auth Redirect endpoint hit!');
-    console.log('API Response from validate:', apiResponse);
-    console.log('provider:', provider);
-    console.log('social email:', socialEmail);
-
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL');
-    if (!frontendUrl) {
-      throw new InternalServerErrorException(
-        'url is not defined for front-end',
-      );
-    }
-
-    try {
-      // Handle the case where the user object is not as expected
-      if (!apiResponse || !apiResponse.data || !apiResponse.success) {
-        // If user doesn't exist in socialId field and needs consent
-        if (apiResponse?.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
-          return res.redirect(
-            `${frontendUrl}/account-check?provider=facebook&socialEmail=${encodeURIComponent(
-              socialEmail,
-            )}`,
-          );
-        }
-        return res.redirect(
-          `${frontendUrl}?error=${encodeURIComponent(
-            'Social login failed due to an unexpected response.',
-          )}`,
-        );
-      }
-
-      const responseData = apiResponse.data;
-      let redirectUrl = frontendUrl;
-
-      // Case 1: Fully verified user
-      if ('email' in responseData) {
-        const result = await this.userService.login(responseData);
-        const accessToken = result.data.accessToken;
-
-        res.cookie('access_token', accessToken, {
-          httpOnly: true,
-          secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax',
-          maxAge: 15552000000,
-        });
-        res.cookie('display_email', responseData.email, {
-          secure: this.configService.get<string>('NODE_ENV') === 'production',
-          sameSite: 'lax',
-          maxAge: 15552000000,
-        });
-        return res.redirect(redirectUrl);
-      }
-
-      // Case 2: Needs OTP verification
-      if ('resetToken' in responseData) {
-        const resetToken = responseData.resetToken;
-        redirectUrl = `${redirectUrl}/verify-account/${resetToken}`;
-        return res.redirect(redirectUrl);
-      }
-
-      // Fallback
-      return res.redirect(
-        `${redirectUrl}?error=${encodeURIComponent(
-          'Invalid response from authentication service.',
-        )}`,
-      );
-    } catch (err: any) {
-      console.error('Error during social login redirect:', err);
-      return res.redirect(
-        `${frontendUrl}?error=${encodeURIComponent(err.message)}`,
-      );
-    }
+  @UseInterceptors(SocialAuthRedirectInterceptor, AuthCookieInterceptor)
+  async facebookAuthRedirect() {
+    console.log('Facebook Callback endpoint hit!');
   }
 
   @Post('details-by-ids')
@@ -347,19 +144,21 @@ export class UserController {
 
   @Post('account-existance')
   async validateAssociatedAccount(
-    @Body('provider') provider: 'google' | 'facebook',
-    @Body('socialEmail') socialEmail: string,
+    @Req() req: Request,
     @Body('email') email: string,
   ) {
-    console.log(`printing params`);
+    const provider = CookieHelper.getCookieValue(
+      req,
+      'provider',
+    ) as ProviderType;
+    const socialEmail = CookieHelper.getCookieValue(req, 'ue');
 
-    console.log('Provider:', provider);
-    console.log('Social Email:', socialEmail);
     if (!provider || !socialEmail) {
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
     }
+
     return this.userService.validateExistingAccount(
       email,
       socialEmail,
@@ -368,15 +167,13 @@ export class UserController {
   }
 
   @Post('/social-media')
-  async createUserBySocialMedia(
-    @Body('provider') provider: 'google' | 'facebook',
-    @Body('socialEmail') socialEmail: string,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    console.log(`printing params`);
+  async createUserBySocialMedia(@Req() req: Request) {
+    const provider = CookieHelper.getCookieValue(
+      req,
+      'provider',
+    ) as ProviderType;
+    const socialEmail = CookieHelper.getCookieValue(req, 'ue');
 
-    console.log('Provider:', provider);
-    console.log('Social Email:', socialEmail);
     if (!provider || !socialEmail) {
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
@@ -388,15 +185,36 @@ export class UserController {
       provider,
     );
 
-    if (result.statusCode === HttpStatus.CREATED) {
-      res.cookie('display_email', socialEmail || 'N/A', {
-        httpOnly: true,
-        secure: this.configService.get<string>('NODE_ENV') === 'production',
-        sameSite: 'lax',
-        maxAge: 15552000000, // 180 days
-      });
-    }
-
     return result;
   }
+
+  @UseGuards(JwtCookieAuthGuard)
+  @Get('/me')
+  /**
+   * @returns It will returns logged-in user's display name and profileImageUrl.
+   */
+  public async me(@Req() request: Request & { user?: JwtUser }) {
+    if (!request.user) throw new UnauthorizedException();
+    return this.userService.getProfile(request.user.id);
+  }
+
+  @Post('logout')
+  logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
+    const isProd =
+      (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
+      'production';
+    CookieHelper.clearAllCookies(req, res, 'strict', isProd, frontEndUrl);
+
+    return ResponseHelper.CreateResponse<any>(
+      'You have been successfully logout',
+      null,
+      HttpStatus.OK,
+    );
+  }
+}
+
+interface JwtUser {
+  id: bigint;
+  email: string;
 }

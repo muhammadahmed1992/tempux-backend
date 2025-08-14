@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { UserController } from '@User/user.controller';
-import { UserService } from '@User/user.service';
+import { UserService } from '@User/services/user.service';
 import { GoogleStrategy } from './strategies/google-strategy';
 import { FacebookStrategy } from './strategies/facebook-strategy';
 import { UserRepository } from './users.repository';
@@ -9,6 +9,8 @@ import { EncryptionHelper } from '@Helper/encryption.helper';
 import { PrismaModule } from '@Prisma/prisma.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { SocialLoginService } from './services/social-login.service';
+import { UserCookieHandlerService } from './services/user-cookie.handler.service';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { JwtModule } from '@nestjs/jwt';
     FacebookStrategy,
     UserRepository,
     EncryptionHelper,
+    SocialLoginService,
+    UserCookieHandlerService,
   ],
 })
 export class UserModule {}

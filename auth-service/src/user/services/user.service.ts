@@ -9,7 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 
-import { UserRepository } from './users.repository';
+import { UserRepository } from '../users.repository';
 import { EmailTemplateType } from '@Email/factory/email.template.type';
 import Constants from '@Helper/constants';
 import ApiResponse from '@Helper/api-response';
@@ -17,19 +17,20 @@ import ResponseHelper from '@Helper/response-helper';
 import { Utils } from '@Common/utils';
 import { EmailService } from '@Email/email.service';
 
-import { OTPVerificationRequestDTO } from './dtos/otp.verification.dto';
-import { ResendOTPDTO, ResetPasswordRequestDTO } from './dtos/resend.otp.dto';
+import { OTPVerificationRequestDTO } from '../dtos/otp.verification.dto';
+import { ResendOTPDTO, ResetPasswordRequestDTO } from '../dtos/resend.otp.dto';
 import {
   SocialLoginLoggedInUserResponseDTO,
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
-} from './dtos/social-login-response.dto';
-import { CreateUserDto } from './dtos/create.user.dto';
-import { LoginRequestDTO } from './dtos/login-request.dto';
-import { LoginDTO } from './dtos/login.dto';
+} from '../dtos/social-login-response.dto';
+import { CreateUserDto } from '../dtos/create.user.dto';
+import { LoginRequestDTO } from '../dtos/login-request.dto';
+import { LoginDTO } from '../dtos/login.dto';
 import { EncryptionHelper } from '@Helper/encryption.helper';
-import { ForgotPasswordDTO } from './dtos/update.password.dto';
-import { UserDetailsResponseDto } from './dtos/user.details.response.dto';
+import { ForgotPasswordDTO } from '../dtos/update.password.dto';
+import { UserDetailsResponseDto } from '../dtos/user.details.response.dto';
+import { UserProfileDTO } from '../dtos/user-profile.dto';
 
 @Injectable()
 export class UserService {
@@ -52,11 +53,9 @@ export class UserService {
     try {
       // TOOD: Will discuss about role implementation...
       //If user already exists returns an error
-      console.log(user.email);
       const isExists = await this.userRepository.validateUser(user.email, {
         id: true,
       });
-      console.log(isExists);
       if (isExists) {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
@@ -113,7 +112,6 @@ export class UserService {
   async login(
     request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
-    console.log(request.email);
     const user = await this.userRepository.validateUser(request.email, {
       id: true,
       otp_verified: true,
@@ -124,7 +122,7 @@ export class UserService {
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,
-        { accessToken: '', userName: '' },
+        { accessToken: '' },
         HttpStatus.NOT_FOUND,
       );
     if (!user.otp_verified) {
@@ -163,7 +161,7 @@ export class UserService {
       if (!isPasswordValid)
         return ResponseHelper.CreateResponse<LoginDTO>(
           Constants.USER_NOT_FOUND,
-          { accessToken: '', userName: '' },
+          { accessToken: '' },
           HttpStatus.NOT_FOUND,
         );
     }
@@ -179,7 +177,7 @@ export class UserService {
     const token = await this.jwtService.signAsync(payload);
     return ResponseHelper.CreateResponse<LoginDTO>(
       Constants.USER_LOGGED_IN_SUCCESSFULLY,
-      { accessToken: token, userName: user.full_name || 'N/A' },
+      { accessToken: token },
       HttpStatus.OK,
     );
   }
@@ -277,6 +275,32 @@ export class UserService {
         HttpStatus.NOT_FOUND,
       );
     }
+  }
+
+  /**
+   * This is used for returning esential information of the user.
+   * @param userId logged-in userId for which we needs details.
+   * @returns Promise<ApiResponse<UserProfileDTO>>
+   */
+  async getProfile(userId: bigint): Promise<ApiResponse<UserProfileDTO>> {
+    const response = await this.userRepository.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        full_name: true,
+        email: true,
+      },
+    });
+
+    return ResponseHelper.CreateResponse<UserProfileDTO>(
+      '',
+      {
+        profileUrl: '', // Empty for now,
+        displayName: response?.full_name || response?.email || 'N/A',
+      },
+      HttpStatus.OK,
+    );
   }
 
   /**
@@ -425,7 +449,6 @@ export class UserService {
       // User found, return it
       // Extract the role IDs from the user_roles array
       const roleIds = (user as any).user_roles.map((role: any) => role.id);
-      console.log(`userRoles: ${roleIds}`);
       if (user.otp_verified) {
         return ResponseHelper.CreateResponse<SocialLoginResponseDTO>(
           Constants.USER_ALREADY_VERIFIED,
