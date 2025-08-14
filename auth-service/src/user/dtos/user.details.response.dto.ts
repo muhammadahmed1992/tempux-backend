@@ -4,3 +4,4 @@ export class UserDetailsResponseDto {
   emai?: string;
   fullName?: string;
 }
+export type ProviderType = 'google' | 'facebook';
