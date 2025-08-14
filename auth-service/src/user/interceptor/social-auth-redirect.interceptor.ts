@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { defer, from, Observable, of } from 'rxjs';
 import { Response, Request } from 'express';
@@ -16,12 +17,14 @@ import {
   SocialLoginVerifyUserResponseDTO,
 } from '@User/dtos/social-login-response.dto';
 import CookieHelper from '@User/helper/cookie.helper';
+import { UserCookieHandlerService } from '@User/services/user-cookie.handler.service';
 
 @Injectable()
 export class SocialAuthRedirectInterceptor implements NestInterceptor {
   constructor(
     private readonly configService: ConfigService,
     private readonly userService: UserService,
+    private readonly userCookieHandlerService: UserCookieHandlerService,
   ) {}
 
   async intercept(
@@ -61,23 +64,11 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
     try {
       // Case 1: Needs account check / consent
       if (apiResponse?.statusCode === HttpStatus.TEMPORARY_REDIRECT) {
-        CookieHelper.setCookies(
-          res,
-          'ue',
-          socialEmail,
-          'strict',
+        this.userCookieHandlerService.handleUserSocialLoginDetails(
+          res as any,
+          { socialEmail, provider },
           isProd,
           frontendUrl,
-          3600000,
-        );
-        CookieHelper.setCookies(
-          res,
-          'provider',
-          provider,
-          'strict',
-          isProd,
-          frontendUrl,
-          3600000,
         );
         safeRedirect(`${frontendUrl}/account-check`);
         return of(null);
@@ -94,10 +85,17 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       // Case 3: Fully verified user
       if ('email' in responseData) {
         try {
-          const result = this.userService.login(responseData);
-          (req as any).redirectUrl = `${frontendUrl}`;
-          // Wrap result in Observable so next interceptor receives it
-          return defer(result); // downstream interceptors receive proper `data`
+          const result = await this.userService.login(responseData);
+          if (result?.statusCode === HttpStatus.OK) {
+            if (!result?.data.accessToken) throw new UnauthorizedException();
+            this.userCookieHandlerService.handleLoginCookie(
+              res as any,
+              result?.data.accessToken,
+              isProd,
+              frontendUrl,
+            );
+          }
+          res.redirect(frontendUrl);
         } catch (err) {
           console.error('Login error:', err);
           safeRedirect(`${frontendUrl}/server-error`);

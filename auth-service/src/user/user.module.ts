@@ -10,6 +10,7 @@ import { PrismaModule } from '@Prisma/prisma.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { SocialLoginService } from './services/social-login.service';
+import { UserCookieHandlerService } from './services/user-cookie.handler.service';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { SocialLoginService } from './services/social-login.service';
     UserRepository,
     EncryptionHelper,
     SocialLoginService,
+    UserCookieHandlerService,
   ],
 })
 export class UserModule {}

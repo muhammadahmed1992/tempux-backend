@@ -5,15 +5,18 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
-import { Observable, EMPTY } from 'rxjs';
+import { Observable } from 'rxjs';
 import { mergeMap } from 'rxjs/operators';
 import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
-import CookieHelper from '@User/helper/cookie.helper';
+import { UserCookieHandlerService } from '@User/services/user-cookie.handler.service';
 
 @Injectable()
 export class AuthCookieInterceptor implements NestInterceptor {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly userCookieHanlder: UserCookieHandlerService,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const ctx = context.switchToHttp();
@@ -32,19 +35,12 @@ export class AuthCookieInterceptor implements NestInterceptor {
           data?.data?.accessToken &&
           req.body?.email
         ) {
-          CookieHelper.setCookies(
-            res,
-            'access_token',
-            data.data.accessToken,
-            'strict',
+          this.userCookieHanlder.handleLoginCookie(
+            res as any,
+            data?.data?.accessToken,
             isProd,
             frontEndUrl,
           );
-
-          if ((req as any).redirectUrl) {
-            res.redirect((req as any).redirectUrl);
-            return EMPTY; // Stop pipeline
-          }
         }
 
         return new Observable((observer) => {

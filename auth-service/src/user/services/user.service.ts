@@ -112,7 +112,6 @@ export class UserService {
   async login(
     request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
-    console.log(request.email);
     const user = await this.userRepository.validateUser(request.email, {
       id: true,
       otp_verified: true,

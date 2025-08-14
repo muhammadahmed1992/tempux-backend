@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-
 export default class CookieHelper {
   public static setCookies(
     res: Response,
