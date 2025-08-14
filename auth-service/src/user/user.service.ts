@@ -9,27 +9,27 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 
-import { UserRepository } from '@Repository/users.repository';
-import { EmailTemplateType } from '@EmailFactory/email.template.type';
+import { UserRepository } from './users.repository';
+import { EmailTemplateType } from '@Email/factory/email.template.type';
 import Constants from '@Helper/constants';
 import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import { Utils } from '@Common/utils';
-import { EmailService } from '@Services/email.service';
+import { EmailService } from '@Email/email.service';
 
-import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
-import { ResendOTPDTO, ResetPasswordRequestDTO } from '@DTO/resend.otp.dto';
+import { OTPVerificationRequestDTO } from './dtos/otp.verification.dto';
+import { ResendOTPDTO, ResetPasswordRequestDTO } from './dtos/resend.otp.dto';
 import {
   SocialLoginLoggedInUserResponseDTO,
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
-} from '@DTO/social-login-response.dto';
-import { CreateUserDto } from '@DTO/create.user.dto';
-import { LoginRequestDTO } from '@DTO/login-request.dto';
-import { LoginDTO } from '@DTO/login.dto';
+} from './dtos/social-login-response.dto';
+import { CreateUserDto } from './dtos/create.user.dto';
+import { LoginRequestDTO } from './dtos/login-request.dto';
+import { LoginDTO } from './dtos/login.dto';
 import { EncryptionHelper } from '@Helper/encryption.helper';
-import { ForgotPasswordDTO } from '@DTO/update.password.dto';
-import { UserDetailsResponseDto } from '@DTO/user.details.response.dto';
+import { ForgotPasswordDTO } from './dtos/update.password.dto';
+import { UserDetailsResponseDto } from './dtos/user.details.response.dto';
 
 @Injectable()
 export class UserService {
@@ -121,7 +121,6 @@ export class UserService {
       password: true,
       user_roles: true,
     });
-    console.log(user);
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,

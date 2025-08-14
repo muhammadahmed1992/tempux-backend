@@ -13,22 +13,22 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { UserService } from '@Services/user.service';
-import { CreateUserDto } from '@DTO/create.user.dto';
-import ApiResponse from 'src/common/helper/api-response';
-import { LoginRequestDTO } from '@DTO/login-request.dto';
-import { LoginDTO } from '@DTO/login.dto';
-import { OTPVerificationRequestDTO } from '@DTO/otp.verification.dto';
-import { ResendOTPDTO, ResetPasswordRequestDTO } from '@DTO/resend.otp.dto';
+import { UserService } from './user.service';
+import { CreateUserDto } from './dtos/create.user.dto';
+import ApiResponse from '@Helper/api-response';
+import { LoginRequestDTO } from './dtos/login-request.dto';
+import { LoginDTO } from './dtos/login.dto';
+import { OTPVerificationRequestDTO } from './dtos/otp.verification.dto';
+import { ResendOTPDTO, ResetPasswordRequestDTO } from './dtos/resend.otp.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { EmailTemplateType } from '@EmailFactory/email.template.type';
-import { ForgotPasswordDTO } from '@DTO/update.password.dto';
+import { EmailTemplateType } from '@Email/factory/email.template.type';
+import { ForgotPasswordDTO } from './dtos/update.password.dto';
 import {
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
-} from '@DTO/social-login-response.dto';
+} from './dtos/social-login-response.dto';
 
 @Controller('user')
 export class UserController {

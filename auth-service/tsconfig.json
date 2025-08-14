@@ -18,11 +18,14 @@
       "@Module/*": ["src/modules/*"],
       "@Controllers/*": ["src/controllers/*"],
       "@Services/*": ["src/services/*"],
-      "@Repository/*": ["src/db/*"],
+      "@Repository/*": ["src/common/db/*"],
       "@DTO/*": ["src/common/dto/*"],
       "@Helper/*": ["src/common/helper/*"],
       "@Common/*": ["src/common/*"],
-      "@EmailFactory/*": ["src/email-factory/*"]
+      "@EmailFactory/*": ["src/email-factory/*"],
+      "@Email/*": ["src/email/*"],
+      "@User/*": ["src/user/*"],
+      "@Prisma/*": ["src/prisma/*"]
     }
   },
   "include": ["src/**/*.ts"],

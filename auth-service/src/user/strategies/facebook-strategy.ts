@@ -2,7 +2,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-facebook';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { UserService } from '@Services/user.service';
+import { UserService } from '../user.service';
 import { Request } from 'express'; // Import Request from express for type hinting
 
 @Injectable()

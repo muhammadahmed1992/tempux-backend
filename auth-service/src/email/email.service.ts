@@ -2,11 +2,11 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import Mail from 'nodemailer/lib/mailer';
 import { ConfigService } from '@nestjs/config';
-import { EmailTemplateType } from '@EmailFactory/email.template.type';
-import { EmailCreator } from '@EmailFactory/email.creator';
+import { EmailTemplateType } from './factory/email.template.type';
+import { EmailCreator } from './factory/email.creator';
 import Constants from '@Helper/constants';
-import { OtpEmailCreator } from '@EmailFactory/otp.email.creator';
-import { ResetPasswordEmailCreator } from '@EmailFactory/reset.password.creator';
+import { OtpEmailCreator } from './factory/otp.email.creator';
+import { ResetPasswordEmailCreator } from './factory/reset.password.creator';
 
 @Injectable()
 export class EmailService {
@@ -20,6 +20,7 @@ export class EmailService {
     private readonly otpEmailCreation: OtpEmailCreator,
     private readonly resetPasswordEmailCreator: ResetPasswordEmailCreator,
   ) {
+    console.log('email constructor');
     this.mailFrom = this.configService.get<string>('MAIL_FROM') || '';
     if (!this.mailFrom || !this.mailFrom.includes('@')) {
       console.error(
