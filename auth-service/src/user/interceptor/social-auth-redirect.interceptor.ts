@@ -50,7 +50,10 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
     const isProd =
       (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
       'production';
-
+    const dns = this.configService.get<string>('DNS');
+    if (!dns) {
+      throw new BadRequestException('DNS is not configured');
+    }
     if (!frontendUrl) {
       throw new BadRequestException('FRONTEND_URL is not configured');
     }
@@ -81,8 +84,6 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       }
 
       const responseData = apiResponse.data;
-      console.log(`in social auth redirection`);
-      console.log(provider);
 
       // Case 3: Fully verified user
       if ('email' in responseData) {
@@ -94,10 +95,9 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
               res as any,
               result?.data.accessToken,
               isProd,
-              frontendUrl,
+              dns,
             );
           }
-          console.log(`after setting cookies`);
           res.redirect(frontendUrl);
         } catch (err) {
           console.error('Login error:', err);

@@ -6,14 +6,14 @@ export default class CookieHelper {
     value: any,
     sameSite: 'lax' | 'strict',
     isProd: boolean,
-    frontendUrl?: string,
+    dns?: string,
     expiry?: number,
   ) {
     res.cookie(key, value, {
       httpOnly: true,
       secure: isProd,
       sameSite,
-      domain: this.getDomain(isProd, frontendUrl),
+      domain: `.${dns}`,
       maxAge: expiry || 15552000000, // 180 days
     });
   }
