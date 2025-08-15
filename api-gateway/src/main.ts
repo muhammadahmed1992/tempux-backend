@@ -48,7 +48,9 @@ async function bootstrap() {
     credentials: true,
   };
 
-  app.enableCors(corsOptions);
+  // Because we are managing CORS at nginx level.
+  if (configService.get<string>('NODE_ENV') != 'production')
+    app.enableCors(corsOptions);
 
   // Proxy middleware
   const proxyMiddlewareInstance = app.get(ProxyMiddleware);
