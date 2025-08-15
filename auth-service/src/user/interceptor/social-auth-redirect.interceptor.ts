@@ -47,7 +47,7 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
     };
     const origin = req.headers.origin;
     // 2. Check if origin exists and contains 'localhost'
-    const isComingFromLocalhost = origin ? origin.includes('localhost') : false;
+    const isComingFromLocalhost = origin ? origin.includes('localhost') : true;
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     const isProd =
       (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
