@@ -81,6 +81,8 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       }
 
       const responseData = apiResponse.data;
+      console.log(`in social auth redirection`);
+      console.log(provider);
 
       // Case 3: Fully verified user
       if ('email' in responseData) {
@@ -95,6 +97,7 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
               frontendUrl,
             );
           }
+          console.log(`after setting cookies`);
           res.redirect(frontendUrl);
         } catch (err) {
           console.error('Login error:', err);
