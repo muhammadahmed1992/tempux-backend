@@ -34,7 +34,7 @@ export class AuthCookieInterceptor implements NestInterceptor {
         // 2. Check if origin exists and contains 'localhost'
         const isComingFromLocalhost = origin
           ? origin.includes('localhost')
-          : false;
+          : true;
         if (
           (data?.statusCode === HttpStatus.OK ||
             data?.statusCode === HttpStatus.CREATED) &&
