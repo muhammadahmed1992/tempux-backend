@@ -14,6 +14,7 @@ export class UserCookieHandlerService {
     token: string,
     isProd: boolean,
     domainUrl: string,
+    requestOrigin: boolean,
   ) {
     CookieHelper.setCookies(
       res as any,
@@ -22,6 +23,7 @@ export class UserCookieHandlerService {
       'strict',
       isProd,
       domainUrl,
+      requestOrigin,
     );
   }
 
