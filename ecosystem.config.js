@@ -54,6 +54,7 @@ module.exports = {
         SALT_ROUND: "INJECT_SALT_ROUND",
         PORT: "INJECT_AUTH_PORT",
         DATABASE_URL_DEV_USERS: "INJECT_DATABASE_URL_DEV_USERS",
+        DNS: "INJECT_DNS",
       },
     },
     {
