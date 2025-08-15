@@ -6,13 +6,15 @@ export default class CookieHelper {
     value: any,
     sameSite: 'lax' | 'strict',
     isProd: boolean,
-    dns?: string,
+    dns: string,
+    isRequestComingFromLocalHost: boolean,
     expiry?: number,
   ) {
+    //TOOD: Will have to remove this condition
     res.cookie(key, value, {
       httpOnly: true,
       secure: isProd,
-      sameSite,
+      sameSite: isRequestComingFromLocalHost ? 'none' : sameSite,
       domain: `.${dns}`,
       maxAge: expiry || 15552000000, // 180 days
     });

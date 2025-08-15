@@ -91,11 +91,15 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
           const result = await this.userService.login(responseData);
           if (result?.statusCode === HttpStatus.OK) {
             if (!result?.data.accessToken) throw new UnauthorizedException();
+            //TODO: Will remove this code
+            const fromLocalHost =
+              req!.headers!.origin!.indexOf('localhost') >= 0;
             this.userCookieHandlerService.handleLoginCookie(
               res as any,
               result?.data.accessToken,
               isProd,
               dns,
+              fromLocalHost,
             );
           }
           res.redirect(frontendUrl);
