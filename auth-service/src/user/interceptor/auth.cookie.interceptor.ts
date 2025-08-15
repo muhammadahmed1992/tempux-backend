@@ -30,8 +30,11 @@ export class AuthCookieInterceptor implements NestInterceptor {
           'production';
         const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
         const dns = this.configService.get<string>('DNS')!;
-        //TODO: Will remove this code
-        const fromLocalHost = req!.headers!.origin!.indexOf('localhost') >= 0;
+        const origin = req.headers.origin;
+        // 2. Check if origin exists and contains 'localhost'
+        const isComingFromLocalhost = origin
+          ? origin.includes('localhost')
+          : false;
         if (
           (data?.statusCode === HttpStatus.OK ||
             data?.statusCode === HttpStatus.CREATED) &&
@@ -43,7 +46,7 @@ export class AuthCookieInterceptor implements NestInterceptor {
             data?.data?.accessToken,
             isProd,
             dns,
-            fromLocalHost,
+            isComingFromLocalhost,
           );
         }
 
