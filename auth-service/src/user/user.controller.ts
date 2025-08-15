@@ -47,7 +47,6 @@ export class UserController {
 
   @Post('register')
   async create(@Body() user: CreateUserDto): Promise<ApiResponse<boolean>> {
-    console.log(user);
     return await this.userService.create(user);
   }
 

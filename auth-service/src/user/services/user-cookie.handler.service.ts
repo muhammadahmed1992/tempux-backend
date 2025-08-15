@@ -36,6 +36,7 @@ export class UserCookieHandlerService {
     data: { socialEmail: string; provider: string },
     isProd: boolean,
     domainUrl: string,
+    isRequestComingFromLocalHost: boolean,
   ) {
     CookieHelper.setCookies(
       res as any,
@@ -44,6 +45,7 @@ export class UserCookieHandlerService {
       'strict',
       isProd,
       domainUrl,
+      isRequestComingFromLocalHost,
       3600000, //TODO: 1 hour for now
     );
     CookieHelper.setCookies(
@@ -53,6 +55,7 @@ export class UserCookieHandlerService {
       'strict',
       isProd,
       domainUrl,
+      isRequestComingFromLocalHost,
       3600000, //TODO: 1 hour for now
     );
   }

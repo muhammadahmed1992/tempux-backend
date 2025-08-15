@@ -45,7 +45,9 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
         SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
       >;
     };
-
+    const origin = req.headers.origin;
+    // 2. Check if origin exists and contains 'localhost'
+    const isComingFromLocalhost = origin ? origin.includes('localhost') : false;
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     const isProd =
       (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
@@ -71,7 +73,8 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
           res as any,
           { socialEmail, provider },
           isProd,
-          frontendUrl,
+          dns,
+          isComingFromLocalhost,
         );
         safeRedirect(`${frontendUrl}/account-check`);
         return of(null);
@@ -91,15 +94,12 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
           const result = await this.userService.login(responseData);
           if (result?.statusCode === HttpStatus.OK) {
             if (!result?.data.accessToken) throw new UnauthorizedException();
-            //TODO: Will remove this code
-            const fromLocalHost =
-              req!.headers!.origin!.indexOf('localhost') >= 0;
             this.userCookieHandlerService.handleLoginCookie(
               res as any,
               result?.data.accessToken,
               isProd,
               dns,
-              fromLocalHost,
+              isComingFromLocalhost,
             );
           }
           res.redirect(frontendUrl);
