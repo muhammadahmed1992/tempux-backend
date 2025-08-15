@@ -69,7 +69,8 @@ export default class CookieHelper {
       if (parts.length > 2) {
         cookieDomain = '.' + parts.slice(-2).join('.');
       }
-
+      console.log('in setting cookie');
+      console.log(cookieDomain);
       return cookieDomain;
     } catch {
       return undefined;
