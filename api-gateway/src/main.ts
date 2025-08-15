@@ -5,6 +5,11 @@ import Utils from '@Common/utils';
 import express from 'express';
 import ResponseHandlerInterceptor from './interceptor/response-handler.interceptor';
 import { AllExceptionsFilter } from './filters/global.exception.filter';
+import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
+import { ConfigService } from '@nestjs/config';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -13,50 +18,46 @@ async function bootstrap() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Handle OPTIONS preflight before anything else
-  app.use(
-    (
-      req: { method: string; headers: { origin: any } },
-      res: {
-        header: (arg0: string, arg1: string) => void;
-        sendStatus: (arg0: number) => any;
-      },
-      next: () => void,
-    ) => {
-      if (req.method === 'OPTIONS') {
-        res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-        res.header(
-          'Access-Control-Allow-Methods',
-          'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-        );
-        res.header(
-          'Access-Control-Allow-Headers',
-          'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key',
-        );
-        res.header('Access-Control-Allow-Credentials', 'true');
-        return res.sendStatus(204); // No content for preflight
-      }
-      next();
-    },
-  );
+  // Load allowed origins from .env
 
-  // Nest CORS config
-  app.enableCors({
-    origin: (origin: any, callback: (arg0: null, arg1: boolean) => void) => {
-      callback(null, true);
+  const configService = app.get(ConfigService);
+  const origins = configService.get<string>('ALLOWED_ORIGINS');
+  const allowedOrigins: string[] = origins
+    ? origins.split(',').map((origin) => origin.trim())
+    : [];
+  const corsOptions: CorsOptions = {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ): void => {
+      if (!origin) {
+        // Allow requests without origin (Postman, curl, etc.)
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        console.warn('[CORS] Blocked Origin:', origin);
+        return callback(new Error('Not allowed by CORS'), false);
+      }
     },
-    methods: '*',
+    methods: 'GET,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders:
       'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key',
     credentials: true,
-  });
+  };
 
+  app.enableCors(corsOptions);
+
+  // Proxy middleware
   const proxyMiddlewareInstance = app.get(ProxyMiddleware);
   app.use(
     Utils.ReturnServicePaths(),
     proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance),
   );
 
+  // Global interceptors and filters
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
 

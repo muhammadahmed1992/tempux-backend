@@ -10,6 +10,7 @@ import { Socket } from 'net';
 import { Url } from 'url';
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
+  private proxy: any;
   constructor(private readonly serviceResolver: ServiceResolver) {}
   use(req: Request, res: Response, next: NextFunction) {
     // Parse first path segment: /auth/register => auth
@@ -25,7 +26,7 @@ export class ProxyMiddleware implements NestMiddleware {
       );
       return res.status(HttpStatus.SERVICE_UNAVAILABLE).json(result);
     }
-    const proxy = createProxyMiddleware({
+    this.proxy = createProxyMiddleware({
       target,
       changeOrigin: true,
       pathRewrite: () => {
@@ -51,8 +52,9 @@ export class ProxyMiddleware implements NestMiddleware {
 
             proxyReq.setHeader('Content-Type', 'application/json');
             proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-            proxyReq.write(bodyData);
-            //proxyReq.end();
+            proxyReq.write(bodyData, (error: any) => {
+              console.log('Error While writing body in middleware', error);
+            });
             // --- Debugging Logs (Outgoing Proxy Request) ---
             console.log(
               '--- Outgoing ProxyReq Headers (after body processing) ---',
@@ -92,22 +94,6 @@ export class ProxyMiddleware implements NestMiddleware {
           }
         },
         proxyRes(proxyRes, req: Request, res: Response) {
-          // proxyRes, req, res
-          // TODO: Will investigate later
-          // This is where we ensure CORS headers are set for ALL responses,
-          // including the OPTIONS preflight response.
-          // TODO: Will allow only specific origin.
-          res.setHeader('Access-Control-Allow-Origin', '*');
-          res.setHeader(
-            'Access-Control-Allow-Methods',
-            'GET,HEAD,PUT,PATCH,POST,DELETE,HEAD,OPTIONS',
-          );
-          res.setHeader(
-            'Access-Control-Allow-Headers',
-            'Content-Type, Accept, Authorization, X-Requested-With, X-Api-Key',
-          );
-          // If you are using credentials (cookies, HTTP authentication), uncomment this:
-          res.setHeader('Access-Control-Allow-Credentials', 'true');
           console.log('API Gateway proxy response');
           console.log(req.url);
           console.log(res.statusCode);
@@ -123,15 +109,7 @@ export class ProxyMiddleware implements NestMiddleware {
             `Outgoing Request: ${typeof target === 'string' ? target : target?.host}`,
           );
           console.error(Constants.PROXY_ERROR, error);
-          // throw new HttpException(
-          //   {
-          //     message: `Proxy Error: Could not reach target service. ${error.message}`,
-          //     error: error.message,
-          //     target: target,
-          //     originalUrl: request.originalUrl,
-          //   },
-          //   HttpStatus.BAD_GATEWAY
-          // );
+
           const status = HttpStatus.SERVICE_UNAVAILABLE; // Or HttpStatus.BAD_GATEWAY
           const message = `Proxy Error: Could not reach target service. ${error.message}`;
           const errorPayload = {
@@ -157,6 +135,6 @@ export class ProxyMiddleware implements NestMiddleware {
       },
     });
 
-    return proxy(req, res, next);
+    return this.proxy(req, res, next);
   }
 }

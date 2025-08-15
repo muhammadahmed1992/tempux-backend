@@ -1,8 +1,5 @@
-import { LoginDTO } from '@DTO/login.dto';
 import { Injectable, Res } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import CookieHelper from '@User/helper/cookie.helper';
-import { Response } from '@nestjs/common';
 
 @Injectable()
 export class UserCookieHandlerService {
