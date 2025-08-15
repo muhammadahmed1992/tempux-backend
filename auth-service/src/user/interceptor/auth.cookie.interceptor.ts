@@ -29,6 +29,7 @@ export class AuthCookieInterceptor implements NestInterceptor {
           (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
           'production';
         const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
+        const dns = this.configService.get<string>('DNS')!;
         if (
           (data?.statusCode === HttpStatus.OK ||
             data?.statusCode === HttpStatus.CREATED) &&
@@ -39,7 +40,7 @@ export class AuthCookieInterceptor implements NestInterceptor {
             res as any,
             data?.data?.accessToken,
             isProd,
-            frontEndUrl,
+            dns,
           );
         }
 
