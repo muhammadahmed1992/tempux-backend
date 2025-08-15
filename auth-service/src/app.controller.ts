@@ -7,7 +7,7 @@ export class AppController {
   @Get('/health')
   async getHealth(): Promise<ApiResponse<boolean>> {
     return ResponseHelper.CreateResponse<boolean>(
-      'API Gateway is up and running',
+      'Auth Service is up and running',
       true,
       HttpStatus.OK,
     );

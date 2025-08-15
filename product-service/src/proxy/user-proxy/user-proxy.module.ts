@@ -1,7 +1,7 @@
-import { Module } from "@nestjs/common";
-import { HttpModule } from "@nestjs/axios";
-import { UserProxyService } from "./user-proxy.service";
-import { ConfigModule } from "@nestjs/config";
+import { Module } from '@nestjs/common';
+import { HttpModule, HttpService } from '@nestjs/axios';
+import { UserProxyService } from './user-proxy.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [

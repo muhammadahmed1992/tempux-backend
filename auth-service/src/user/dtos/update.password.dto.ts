@@ -14,7 +14,7 @@ export class ForgotPasswordDTO {
   })
   @MaxLength(30, { message: 'Confirm password cannot exceed 30 characters.' })
   @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,30}$/,
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,30}$/,
     {
       message:
         'Confirm password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
@@ -28,7 +28,7 @@ export class ForgotPasswordDTO {
   @MaxLength(30, { message: 'New password cannot exceed 30 characters.' })
   // Example of a strong password regex (at least one uppercase, one lowercase, one number, one special character)
   @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,30}$/,
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,30}$/,
     {
       message:
         'New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',

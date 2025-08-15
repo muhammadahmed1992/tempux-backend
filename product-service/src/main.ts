@@ -1,10 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import ResponseHandlerInterceptor from './interceptor/response-handler.interceptor';
-import { AllExceptionsFilter } from './filters/global.exception.filter';
+import ResponseHandlerInterceptor from './common/interceptor/response-handler.interceptor';
+import { AllExceptionsFilter } from './common/filters/global.exception.filter';
 import { ValidationPipe } from '@nestjs/common';
-import { BigIntInterceptor } from './interceptor/big.int.interceptor';
-import { HashidsInterceptor } from './interceptor/encode-decode-senstive-data.interceptor';
+import { BigIntInterceptor } from './common/interceptor/big.int.interceptor';
+import { HashidsInterceptor } from './common/interceptor/encode-decode-senstive-data.interceptor';
 import { HashidsService } from '@HashIds/hashids.service';
 
 async function bootstrap() {

@@ -4,10 +4,10 @@ import {
   ExecutionContext,
   CallHandler,
   HttpStatus,
-} from "@nestjs/common";
-import { Observable } from "rxjs";
-import { map } from "rxjs/operators";
-import ApiResponse from "@Helper/api-response";
+} from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import ApiResponse from '@Helper/api-response';
 
 @Injectable()
 export default class ResponseHandlerInterceptor<T>
@@ -15,18 +15,19 @@ export default class ResponseHandlerInterceptor<T>
 {
   intercept(
     context: ExecutionContext,
-    next: CallHandler
+    next: CallHandler,
   ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
       map((data) => {
         const response = context.switchToHttp().getResponse();
+        console.log(data);
         if (!data) {
           response.status(HttpStatus.INTERNAL_SERVER_ERROR);
         } else {
           response.status(data.statusCode);
         }
         return data;
-      })
+      }),
     );
   }
 }

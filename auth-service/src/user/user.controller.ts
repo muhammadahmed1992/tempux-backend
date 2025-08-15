@@ -5,6 +5,7 @@ import {
   Get,
   HttpStatus,
   Post,
+  Put,
   Req,
   Res,
   UnauthorizedException,
@@ -46,6 +47,7 @@ export class UserController {
 
   @Post('register')
   async create(@Body() user: CreateUserDto): Promise<ApiResponse<boolean>> {
+    console.log(user);
     return await this.userService.create(user);
   }
 
@@ -84,7 +86,7 @@ export class UserController {
     );
   }
 
-  @Post('password')
+  @Put('password')
   async forgotPassword(
     @Body() request: ForgotPasswordDTO,
   ): Promise<ApiResponse<boolean>> {
