@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ProductService } from '@Product/product.service';
 import { FavoriteService } from '@Favorite/favorite.service';
@@ -167,5 +168,15 @@ export class ProductController {
   @UseGuards(JwtAuthGuard)
   async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
     return this.productVariantSerice.getOrderSummary(summary);
+  }
+
+  /**
+   * Get user-based recommended watches
+   */
+  @Get('/recommendations')
+  @UseGuards(JwtAuthGuard)
+  async getUserRecommendations(@UserId() userId: bigint) {
+    console.log('herer');
+    return this.productAnalyticsService.getUserRecommendedWatches(userId);
   }
 }

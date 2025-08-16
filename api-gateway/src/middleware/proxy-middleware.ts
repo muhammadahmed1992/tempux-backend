@@ -10,7 +10,7 @@ import { Socket } from 'net';
 import { Url } from 'url';
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
-  private proxy: any;
+  private proxies: Map<string, any> = new Map();
   constructor(private readonly serviceResolver: ServiceResolver) {}
   use(req: Request, res: Response, next: NextFunction) {
     // Parse first path segment: /auth/register => auth
@@ -26,115 +26,121 @@ export class ProxyMiddleware implements NestMiddleware {
       );
       return res.status(HttpStatus.SERVICE_UNAVAILABLE).json(result);
     }
-    this.proxy = createProxyMiddleware({
-      target,
-      changeOrigin: true,
-      pathRewrite: () => {
-        return newPath;
-      },
-      on: {
-        proxyReq(proxyReq, req: Request) {
-          // TODO: will update it later
-          // Cast 'req' to 'express.Request' to access Express-specific properties
-          // and to 'IncomingMessage' to access stream-related properties.
-          // Note: 'readableBuffer' is often an internal property, so direct access
-          // might not be fully type-safe without custom type augmentations.
-          const expressReq = req as express.Request &
-            IncomingMessage & { readableBuffer?: Buffer };
-          console.log(`Logging the incoming request method: ${req.method}`);
+    if (!this.proxies.has(serviceKey)) {
+      const proxy = createProxyMiddleware({
+        target,
+        changeOrigin: true,
+        pathRewrite: () => {
+          return newPath;
+        },
+        on: {
+          proxyReq(proxyReq, req: Request) {
+            // TODO: will update it later
+            // Cast 'req' to 'express.Request' to access Express-specific properties
+            // and to 'IncomingMessage' to access stream-related properties.
+            // Note: 'readableBuffer' is often an internal property, so direct access
+            // might not be fully type-safe without custom type augmentations.
+            const expressReq = req as express.Request &
+              IncomingMessage & { readableBuffer?: Buffer };
+            console.log(`Logging the incoming request method: ${req.method}`);
 
-          if (
-            expressReq.body &&
-            Object.keys(expressReq.body).length &&
-            ['POST', 'PUT', 'PATCH'].includes(req.method)
+            if (
+              expressReq.body &&
+              Object.keys(expressReq.body).length &&
+              ['POST', 'PUT', 'PATCH'].includes(req.method)
+            ) {
+              const bodyData = JSON.stringify(expressReq.body);
+
+              proxyReq.setHeader('Content-Type', 'application/json');
+              proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+              proxyReq.write(bodyData, (error: any) => {
+                console.log('Error While writing body in middleware', error);
+              });
+              // --- Debugging Logs (Outgoing Proxy Request) ---
+              console.log(
+                '--- Outgoing ProxyReq Headers (after body processing) ---',
+              );
+              console.log(
+                'Content-Type (on proxyReq):',
+                proxyReq.getHeader('Content-Type'),
+              );
+              console.log(
+                'Content-Length (on proxyReq):',
+                proxyReq.getHeader('Content-Length'),
+              );
+              console.log(
+                '---------------------------------------------------------',
+              );
+
+              // Add listeners to the proxyReq for debugging stream completion
+              proxyReq.once('error', (err) => {
+                console.error('ProxyReq Error:', err);
+              });
+              proxyReq.once('close', () => {
+                console.log(
+                  'ProxyReq Closed (connection to target server closed)',
+                );
+              });
+              proxyReq.once('finish', () => {
+                console.log(
+                  'ProxyReq Finished (all data written to target server)',
+                );
+              });
+            } else {
+              // For other methods or if body is unexpectedly missing,
+              // you might want to log a warning or handle differently.
+              console.warn(
+                `Unhandled method or missing body for ${expressReq.method} request.`,
+              );
+            }
+          },
+          proxyRes(proxyRes, req: Request, res: Response) {
+            console.log('API Gateway proxy response');
+            console.log(req.url);
+            console.log(res.statusCode);
+          },
+          error(
+            error: Error,
+            request: Request,
+            response: Response | Socket,
+            target?: string | Partial<Url>,
           ) {
-            const bodyData = JSON.stringify(expressReq.body);
+            console.error(`Incoming Request: ${request.originalUrl}`);
+            console.error(
+              `Outgoing Request: ${typeof target === 'string' ? target : target?.host}`,
+            );
+            console.error(Constants.PROXY_ERROR, error);
 
-            proxyReq.setHeader('Content-Type', 'application/json');
-            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
-            proxyReq.write(bodyData, (error: any) => {
-              console.log('Error While writing body in middleware', error);
-            });
-            // --- Debugging Logs (Outgoing Proxy Request) ---
-            console.log(
-              '--- Outgoing ProxyReq Headers (after body processing) ---',
-            );
-            console.log(
-              'Content-Type (on proxyReq):',
-              proxyReq.getHeader('Content-Type'),
-            );
-            console.log(
-              'Content-Length (on proxyReq):',
-              proxyReq.getHeader('Content-Length'),
-            );
-            console.log(
-              '---------------------------------------------------------',
-            );
+            const status = HttpStatus.SERVICE_UNAVAILABLE; // Or HttpStatus.BAD_GATEWAY
+            const message = `Proxy Error: Could not reach target service. ${error.message}`;
+            const errorPayload = {
+              statusCode: status,
+              data: {
+                timestamp: new Date().toISOString(),
+                path: request.originalUrl,
+                targetService: target,
+                error: error.name || 'ProxyServiceError', // e.g., 'ECONNREFUSED'
+              },
+              message: message,
+              // You can add more context here if needed, e.g., correlationId
+            };
 
-            // Add listeners to the proxyReq for debugging stream completion
-            proxyReq.once('error', (err) => {
-              console.error('ProxyReq Error:', err);
-            });
-            proxyReq.once('close', () => {
-              console.log(
-                'ProxyReq Closed (connection to target server closed)',
-              );
-            });
-            proxyReq.once('finish', () => {
-              console.log(
-                'ProxyReq Finished (all data written to target server)',
-              );
-            });
-          } else {
-            // For other methods or if body is unexpectedly missing,
-            // you might want to log a warning or handle differently.
-            console.warn(
-              `Unhandled method or missing body for ${expressReq.method} request.`,
-            );
-          }
+            // Ensure the response is sent as JSON
+            if (!(response instanceof Socket)) {
+              response.writeHead(status, {
+                'Content-Type': 'application/json',
+              });
+              response.end(JSON.stringify(errorPayload));
+            } else {
+              response.destroy();
+            }
+          },
         },
-        proxyRes(proxyRes, req: Request, res: Response) {
-          console.log('API Gateway proxy response');
-          console.log(req.url);
-          console.log(res.statusCode);
-        },
-        error(
-          error: Error,
-          request: Request,
-          response: Response | Socket,
-          target?: string | Partial<Url>,
-        ) {
-          console.error(`Incoming Request: ${request.originalUrl}`);
-          console.error(
-            `Outgoing Request: ${typeof target === 'string' ? target : target?.host}`,
-          );
-          console.error(Constants.PROXY_ERROR, error);
+      });
 
-          const status = HttpStatus.SERVICE_UNAVAILABLE; // Or HttpStatus.BAD_GATEWAY
-          const message = `Proxy Error: Could not reach target service. ${error.message}`;
-          const errorPayload = {
-            statusCode: status,
-            data: {
-              timestamp: new Date().toISOString(),
-              path: request.originalUrl,
-              targetService: target,
-              error: error.name || 'ProxyServiceError', // e.g., 'ECONNREFUSED'
-            },
-            message: message,
-            // You can add more context here if needed, e.g., correlationId
-          };
+      this.proxies.set(serviceKey, proxy);
+    }
 
-          // Ensure the response is sent as JSON
-          if (!(response instanceof Socket)) {
-            response.writeHead(status, { 'Content-Type': 'application/json' });
-            response.end(JSON.stringify(errorPayload));
-          } else {
-            response.destroy();
-          }
-        },
-      },
-    });
-
-    return this.proxy(req, res, next);
+    return this.proxies.get(serviceKey)(req, res, next);
   }
 }
