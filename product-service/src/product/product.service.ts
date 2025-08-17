@@ -17,10 +17,10 @@ import { CustomFilter } from '@Common/enums/custom-filter.enum';
 
 // Mapping from CustomFilter enum to tag names in the DB
 const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
-  [CustomFilter.TOP_SELLER]: 'Top Seller',
-  [CustomFilter.BEST_SELLER]: 'Best Seller',
-  [CustomFilter.POPULAR]: 'Popular',
-  [CustomFilter.NEW_ARRIVAL]: 'New Arrival',
+  [CustomFilter.TOP_SELLER]: 'top-seller',
+  [CustomFilter.BEST_SELLER]: 'best-seller',
+  [CustomFilter.POPULAR]: 'popular',
+  [CustomFilter.NEW_ARRIVAL]: 'new-arrival',
 };
 
 /**
