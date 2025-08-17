@@ -117,7 +117,11 @@ export class UserService {
       otp_verified: true,
       email: true,
       password: true,
-      user_roles: true,
+      user_roles: {
+        select: {
+          role_id: true,
+        },
+      },
     });
     if (!user)
       return ResponseHelper.CreateResponse<LoginDTO>(
@@ -167,7 +171,7 @@ export class UserService {
     }
     // Extract the role IDs from the user_roles array
     const roleIds = (user as any).user_roles.map((role: any) =>
-      Number(role.id),
+      Number(role.role_id),
     );
     const payload = {
       sub: Number(user.id),

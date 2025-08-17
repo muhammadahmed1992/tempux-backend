@@ -40,7 +40,7 @@ export class AuthForwardingMiddleware implements NestMiddleware {
       // Attach claims as headers
       req.headers['x-user-id'] = payload.sub.toString();
       req.headers['x-user-email'] = payload.email;
-      req.headers['x-user-roles'] = JSON.stringify(payload.roles);
+      req.headers['x-user-roles'] = payload.roles;
     } catch {
       throw new UnauthorizedException('Your session has expired');
     }

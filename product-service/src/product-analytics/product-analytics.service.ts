@@ -82,4 +82,14 @@ export class ProductAnalyticsService {
     );
     return ResponseHelper.CreateResponse<number>('', count, HttpStatus.OK);
   }
+
+  async getUserRecommendedWatches(userId: bigint): Promise<ApiResponse<any[]>> {
+    const recommended = await this.repository.getUserRecommendations(userId, 5);
+
+    return ResponseHelper.CreateResponse<any[]>(
+      'Recommended watches for user',
+      recommended,
+      HttpStatus.OK,
+    );
+  }
 }
