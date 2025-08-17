@@ -20,6 +20,10 @@ export class AuthModule implements NestModule {
       .apply(HeaderAuthMiddleware)
       .exclude(
         {
+          path: '/health',
+          method: RequestMethod.GET,
+        },
+        {
           path: 'user/login',
           method: RequestMethod.POST,
         },

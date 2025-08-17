@@ -523,3 +523,4 @@ model product_analytics {
   @@index([user_id, product_id, viewed_at])
   @@unique([user_id, product_id, viewed_at])
 }
+
