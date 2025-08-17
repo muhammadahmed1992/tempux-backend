@@ -8,7 +8,7 @@ interface CustomRequest extends Request {
   user?: {
     sub: bigint;
     email: string;
-    roles: string[];
+    roles: bigint[];
   };
 }
 @Injectable()
@@ -25,7 +25,14 @@ export class HeaderAuthMiddleware implements NestMiddleware {
     req['user'] = {
       sub: BigInt(userId.toString()),
       email: email.toString(),
-      roles: roles?.toString().split(',') ?? [],
+      roles: roles
+        ? Array.isArray(roles) // Check if roles is already an array (e.g., [1n, 2n])
+          ? roles.map((role) => BigInt(role.toString())) // If array, ensure each element is BigInt
+          : roles
+              .toString()
+              .split(',')
+              .map((role) => BigInt(role)) // If string "1,2", split and convert
+        : [], // Default to empty array if roles is null/undefined,
     };
     next();
   }
