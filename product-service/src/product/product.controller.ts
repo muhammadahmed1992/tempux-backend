@@ -15,18 +15,17 @@ import {
 import { ProductService } from '@Product/product.service';
 import { FavoriteService } from '@Favorite/favorite.service';
 import { ProductType } from '@Common/enums/product.type.enum';
-import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import Utils from '@Common/utils';
 import Constants from '@Helper/constants';
 import ResponseHelper from '@Helper/response-helper';
 import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import ApiResponse from '@Helper/api-response';
 import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
-import { OptionalJwtAuthGuard } from '@Auth/optional.jwt-auth.guard';
 import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import { ProductVariantService } from '@ProductVariant/product-variant.service';
+import { AuthenticatedGuard } from '@Auth/guards/authenticated-user.guard';
 
 @Controller()
 export class ProductController {
@@ -44,7 +43,6 @@ export class ProductController {
    * @returns ProductDetails
    */
   @Get('/list/:p')
-  @UseGuards(OptionalJwtAuthGuard)
   async getAll(
     @Query() query: GetAllQueryDTO,
     @Param('p') productType: ProductType,
@@ -74,7 +72,6 @@ export class ProductController {
    */
   // Example route: GET /products/123/summary
   @Get(':id/summary')
-  @UseGuards(OptionalJwtAuthGuard)
   async getProductSummary(
     @Param('id', ParseProductIdPipe) id: bigint,
     @OptionalUser() userId: bigint | null,
@@ -139,7 +136,7 @@ export class ProductController {
   }
 
   @Post('favorite/:id/:itemId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthenticatedGuard)
   async favorite(
     @UserId() userId: bigint,
     @Param('id', ParseProductIdPipe) id: bigint,
@@ -150,7 +147,7 @@ export class ProductController {
   }
 
   @Post('/analytics')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthenticatedGuard)
   async createViewerShipAnalytics(
     @UserId() userId: bigint,
     @Body()
@@ -165,7 +162,7 @@ export class ProductController {
   }
 
   @Post('/order-summary')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthenticatedGuard)
   async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
     return this.productVariantSerice.getOrderSummary(summary);
   }

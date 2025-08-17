@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AuthModule } from '@Auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
@@ -19,6 +19,7 @@ import { CartController } from '@Cart/cart.controller';
 import { CartModule } from '@Cart/cart.module';
 import { BrandModule } from '@Brand/brand.module';
 import { ProductModule } from '@Product/product.module';
+import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
 
 @Module({
   imports: [
@@ -41,4 +42,8 @@ import { ProductModule } from '@Product/product.module';
   controllers: [AppController],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HeaderAuthMiddleware).forRoutes('*');
+  }
+}
