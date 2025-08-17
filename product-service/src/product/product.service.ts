@@ -13,6 +13,15 @@ import { ProductVariantService } from '@ProductVariant/product-variant.service';
 import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import { ProductImageOutput } from '@DTO/product-images-info.dto';
 import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
+import { CustomFilter } from '@Common/enums/custom-filter.enum';
+
+// Mapping from CustomFilter enum to tag names in the DB
+const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
+  [CustomFilter.TOP_SELLER]: 'Top Seller',
+  [CustomFilter.BEST_SELLER]: 'Best Seller',
+  [CustomFilter.POPULAR]: 'Popular',
+  [CustomFilter.NEW_ARRIVAL]: 'New Arrival',
+};
 
 /**
  * Define types used only in this service
@@ -181,6 +190,7 @@ export class ProductService {
     order?: object,
     where?: object,
     select?: object,
+    customCategoryExpression?: CustomFilter,
   ): Promise<ApiResponse<any[]>> {
     let finalWhere: any;
     finalWhere = {
@@ -194,6 +204,32 @@ export class ProductService {
       },
     };
     let finalOrderBy: any = { ...order };
+
+    // filter logic using tags
+    if (customCategoryExpression) {
+      const tagName = CUSTOM_FILTER_TO_TAG[customCategoryExpression];
+      if (tagName) {
+        // Filter products that have the tag
+        finalWhere.product = {
+          ...finalWhere.product,
+          productTags: {
+            some: {
+              tags: {
+                name: tagName,
+              },
+            },
+          },
+        };
+      }
+      // For NEW_ARRIVAL, we may also want to filter by created_at (optional)
+      if (customCategoryExpression === CustomFilter.NEW_ARRIVAL) {
+        const newArrivalDays = 30; // or configurable
+        finalWhere.product.created_at = {
+          gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
+        };
+        finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
+      }
+    }
 
     // This ensures all necessary related data is fetched.
     const selectOptions: any = {
@@ -290,16 +326,11 @@ export class ProductService {
     );
 
     const meta = response.getMeta ? response.getMeta() : {};
-    return ResponseHelper.CreateResponse<any[]>(
-      '',
-      result,
-      HttpStatus.OK,
-      {
-        totalCount: (meta as any).totalCount ?? 0,
-        pageNumber: (meta as any).pageNumber ?? 1,
-        pageSize: (meta as any).pageSize ?? 0,
-        numberOfTotalPages: (meta as any).numberOfTotalPages ?? 1,
-      }
-    );
+    return ResponseHelper.CreateResponse<any[]>('', result, HttpStatus.OK, {
+      totalCount: (meta as any).totalCount ?? 0,
+      pageNumber: (meta as any).pageNumber ?? 1,
+      pageSize: (meta as any).pageSize ?? 0,
+      numberOfTotalPages: (meta as any).numberOfTotalPages ?? 1,
+    });
   }
 }
