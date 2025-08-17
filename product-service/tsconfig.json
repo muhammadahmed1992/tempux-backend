@@ -44,7 +44,8 @@
       "@Decorators/*": ["src/auth/decorators/*"],
       "@HashIds/*": ["src/hash-ids/*"],
       "@Resolvers/*": ["src/common/resolver/*"],
-      "@Pipes/*": ["src/common/pipes/*"]
+      "@Pipes/*": ["src/common/pipes/*"],
+      "@Search/*": ["src/search/*"]
     }
   },
   "include": ["src/**/*.ts", "node_modules/@prisma/client"],

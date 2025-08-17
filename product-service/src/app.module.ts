@@ -1,4 +1,9 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AuthModule } from '@Auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
@@ -18,6 +23,7 @@ import { CartModule } from '@Cart/cart.module';
 import { BrandModule } from '@Brand/brand.module';
 import { ProductModule } from '@Product/product.module';
 import { CollectionModule } from './collection/collection.module';
+import { SearchModule } from './search/search.module';
 import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
 
 @Module({
@@ -38,6 +44,7 @@ import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
     GenderModule,
     PrismaModule,
     CollectionModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [],
