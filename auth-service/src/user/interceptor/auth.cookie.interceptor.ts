@@ -48,6 +48,8 @@ export class AuthCookieInterceptor implements NestInterceptor {
             dns,
             isComingFromLocalhost,
           );
+          // We don't need that now as we'd moved this into access_token cookie.
+          delete data?.data.accessToken;
         }
 
         return new Observable((observer) => {

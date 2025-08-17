@@ -24,19 +24,13 @@ import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { EmailTemplateType } from '@Email/factory/email.template.type';
 import { ForgotPasswordDTO } from './dtos/update.password.dto';
-import {
-  SocialLoginResponseDTO,
-  SocialLoginVerifyUserResponseDTO,
-} from './dtos/social-login-response.dto';
 import { AuthCookieInterceptor } from './interceptor/auth.cookie.interceptor';
 import { SocialLoginService } from './services/social-login.service';
 import { SocialAuthRedirectInterceptor } from './interceptor/social-auth-redirect.interceptor';
 import ResponseHelper from '@Helper/response-helper';
 import CookieHelper from './helper/cookie.helper';
 import { ProviderType } from './dtos/user.details.response.dto';
-import { JwtCookieAuthGuard } from './guards/jwt-cookie.guard';
-import { Cookie } from 'express-session';
-
+import { AuthenticatedGuard } from 'src/auth/guards/authenticated-user.guard';
 @Controller('user')
 export class UserController {
   constructor(
@@ -189,7 +183,7 @@ export class UserController {
     return result;
   }
 
-  @UseGuards(JwtCookieAuthGuard)
+  @UseGuards(AuthenticatedGuard)
   @Get('/me')
   /**
    * @returns It will returns logged-in user's display name and profileImageUrl.
@@ -199,6 +193,7 @@ export class UserController {
     return this.userService.getProfile(request.user.id);
   }
 
+  @UseGuards(AuthenticatedGuard)
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
