@@ -37,7 +37,12 @@ export class CollectionController {
       '',
       response.data,
       HttpStatus.OK,
-      response.getMeta(),
+      {
+        totalCount: response.totalCount,
+        pageNumber: page,
+        pageSize: pageSize,
+        numberOfTotalPages: Math.ceil(response.totalCount / pageSize),
+      },
     );
   }
 
