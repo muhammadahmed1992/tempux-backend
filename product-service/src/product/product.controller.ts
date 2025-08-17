@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ProductService } from '@Product/product.service';
 import { FavoriteService } from '@Favorite/favorite.service';
@@ -163,5 +164,18 @@ export class ProductController {
   @UseGuards(AuthenticatedGuard)
   async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
     return this.productVariantSerice.getOrderSummary(summary);
+  }
+
+  /**
+   * @returns Get recommended watches for user based on the viewed
+   * 1.Brand (1/3rd of the total)
+   * 2.Category (half of the remaining limit)
+   * 3.Price (20% < pricerange > 20%)
+   * 4.Limit 5 watches to display
+   */
+  @Get('/recommendations')
+  @UseGuards(AuthenticatedGuard)
+  async getUserRecommendations(@UserId() userId: bigint) {
+    return this.productAnalyticsService.getUserRecommendedWatches(userId);
   }
 }
