@@ -1,4 +1,3 @@
-import { CustomFilter } from '../enums/custom-filter.enum';
 import { PrismaClient, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { HashidsService } from '../../hash-ids/hashids.service'; // Adjust path if necessary
@@ -147,9 +146,10 @@ export default class SeedHelper {
             await this.seedColors(creatorId, tx);
             await this.seedSizes(creatorId, tx);
             await this.seedBrands(creatorId, tx);
+            await this.seedCollections(creatorId, tx);
             await this.seedCategories(creatorId, tx);
             await this.seedMovements(creatorId, tx);
-            await this.seedTypes(creatorId, tx);
+            await this.seedGenders(creatorId, tx);
             await this.seedCurrenciesAndTaxes(creatorId, tx);
 
             // Seed products and variants (these must exist for dependent models)
@@ -425,6 +425,187 @@ export default class SeedHelper {
     console.log(`Seeded ${brandsData.length} brands.`);
   }
 
+  private async seedCollections(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('Seeding collections (upserting)...');
+
+    // Get all brands to create collections for
+    const brands = await tx.brand.findMany({
+      where: { is_deleted: false },
+      select: { id: true, title: true },
+    });
+
+    const collectionsData = [
+      // Rolex collections
+      {
+        title: 'Submariner',
+        brand_id: 1,
+        order: 1,
+        image_url: 'https://example.com/collections/submariner.png',
+      },
+      {
+        title: 'Daytona',
+        brand_id: 1,
+        order: 2,
+        image_url: 'https://example.com/collections/daytona.png',
+      },
+      {
+        title: 'GMT-Master',
+        brand_id: 1,
+        order: 3,
+        image_url: 'https://example.com/collections/gmt-master.png',
+      },
+      {
+        title: 'Datejust',
+        brand_id: 1,
+        order: 4,
+        image_url: 'https://example.com/collections/datejust.png',
+      },
+
+      // Omega collections
+      {
+        title: 'Speedmaster',
+        brand_id: 2,
+        order: 1,
+        image_url: 'https://example.com/collections/speedmaster.png',
+      },
+      {
+        title: 'Seamaster',
+        brand_id: 2,
+        order: 2,
+        image_url: 'https://example.com/collections/seamaster.png',
+      },
+      {
+        title: 'Constellation',
+        brand_id: 2,
+        order: 3,
+        image_url: 'https://example.com/collections/constellation.png',
+      },
+
+      // Patek Philippe collections
+      {
+        title: 'Nautilus',
+        brand_id: 3,
+        order: 1,
+        image_url: 'https://example.com/collections/nautilus.png',
+      },
+      {
+        title: 'Aquanaut',
+        brand_id: 3,
+        order: 2,
+        image_url: 'https://example.com/collections/aquanaut.png',
+      },
+      {
+        title: 'Calatrava',
+        brand_id: 3,
+        order: 3,
+        image_url: 'https://example.com/collections/calatrava.png',
+      },
+
+      // Audemars Piguet collections
+      {
+        title: 'Royal Oak',
+        brand_id: 4,
+        order: 1,
+        image_url: 'https://example.com/collections/royal-oak.png',
+      },
+      {
+        title: 'Royal Oak Offshore',
+        brand_id: 4,
+        order: 2,
+        image_url: 'https://example.com/collections/royal-oak-offshore.png',
+      },
+
+      // Vacheron Constantin collections
+      {
+        title: 'Overseas',
+        brand_id: 5,
+        order: 1,
+        image_url: 'https://example.com/collections/overseas.png',
+      },
+      {
+        title: 'Fiftysix',
+        brand_id: 5,
+        order: 2,
+        image_url: 'https://example.com/collections/fiftysix.png',
+      },
+
+      // IWC collections
+      {
+        title: 'Pilot',
+        brand_id: 8,
+        order: 1,
+        image_url: 'https://example.com/collections/pilot.png',
+      },
+      {
+        title: 'Portuguese',
+        brand_id: 8,
+        order: 2,
+        image_url: 'https://example.com/collections/portuguese.png',
+      },
+
+      // Breitling collections
+      {
+        title: 'Navitimer',
+        brand_id: 9,
+        order: 1,
+        image_url: 'https://example.com/collections/navitimer.png',
+      },
+      {
+        title: 'Chronomat',
+        brand_id: 9,
+        order: 2,
+        image_url: 'https://example.com/collections/chronomat.png',
+      },
+
+      // Cartier collections
+      {
+        title: 'Tank',
+        brand_id: 12,
+        order: 1,
+        image_url: 'https://example.com/collections/tank.png',
+      },
+      {
+        title: 'Santos',
+        brand_id: 12,
+        order: 2,
+        image_url: 'https://example.com/collections/santos.png',
+      },
+      {
+        title: 'Ballon Bleu',
+        brand_id: 12,
+        order: 3,
+        image_url: 'https://example.com/collections/ballon-bleu.png',
+      },
+    ];
+
+    for (const data of collectionsData) {
+      await tx.collection.upsert({
+        where: {
+          brand_id_title: {
+            brand_id: data.brand_id,
+            title: data.title,
+          },
+        },
+        update: {
+          order: data.order,
+          image_url: data.image_url,
+          updated_by: creatorId,
+        },
+        create: {
+          title: data.title,
+          brand_id: data.brand_id,
+          order: data.order,
+          image_url: data.image_url,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`Seeded ${collectionsData.length} collections.`);
+  }
+
   private async seedCategories(
     creatorId: bigint,
     tx: PrismaClient,
@@ -538,33 +719,36 @@ export default class SeedHelper {
     console.log(`Seeded ${movementsData.length} movements.`);
   }
 
-  private async seedTypes(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log('Seeding types (gender/style, upserting)...');
-    const typesData = [
+  private async seedGenders(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('Seeding genders (upserting)...');
+    const gendersData = [
       {
         title: "Men's",
         order: 1,
-        image_url: 'https://example.com/type_mens.png',
+        image_url: 'https://example.com/gender_mens.png',
       },
       {
         title: "Women's",
         order: 2,
-        image_url: 'https://example.com/type_womens.png',
+        image_url: 'https://example.com/gender_womens.png',
       },
       {
         title: 'Unisex',
         order: 3,
-        image_url: 'https://example.com/type_unisex.png',
+        image_url: 'https://example.com/gender_unisex.png',
       },
     ];
-    for (const data of typesData) {
-      await tx.type.upsert({
+    for (const data of gendersData) {
+      await tx.gender.upsert({
         where: { title: data.title },
         update: { ...data, updated_by: creatorId },
         create: { ...data, created_by: creatorId },
       });
     }
-    console.log(`Seeded ${typesData.length} types (gender/style).`);
+    console.log(`Seeded ${gendersData.length} genders.`);
   }
 
   private async seedCurrenciesAndTaxes(
@@ -645,7 +829,7 @@ export default class SeedHelper {
     const allBrands = await tx.brand.findMany();
     const allCategories = await tx.category.findMany();
     const allMovements = await tx.movement.findMany();
-    const allTypes = await tx.type.findMany();
+    const allGenders = await tx.gender.findMany();
     const defaultCurrency = await tx.currency_exchange.findUnique({
       where: { curr: '$' },
     });
@@ -665,52 +849,13 @@ export default class SeedHelper {
       allMovements.length === 0 ||
       allColors.length === 0 ||
       allSizes.length === 0 ||
-      allTypes.length === 0
+      allGenders.length === 0
     ) {
       console.error(
         'Missing required base data (currency, tax, or lookup entities like brands, categories, movements, colors, sizes, types) for product variant seeding. Please ensure they are seeded.',
       );
       return;
     }
-
-    // --- STEP 1: Seed CustomFilterConfigurator (mapped to 'configurator' table) ---
-    const customCategoryConfigs: {
-      [key: string]: { id: bigint; key: string };
-    } = {};
-    // Use CustomFilter enum for consistent keys
-    const customFilterKeys = Object.values(CustomFilter);
-
-    for (const key of customFilterKeys) {
-      const configValue =
-        key === CustomFilter.NEW_ARRIVAL ? '30' : 'category_marker'; // '30' for New Arrival days, 'category_marker' for others
-      const description =
-        key === CustomFilter.NEW_ARRIVAL
-          ? 'Number of days to consider a product as new arrival'
-          : `Marker for ${key} custom product category`;
-
-      const config = await tx.customFilterConfigurator.upsert({
-        where: { key },
-        update: {
-          value: configValue,
-          description: description,
-          updated_by: creatorId,
-          is_deleted: false, // Ensure it's not marked as deleted
-          deleted_at: null,
-          deleted_by: null,
-        },
-        create: {
-          key: key,
-          value: configValue,
-          description: description,
-          created_by: creatorId,
-          is_deleted: false,
-        },
-      });
-      customCategoryConfigs[key] = { id: config.id, key: config.key }; // Store ID and key for later use
-    }
-    console.log('Seeded CustomFilterConfigurator entries.');
-
-    // --- End STEP 1 ---
 
     const getNameSuffix = (categoryTitle: string) => {
       if (categoryTitle.includes('Dive')) return 'Pro Diver';
@@ -744,8 +889,6 @@ export default class SeedHelper {
     const MAX_GENERATION_ATTEMPTS = numberOfProducts * 10;
     let overallAttemptCount = 0;
 
-    const createdVariantIds: bigint[] = []; // Collect IDs of newly created variants
-
     for (
       let i = 0;
       productsCreated < numberOfProducts &&
@@ -756,9 +899,9 @@ export default class SeedHelper {
 
       const brand = getRandomElement(allBrands);
       const category = getRandomElement(allCategories);
-      const type = getRandomElement(allTypes);
+      const gender = getRandomElement(allGenders);
 
-      if (!brand || !category || !type) {
+      if (!brand || !category || !gender) {
         console.warn(
           'Skipping product creation due to missing base data (brand, category, or type). This should not happen if initial checks pass.',
         );
@@ -862,7 +1005,7 @@ export default class SeedHelper {
 
       // Generate product slug here for the initial create
       const initialProductSlug = this.slugService.generateSlug(
-        `${productName} ${brand.title} ${category.title} ${type.title}`,
+        `${productName} ${brand.title} ${category.title} ${gender.title}`,
       );
 
       let createdProduct;
@@ -876,7 +1019,7 @@ export default class SeedHelper {
             title: productTitle,
             brand_id: brand.id,
             category_id: category.id,
-            type_id: type.id,
+            gender_id: gender.id,
             is_accessory: false,
             year_of_production: productionYear,
             serial_number: serialNumber,
@@ -890,7 +1033,7 @@ export default class SeedHelper {
             // Include relations to get their names for accurate slug generation in the next step
             brand: true,
             category: true,
-            type: true,
+            gender: true,
           },
         });
         productsCreated++;
@@ -915,7 +1058,7 @@ export default class SeedHelper {
       // to ensure consistency if any changes are made during the update phase.
       const productPublicId = this.hashidsService.encode(createdProduct.id);
       const productSlug = this.slugService.generateSlug(
-        `${createdProduct.name} ${brand.title} ${category.title} ${type.title}`,
+        `${createdProduct.name} ${brand.title} ${category.title} ${gender.title}`,
       );
 
       // Update the newly created product with the generated values
@@ -1090,7 +1233,6 @@ export default class SeedHelper {
               sku: variantSku!,
             },
           });
-          createdVariantIds.push(createdProductVariant.id); // Collect ID
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -1113,73 +1255,6 @@ export default class SeedHelper {
       }
     }
     console.log(`Seeded ${productsCreated} new products and their variants.`);
-
-    // --- STEP 2: Populate CustomProductCategory for *some* variants ---
-    const assignableCustomCategories = [
-      CustomFilter.TOP_SELLER,
-      CustomFilter.BEST_SELLER,
-      CustomFilter.POPULAR,
-      // CustomFilter.NEW_ARRIVAL is handled dynamically in service, not stored here
-    ];
-
-    for (const variantId of createdVariantIds) {
-      // Randomly assign between 0 and 2 custom categories to each new variant
-      const numCategoriesToAssign = getRandomInt(0, 2);
-      const assignedTypesForVariant = new Set<CustomFilter>();
-
-      for (let k = 0; k < numCategoriesToAssign; k++) {
-        const categoryType = getRandomElement(assignableCustomCategories);
-        if (!categoryType || assignedTypesForVariant.has(categoryType)) {
-          continue; // Skip if no type found or already assigned this type
-        }
-
-        const configEntry = customCategoryConfigs[categoryType];
-        if (!configEntry) {
-          console.warn(
-            `Config entry for custom filter type '${categoryType}' not found. Skipping CustomProductCategory assignment for variant ${variantId}.`,
-          );
-          continue;
-        }
-
-        try {
-          await tx.customProductCategory.upsert({
-            where: {
-              product_variant_id_custom_filter_configuration_id: {
-                product_variant_id: variantId,
-                custom_filter_configuration_id: configEntry.id,
-              },
-            },
-            update: {
-              valid_from: new Date(), // Refresh 'valid_from' on update
-              valid_to: null, // Keep valid indefinitely for seeding
-            },
-            create: {
-              product_variant_id: variantId,
-              custom_filter_configuration_id: configEntry.id,
-              valid_from: new Date(),
-              valid_to: null, // For seeding, make them perpetually valid
-            },
-          });
-          assignedTypesForVariant.add(categoryType);
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002'
-          ) {
-            console.warn(
-              `CustomProductCategory for variant ${variantId} and config ${configEntry.key} already exists. Skipping duplicate.`,
-            );
-          } else {
-            console.error(
-              `Error upserting CustomProductCategory for variant ${variantId} and type ${categoryType}:`,
-              error,
-            );
-            // Decide if you want to rethrow or just log for seeding
-          }
-        }
-      }
-    }
-    console.log(`Populated CustomProductCategory for newly created variants.`);
   }
 
   // --- NEW SEEDING METHODS FOR THE MISSED MODELS ---

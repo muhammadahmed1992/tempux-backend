@@ -166,6 +166,7 @@ export class ProductService {
       colors: colors,
       images: images,
       viewerShipCount: viewershipCount || 0,
+      collection: productData.collection,
     };
 
     return ResponseHelper.CreateResponse<ProductSummaryOutputDTO>(
@@ -266,6 +267,13 @@ export class ProductService {
           title: true,
           description: true,
           ...select,
+          collection: {
+            select: {
+              id: true,
+              title: true,
+              brand_id: true,
+            },
+          },
           productTags: {
             select: {
               tags: {
@@ -317,6 +325,7 @@ export class ProductService {
           description: string;
           title: string;
           product_slug: string;
+          collection: { id: number; title: string; brand_id: number } | null;
           productTags: any[];
         };
         price: number;
@@ -336,6 +345,7 @@ export class ProductService {
         price: pv.price.toFixed(2),
         isFavorite: userId ? !!pv.productVariantFavorite?.[0]?.id : null,
         tags: pv.product?.productTags?.map((p) => p.tags),
+        collection: pv.product.collection,
       }),
     );
 
