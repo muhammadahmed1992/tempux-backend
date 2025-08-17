@@ -45,7 +45,8 @@
       "@HashIds/*": ["src/hash-ids/*"],
       "@Resolvers/*": ["src/common/resolver/*"],
       "@Pipes/*": ["src/common/pipes/*"],
-      "@Search/*": ["src/search/*"]
+      "@Search/*": ["src/search/*"],
+      "@Common/*": ["src/common/*"]
     }
   },
   "include": ["src/**/*.ts", "node_modules/@prisma/client"],

@@ -24,6 +24,7 @@ import { BrandModule } from '@Brand/brand.module';
 import { ProductModule } from '@Product/product.module';
 import { CollectionModule } from './collection/collection.module';
 import { SearchModule } from './search/search.module';
+import { ListingModule } from './common/modules/listing.module';
 import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
 
 @Module({
@@ -45,6 +46,7 @@ import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
     PrismaModule,
     CollectionModule,
     SearchModule,
+    ListingModule,
   ],
   controllers: [AppController],
   providers: [],
