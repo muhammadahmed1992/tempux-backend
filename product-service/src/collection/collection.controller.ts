@@ -7,11 +7,9 @@ import {
   Param,
   Body,
   Query,
-  UseGuards,
   HttpStatus,
 } from '@nestjs/common';
 import { CollectionService } from './collection.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GetAllQueryDTO } from '../common/dto/get-all-query.dto';
 import ResponseHelper from '../common/helper/response-helper';
 import ApiResponse from '../common/helper/api-response';
@@ -64,7 +62,6 @@ export class CollectionController {
   }
 
   @Post()
-  @UseGuards(JwtAuthGuard)
   async create(
     @Body() data: any,
     @UserId() userId: bigint,
@@ -79,7 +76,6 @@ export class CollectionController {
   }
 
   @Put(':id')
-  @UseGuards(JwtAuthGuard)
   async update(
     @Param('id') id: string,
     @Body() data: any,
@@ -99,7 +95,6 @@ export class CollectionController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
   async delete(
     @Param('id') id: string,
     @UserId() userId: bigint,

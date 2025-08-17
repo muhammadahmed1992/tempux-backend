@@ -3,8 +3,6 @@ import { AppController } from './app.controller';
 import { AuthModule } from '@Auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { SlugModule } from './slug/slug.module';
-import { CustomFilterConfigurationModule } from './custom-filter-configurator/custom-filter-configurator.module';
-import { CustomProductCategoryModule } from './custom-product-varient-category/custom-product-varient-category.module';
 import { FavoriteModule } from './favorite/favorite.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ProductAnalyticsModule } from './product-analytics/product-analytics.module';

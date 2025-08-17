@@ -9,10 +9,7 @@ import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
 import { ProductRepository } from './product.repository';
-import { CustomFilter } from '@Common/enums/custom-filter.enum';
 import { ProductVariantService } from '@ProductVariant/product-variant.service';
-import { CustomFilterConfiguratorService } from '@CustomFilterConfigurator/custom-filter-configurator.service';
-import { CustomProductVariantCategoryService } from '@CustomProductVarientCategory/custom-product-varient-category.service';
 import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import { ProductImageOutput } from '@DTO/product-images-info.dto';
 import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
@@ -28,8 +25,6 @@ export class ProductService {
   constructor(
     private readonly repository: ProductRepository,
     private readonly productVariantService: ProductVariantService,
-    private readonly customFilterConfiguratorService: CustomFilterConfiguratorService,
-    private readonly customProductCategoryService: CustomProductVariantCategoryService,
     private readonly productAnalytics: ProductAnalyticsService,
   ) {}
 
@@ -186,7 +181,6 @@ export class ProductService {
     order?: object,
     where?: object,
     select?: object,
-    customCategoryExpression?: CustomFilter,
   ): Promise<ApiResponse<any[]>> {
     let finalWhere: any;
     finalWhere = {
@@ -200,59 +194,6 @@ export class ProductService {
       },
     };
     let finalOrderBy: any = { ...order };
-    if (customCategoryExpression) {
-      const configuratorData = await this.getConfiguratorEntries();
-
-      switch (customCategoryExpression) {
-        case CustomFilter.NEW_ARRIVAL:
-          const newArrivalDaysStr =
-            configuratorData.get(CustomFilter.NEW_ARRIVAL)?.value || '30';
-          const newArrivalDays = parseInt(newArrivalDaysStr, 10);
-          finalWhere.product = {
-            ...finalWhere.product,
-            created_at: {
-              gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
-            },
-          };
-          finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
-          break;
-        case CustomFilter.TOP_SELLER:
-        case CustomFilter.BEST_SELLER:
-        case CustomFilter.POPULAR:
-          const configEntry = configuratorData.get(customCategoryExpression);
-          if (!configEntry) {
-            console.warn(
-              ` ${Constants.NO_CONFIGURATION_FOUND_FOR_CUSTOM_FILTER_CATEGORY} ${customCategoryExpression}.`,
-            );
-            console.warn(Constants.NO_ASSIGNMENT_FOR_SPECIAL_FILTERS_CATEGORY);
-            throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
-          }
-          const customConfigId = configEntry.id;
-          // TODO: Will update this criteria to match real requirement.
-          const customCategoryEntries =
-            await this.customProductCategoryService.findMany(
-              {
-                custom_filter_configuration_id: customConfigId,
-                valid_from: { lte: new Date() },
-                OR: [{ valid_to: null }, { valid_to: { gte: new Date() } }],
-              },
-              {
-                product_variant_id: true,
-              },
-            );
-          const filteredVariantIds = customCategoryEntries.map(
-            (entry: any) => entry.product_variant_id,
-          );
-          console.warn(Constants.NO_ASSIGNMENT_FOR_SPECIAL_FILTERS_CATEGORY);
-          if (filteredVariantIds.length === 0) {
-            throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
-          }
-          finalWhere = {
-            AND: [finalWhere, { id: { in: filteredVariantIds } }],
-          };
-          break;
-      }
-    }
 
     // This ensures all necessary related data is fetched.
     const selectOptions: any = {
@@ -298,7 +239,6 @@ export class ProductService {
       }),
       currency: {
         select: {
-          // Use select on currency_exchange to get only curr (currency symbol)
           curr: true,
         },
       },
@@ -349,33 +289,17 @@ export class ProductService {
       }),
     );
 
+    const meta = response.getMeta ? response.getMeta() : {};
     return ResponseHelper.CreateResponse<any[]>(
       '',
       result,
       HttpStatus.OK,
-      response.getMeta(),
-    );
-  }
-
-  /**
-   * Fetches configurable thresholds/category IDs from the Configurator table.
-   * Caches results if needed for performance.
-   */
-  private async getConfiguratorEntries(): Promise<
-    Map<string, { id: bigint; value: string }>
-  > {
-    const configs = await this.customFilterConfiguratorService.getAllPagedData(
-      1,
-      Constants.MAX_PAGE_SIZE,
       {
-        select: { id: true, key: true, value: true },
-      },
-    );
-    return new Map(
-      configs?.data?.map((c: { key: any; id: any; value: any }) => [
-        c.key,
-        { id: c.id, value: c.value },
-      ]),
+        totalCount: (meta as any).totalCount ?? 0,
+        pageNumber: (meta as any).pageNumber ?? 1,
+        pageSize: (meta as any).pageSize ?? 0,
+        numberOfTotalPages: (meta as any).numberOfTotalPages ?? 1,
+      }
     );
   }
 }
