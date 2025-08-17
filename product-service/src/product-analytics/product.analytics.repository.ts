@@ -44,8 +44,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
     return res.length;
   }
 
-  async getUserRecommendations(userId: bigint, limit = 4) {
-    // 1. Get recent views for the user
+  async getUserRecommendations(userId: bigint, limit = 5) {
     const cutoffTime = new Date();
     cutoffTime.setHours(
       cutoffTime.getHours() - StaticConfiguration.viewershipWindowHours,
@@ -59,7 +58,11 @@ export class ProductAnalyticsRepository extends BaseRepository<
       },
       include: {
         product: {
-          include: { brand: true, category: true, productVariants: true },
+          include: {
+            brand: true,
+            category: true,
+            productVariants: { include: { currency: true } },
+          },
         },
         productVariant: true,
       },
@@ -67,7 +70,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
 
     if (!views.length) return [];
 
-    // 2. Count brands & categories + collect price points
+    // --- Count brands, categories, price points ---
     const brandCount: Record<number, number> = {};
     const categoryCount: Record<number, number> = {};
     const pricePoints: number[] = [];
@@ -81,86 +84,88 @@ export class ProductAnalyticsRepository extends BaseRepository<
         categoryCount[v.product.category_id] =
           (categoryCount[v.product.category_id] || 0) + 1;
       }
-
-      // extract numeric price if variant exists
       const price = this.getNumericPrice(v.productVariant?.price);
       if (price) pricePoints.push(price);
     });
 
-    // Most viewed brand & category
-    const topBrandId = Object.entries(brandCount).sort(
-      (a, b) => b[1] - a[1],
-    )[0]?.[0];
-    const topCategoryId = Object.entries(categoryCount).sort(
-      (a, b) => b[1] - a[1],
-    )[0]?.[0];
+    const totalBrands = Object.values(brandCount).reduce((a, b) => a + b, 0);
+    const totalCategories = Object.values(categoryCount).reduce(
+      (a, b) => a + b,
+      0,
+    );
 
     const avgPrice =
       pricePoints.reduce((sum, p) => sum + p, 0) / (pricePoints.length || 1);
-
     const lowerBound = avgPrice * 0.8;
     const upperBound = avgPrice * 1.2;
 
-    const recommendations: any[] = [];
     const excludeIds = views.map((v) => v.product_id);
+    const recommendations: any[] = [];
 
-    // ---- 3. Brand priority ----
-    if (topBrandId) {
+    // --- Weighted brand allocation ---
+    for (const [brandId, count] of Object.entries(brandCount)) {
+      const share = count / totalBrands; // e.g. 0.7 for 70%
+      const take = Math.ceil(Math.max(1, Math.floor(limit * share)) / 2); // allocate slots
+
       const brandMatches = await this.prisma.product.findMany({
         where: {
-          brand_id: Number(topBrandId),
+          brand_id: Number(brandId),
           id: { notIn: excludeIds },
           is_deleted: false,
         },
-        take: limit,
-        include: { productVariants: true, brand: true, category: true },
+        take,
+        include: {
+          productVariants: { include: { currency: true } },
+          brand: true,
+          category: true,
+        },
       });
       recommendations.push(...brandMatches);
     }
 
-    if (recommendations.length >= limit) {
-      return recommendations
-        .slice(0, limit)
-        .map(this.mapProductToRecommendation);
-    }
+    // --- Weighted category allocation ---
+    for (const [catId, count] of Object.entries(categoryCount)) {
+      const share = count / totalCategories;
+      const take = Math.max(1, Math.floor(limit * share));
 
-    // ---- 4. Category fallback ----
-    if (topCategoryId) {
       const catMatches = await this.prisma.product.findMany({
         where: {
-          category_id: Number(topCategoryId),
+          category_id: Number(catId),
           id: { notIn: excludeIds },
           is_deleted: false,
         },
-        take: limit - recommendations.length,
-        include: { productVariants: true, brand: true, category: true },
+        take: take - recommendations.length / 2,
+        include: {
+          productVariants: { include: { currency: true } },
+          brand: true,
+          category: true,
+        },
       });
       recommendations.push(...catMatches);
     }
 
-    if (recommendations.length >= limit) {
-      return recommendations
-        .slice(0, limit)
-        .map(this.mapProductToRecommendation);
-    }
-
-    // ---- 5. Price fallback ----
-    const priceMatches = await this.prisma.product.findMany({
-      where: {
-        id: { notIn: excludeIds },
-        is_deleted: false,
-        productVariants: {
-          some: {
-            price: { gte: lowerBound, lte: upperBound },
+    // --- Price fallback ---
+    if (recommendations.length < limit) {
+      const priceMatches = await this.prisma.product.findMany({
+        where: {
+          id: { notIn: excludeIds },
+          is_deleted: false,
+          productVariants: {
+            some: {
+              price: { gte: lowerBound, lte: upperBound },
+            },
           },
         },
-      },
-      take: limit - recommendations.length,
-      include: { productVariants: true, brand: true, category: true },
-    });
-    recommendations.push(...priceMatches);
+        take: limit - recommendations.length,
+        include: {
+          productVariants: { include: { currency: true } },
+          brand: true,
+          category: true,
+        },
+      });
+      recommendations.push(...priceMatches);
+    }
 
-    // ---- Map before returning ----
     return recommendations.slice(0, limit).map(this.mapProductToRecommendation);
   }
 
@@ -180,7 +185,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
   private mapProductToRecommendation = (product: any) => {
     // pick cheapest variant
     const variant = product.productVariants?.reduce(
-      (min: { price: number }, v: { price: number }) => {
+      (min: { price: any }, v: { price: any }) => {
         const price = this.getNumericPrice(v.price);
         const minPrice = this.getNumericPrice(min.price);
         return price! < minPrice! ? v : min;
@@ -189,15 +194,12 @@ export class ProductAnalyticsRepository extends BaseRepository<
     );
 
     return {
-      itemId: product.id.toString(),
       productId: product.product_public_id,
       slug: product.product_slug,
       title: product.title,
-      description: product.description,
-      symb: '$', // you could map from currency_id if needed
+      symb: variant?.currency?.curr,
       image_url: variant?.base_image_url || null,
-      price: this.getNumericPrice(variant?.price)?.toFixed(2) || '0.00',
-      isFavorite: null, // hook into favorites table if available
+      price: this.getNumericPrice(variant?.price)?.toFixed(2),
       tags: [product.brand?.title, product.category?.title].filter(Boolean),
     };
   };

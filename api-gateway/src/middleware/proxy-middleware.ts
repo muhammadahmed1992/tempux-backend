@@ -8,15 +8,26 @@ import ResponseHelper from '@Common/helper/response-helper';
 import Constants from '@Common/helper/constants';
 import { Socket } from 'net';
 import { Url } from 'url';
+
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   private proxies: Map<string, any> = new Map();
+
   constructor(private readonly serviceResolver: ServiceResolver) {}
+
   use(req: Request, res: Response, next: NextFunction) {
-    // Parse first path segment: /auth/register => auth
     const [, serviceKey, ...restSegments] = req.originalUrl.split('/');
     const target = this.serviceResolver.getServiceUrl(serviceKey);
     const newPath = '/' + restSegments.join('/');
+
+    console.log('--- Incoming Request ---');
+    console.log(`URL: ${req.originalUrl}`);
+    console.log(`Mapped Path: ${newPath}`);
+    console.log(`Target: ${target}`);
+    if (req.body && Object.keys(req.body).length) {
+      console.log(`Body:`, req.body);
+    }
+    console.log('------------------------');
 
     if (!target) {
       const result = ResponseHelper.CreateResponse<any>(
@@ -24,25 +35,28 @@ export class ProxyMiddleware implements NestMiddleware {
         null,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
+      console.error(`[Proxy] ❌ No service found for key: ${serviceKey}`);
       return res.status(HttpStatus.SERVICE_UNAVAILABLE).json(result);
     }
-    if (!this.proxies.has(serviceKey)) {
+
+    // 🔹 Use a composite key: serviceKey + path
+    const proxyKey = `${serviceKey}:${newPath}`;
+
+    if (!this.proxies.has(proxyKey)) {
       const proxy = createProxyMiddleware({
         target,
         changeOrigin: true,
         pathRewrite: () => {
+          console.log(`[Proxy] Rewriting path to: ${newPath}`);
           return newPath;
         },
         on: {
           proxyReq(proxyReq, req: Request) {
-            // TODO: will update it later
-            // Cast 'req' to 'express.Request' to access Express-specific properties
-            // and to 'IncomingMessage' to access stream-related properties.
-            // Note: 'readableBuffer' is often an internal property, so direct access
-            // might not be fully type-safe without custom type augmentations.
             const expressReq = req as express.Request &
               IncomingMessage & { readableBuffer?: Buffer };
-            console.log(`Logging the incoming request method: ${req.method}`);
+
+            console.log(`[ProxyReq] Preparing request to target: ${target}`);
+            console.log(`[ProxyReq] Method: ${req.method} Path: ${newPath}`);
 
             if (
               expressReq.body &&
@@ -54,50 +68,21 @@ export class ProxyMiddleware implements NestMiddleware {
               proxyReq.setHeader('Content-Type', 'application/json');
               proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
               proxyReq.write(bodyData, (error: any) => {
-                console.log('Error While writing body in middleware', error);
+                if (error)
+                  console.error('[ProxyReq] Error writing body:', error);
               });
-              // --- Debugging Logs (Outgoing Proxy Request) ---
-              console.log(
-                '--- Outgoing ProxyReq Headers (after body processing) ---',
-              );
-              console.log(
-                'Content-Type (on proxyReq):',
-                proxyReq.getHeader('Content-Type'),
-              );
-              console.log(
-                'Content-Length (on proxyReq):',
-                proxyReq.getHeader('Content-Length'),
-              );
-              console.log(
-                '---------------------------------------------------------',
-              );
 
-              // Add listeners to the proxyReq for debugging stream completion
-              proxyReq.once('error', (err) => {
-                console.error('ProxyReq Error:', err);
-              });
-              proxyReq.once('close', () => {
-                console.log(
-                  'ProxyReq Closed (connection to target server closed)',
-                );
-              });
-              proxyReq.once('finish', () => {
-                console.log(
-                  'ProxyReq Finished (all data written to target server)',
-                );
-              });
+              console.log('[ProxyReq] Outgoing body:', expressReq.body);
             } else {
-              // For other methods or if body is unexpectedly missing,
-              // you might want to log a warning or handle differently.
-              console.warn(
-                `Unhandled method or missing body for ${expressReq.method} request.`,
-              );
+              console.log('[ProxyReq] No body to send.');
             }
           },
           proxyRes(proxyRes, req: Request, res: Response) {
-            console.log('API Gateway proxy response');
-            console.log(req.url);
-            console.log(res.statusCode);
+            console.log('--- Proxy Response ---');
+            console.log(`Target responded for ${req.originalUrl}`);
+            console.log(`Status: ${proxyRes.statusCode}`);
+            console.log('Headers:', proxyRes.headers);
+            console.log('-----------------------');
           },
           error(
             error: Error,
@@ -105,13 +90,17 @@ export class ProxyMiddleware implements NestMiddleware {
             response: Response | Socket,
             target?: string | Partial<Url>,
           ) {
+            console.error('--- Proxy Error ---');
             console.error(`Incoming Request: ${request.originalUrl}`);
             console.error(
-              `Outgoing Request: ${typeof target === 'string' ? target : target?.host}`,
+              `Outgoing Request Target: ${
+                typeof target === 'string' ? target : target?.host
+              }`,
             );
-            console.error(Constants.PROXY_ERROR, error);
+            console.error('Error:', error);
+            console.error('---------------------');
 
-            const status = HttpStatus.SERVICE_UNAVAILABLE; // Or HttpStatus.BAD_GATEWAY
+            const status = HttpStatus.SERVICE_UNAVAILABLE;
             const message = `Proxy Error: Could not reach target service. ${error.message}`;
             const errorPayload = {
               statusCode: status,
@@ -119,13 +108,11 @@ export class ProxyMiddleware implements NestMiddleware {
                 timestamp: new Date().toISOString(),
                 path: request.originalUrl,
                 targetService: target,
-                error: error.name || 'ProxyServiceError', // e.g., 'ECONNREFUSED'
+                error: error.name || 'ProxyServiceError',
               },
-              message: message,
-              // You can add more context here if needed, e.g., correlationId
+              message,
             };
 
-            // Ensure the response is sent as JSON
             if (!(response instanceof Socket)) {
               response.writeHead(status, {
                 'Content-Type': 'application/json',
@@ -138,9 +125,10 @@ export class ProxyMiddleware implements NestMiddleware {
         },
       });
 
-      this.proxies.set(serviceKey, proxy);
+      this.proxies.set(proxyKey, proxy);
     }
 
-    return this.proxies.get(serviceKey)(req, res, next);
+    console.log(`[Proxy] Forwarding request to: ${target}${newPath}`);
+    return this.proxies.get(proxyKey)(req, res, next);
   }
 }

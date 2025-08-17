@@ -84,7 +84,7 @@ export class ProductAnalyticsService {
   }
 
   async getUserRecommendedWatches(userId: bigint): Promise<ApiResponse<any[]>> {
-    const recommended = await this.repository.getUserRecommendations(userId, 6);
+    const recommended = await this.repository.getUserRecommendations(userId, 5);
 
     return ResponseHelper.CreateResponse<any[]>(
       'Recommended watches for user',
