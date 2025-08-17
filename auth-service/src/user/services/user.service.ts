@@ -172,7 +172,7 @@ export class UserService {
     const payload = {
       sub: Number(user.id),
       email: user.email,
-      user_roles: roleIds,
+      roles: roleIds,
     };
     const token = await this.jwtService.signAsync(payload);
     return ResponseHelper.CreateResponse<LoginDTO>(

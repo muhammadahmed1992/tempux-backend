@@ -8,11 +8,16 @@ import ResponseHelper from '@Common/helper/response-helper';
 import Constants from '@Common/helper/constants';
 import { Socket } from 'net';
 import { Url } from 'url';
+import Utils from '@Common/utils';
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   private proxy: any;
   constructor(private readonly serviceResolver: ServiceResolver) {}
   use(req: Request, res: Response, next: NextFunction) {
+    if (!Utils.ReturnServicePaths().test(req.originalUrl)) {
+      return next(); // let Nest/other controllers handle it
+    }
+
     // Parse first path segment: /auth/register => auth
     const [, serviceKey, ...restSegments] = req.originalUrl.split('/');
     const target = this.serviceResolver.getServiceUrl(serviceKey);
