@@ -175,7 +175,7 @@ export class ProductController {
    * 4.Limit 5 watches to display
    */
   @Get('/recommendations')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AuthenticatedGuard)
   async getUserRecommendations(@UserId() userId: bigint) {
     return this.productAnalyticsService.getUserRecommendedWatches(userId);
   }
