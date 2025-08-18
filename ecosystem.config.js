@@ -14,6 +14,7 @@ module.exports = {
         PORT: 3000,
       },
       env_production: {
+        JWT_SECRET: "INJECT_JWT_SECRET",
         NODE_ENV: "production",
         AUTH_SERVICE_BASE_URL: "INJECT_AUTH_SERVICE_BASE_URL",
         PRODUCT_SERVICE_BASE_URL: "INJECT_PRODUCT_SERVICE_BASE_URL",
