@@ -13,6 +13,6 @@ export const UserId = createParamDecorator(
     const request = ctx.switchToHttp().getRequest();
     // The `user` object is populated by Passport's JWT strategy
     // Ensure that header-auth.middleware returns an object with a `userId` property.
-    return request.user?.sub;
+    return request.user?.id;
   },
 );

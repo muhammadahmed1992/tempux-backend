@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request, Response, NextFunction } from 'express';
 
 interface JwtPayload {
-  sub: number;
+  id: number;
   email: string;
   roles: any[];
 }

@@ -174,7 +174,7 @@ export class UserService {
       Number(role.role_id),
     );
     const payload = {
-      sub: Number(user.id),
+      id: Number(user.id),
       email: user.email,
       roles: roleIds,
     };

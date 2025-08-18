@@ -8,7 +8,7 @@ import { Request } from 'express';
 
 interface CustomRequest extends Request {
   user?: {
-    sub: bigint;
+    id: bigint;
     email: string;
     roles: bigint[];
   };
@@ -28,7 +28,7 @@ export class HeaderAuthGuard implements CanActivate {
     }
 
     req.user = {
-      sub: BigInt(userId.toString()),
+      id: BigInt(userId.toString()),
       email: email.toString(),
       roles: roles
         ? Array.isArray(roles)
