@@ -21,6 +21,18 @@ export class ReviewsController {
     );
   }
 
+  @Get('home')
+  async homePageReviews(@Query() query: GetAllQueryDTO) {
+    const { page, pageSize, orderBy, where, select } = query;
+    return this.reviewService.getAllPagedProductReviewsDataByUser(
+      page,
+      pageSize,
+      orderBy,
+      where,
+      select,
+    );
+  }
+
   /**
    * @param userId logged-in user id and it is being retrieved from UserId decorator
    * @param productId this is the product id to retrieve the average rating

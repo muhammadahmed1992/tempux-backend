@@ -4,7 +4,10 @@ import {
   UserDetails,
   UserProxyService,
 } from '@Proxy/user-proxy/user-proxy.service'; // Import the proxy service
-import { EnrichedReviewResponseDto } from '@DTO/enriched-review.response.dto';
+import {
+  EnrichedReviewResponseDto,
+  EnrichedReviewResponseHomePageDto,
+} from '@DTO/enriched-review.response.dto';
 import { ReviewsRepository } from './reviews.repository';
 import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
@@ -63,6 +66,58 @@ export class ReviewsService {
     }));
 
     return ResponseHelper.CreateResponse<EnrichedReviewResponseDto[]>(
+      Constants.DATA_SUCCESS,
+      enrichedReviews,
+      HttpStatus.OK,
+      {
+        pageNumber,
+        pageSize,
+        totalCount,
+        numberOfTotalPages: Math.ceil(totalCount / pageSize),
+      },
+    );
+  }
+
+  // TODO: Refactoring required
+  /**
+   * Finds all reviews for a product and enriches them with user details.
+   * @param where this will contains generic filter as it might contains the review for particular product or for all.
+   * @returns A promise that resolves to an array of EnrichedReviewResponseHomePageDto.
+   */
+  async getAllPagedProductReviewsDataByUserHomePage(
+    pageNumber: number,
+    pageSize: number,
+    order?: object,
+    where?: object,
+    select?: object,
+  ): Promise<ApiResponse<EnrichedReviewResponseHomePageDto[]>> {
+    console.log(select);
+    const { data, totalCount } = await this.repository.findManyPaginated(
+      pageNumber,
+      pageSize,
+      where,
+      select,
+      order,
+    );
+
+    // Extract unique user IDs from the reviews
+    const uniqueUserIds = [
+      ...new Set(data.map((review) => review.reviewedBy.toString())),
+    ];
+    const userDetailsMap = await this.fetchUserDetailsInBatch(uniqueUserIds);
+
+    // Enrich reviews with user details
+    const enrichedReviews: EnrichedReviewResponseHomePageDto[] = data.map(
+      (review) => ({
+        review: review.review,
+        ratings: review.ratings,
+        user: userDetailsMap.get(review.reviewedBy.toString()) || {
+          fullName: 'Unknow User - Full Name',
+        },
+      }),
+    );
+
+    return ResponseHelper.CreateResponse<EnrichedReviewResponseHomePageDto[]>(
       Constants.DATA_SUCCESS,
       enrichedReviews,
       HttpStatus.OK,
