@@ -54,6 +54,8 @@ async function bootstrap() {
   // Proxy middleware
   const proxyMiddlewareInstance = app.get(ProxyMiddleware);
   const authForwardMiddlewareInstance = app.get(AuthForwardingMiddleware);
+  //TODO: Will convert into nest way
+
   app.use(
     authForwardMiddlewareInstance.use.bind(authForwardMiddlewareInstance),
   );
