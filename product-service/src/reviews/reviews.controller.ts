@@ -24,7 +24,7 @@ export class ReviewsController {
   @Get('home')
   async homePageReviews(@Query() query: GetAllQueryDTO) {
     const { page, pageSize, orderBy, where, select } = query;
-    return this.reviewService.getAllPagedProductReviewsDataByUser(
+    return this.reviewService.getAllPagedProductReviewsDataByUserHomePage(
       page,
       pageSize,
       orderBy,
