@@ -6,6 +6,9 @@ import { AllExceptionsFilter } from './filters/global.exception.filter';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import Utils from '@Common/utils';
+import { ProxyMiddleware } from './middleware/proxy.middleware';
+import { AuthForwardingMiddleware } from './middleware/auth-forwarding.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -48,12 +51,16 @@ async function bootstrap() {
   if (configService.get<string>('NODE_ENV') != 'production')
     app.enableCors(corsOptions);
 
-  // // Proxy middleware
-  // const proxyMiddlewareInstance = app.get(ProxyMiddleware);
-  // app.use(
-  //   Utils.ReturnServicePaths(),
-  //   proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance),
-  // );
+  // Proxy middleware
+  const proxyMiddlewareInstance = app.get(ProxyMiddleware);
+  const authForwardMiddlewareInstance = app.get(AuthForwardingMiddleware);
+  app.use(
+    authForwardMiddlewareInstance.use.bind(authForwardMiddlewareInstance),
+  );
+  app.use(
+    Utils.ReturnServicePaths(),
+    proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance),
+  );
 
   // Global interceptors and filters
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
