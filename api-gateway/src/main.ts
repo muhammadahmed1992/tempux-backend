@@ -1,19 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ProxyMiddleware } from './middleware/proxy-middleware';
-import Utils from '@Common/utils';
 import express from 'express';
 import ResponseHandlerInterceptor from './interceptor/response-handler.interceptor';
 import { AllExceptionsFilter } from './filters/global.exception.filter';
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { ConfigService } from '@nestjs/config';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
+  app.use(cookieParser());
   // Parse body
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
@@ -52,12 +48,12 @@ async function bootstrap() {
   if (configService.get<string>('NODE_ENV') != 'production')
     app.enableCors(corsOptions);
 
-  // Proxy middleware
-  const proxyMiddlewareInstance = app.get(ProxyMiddleware);
-  app.use(
-    Utils.ReturnServicePaths(),
-    proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance),
-  );
+  // // Proxy middleware
+  // const proxyMiddlewareInstance = app.get(ProxyMiddleware);
+  // app.use(
+  //   Utils.ReturnServicePaths(),
+  //   proxyMiddlewareInstance.use.bind(proxyMiddlewareInstance),
+  // );
 
   // Global interceptors and filters
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());

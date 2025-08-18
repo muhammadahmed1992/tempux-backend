@@ -2,8 +2,6 @@ import { Module } from '@nestjs/common';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
 import { ProductRepository } from './product.repository';
-import { CustomFilterConfigurationModule } from '@CustomFilterConfigurator/custom-filter-configurator.module';
-import { CustomProductCategoryModule } from '@CustomProductVarientCategory/custom-product-varient-category.module';
 import { ProductVariantModule } from '@ProductVariant/product-variant.module';
 import { ProductAnalyticsModule } from '@ProductAnalytics/product-analytics.module';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
@@ -17,8 +15,6 @@ import { FavoriteModule } from '@Favorite/favorite.module';
   imports: [
     HashidsModule,
     FavoriteModule,
-    CustomFilterConfigurationModule,
-    CustomProductCategoryModule,
     ProductVariantModule,
     ProductAnalyticsModule,
   ],

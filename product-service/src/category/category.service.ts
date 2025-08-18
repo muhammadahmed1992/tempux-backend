@@ -33,4 +33,39 @@ export class CategoryService {
       },
     );
   }
+
+  async getAlphabeticalData(): Promise<ApiResponse<Record<string, string[]>>> {
+    // Get all data without pagination
+    const { data } = await this.repository.findManyPaginated(
+      1,
+      Number.MAX_SAFE_INTEGER, // fetch all
+    );
+
+    // Group by first character
+    const grouped: Record<string, string[]> = {};
+
+    data.forEach((item: SetupListingDTO) => {
+      if (!item.title) return;
+
+      const firstChar = item.title.charAt(0).toUpperCase();
+      if (!grouped[firstChar]) {
+        grouped[firstChar] = [];
+      }
+      grouped[firstChar].push(item.title);
+    });
+
+    // Sort each group alphabetically
+    const sortedGrouped: Record<string, string[]> = {};
+    Object.keys(grouped)
+      .sort((a, b) => a.localeCompare(b))
+      .forEach((key) => {
+        sortedGrouped[key] = grouped[key];
+      });
+
+    return ResponseHelper.CreateResponse<Record<string, string[]>>(
+      Constants.DATA_SUCCESS,
+      sortedGrouped,
+      HttpStatus.OK,
+    );
+  }
 }

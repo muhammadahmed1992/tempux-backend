@@ -9,13 +9,19 @@ import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
 import { ProductRepository } from './product.repository';
-import { CustomFilter } from '@Common/enums/custom-filter.enum';
 import { ProductVariantService } from '@ProductVariant/product-variant.service';
-import { CustomFilterConfiguratorService } from '@CustomFilterConfigurator/custom-filter-configurator.service';
-import { CustomProductVariantCategoryService } from '@CustomProductVarientCategory/custom-product-varient-category.service';
 import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import { ProductImageOutput } from '@DTO/product-images-info.dto';
 import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
+import { CustomFilter } from '@Common/enums/custom-filter.enum';
+
+// Mapping from CustomFilter enum to tag names in the DB
+const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
+  [CustomFilter.TOP_SELLER]: 'top-seller',
+  [CustomFilter.BEST_SELLER]: 'best-seller',
+  [CustomFilter.POPULAR]: 'popular',
+  [CustomFilter.NEW_ARRIVAL]: 'new-arrival',
+};
 
 /**
  * Define types used only in this service
@@ -28,8 +34,6 @@ export class ProductService {
   constructor(
     private readonly repository: ProductRepository,
     private readonly productVariantService: ProductVariantService,
-    private readonly customFilterConfiguratorService: CustomFilterConfiguratorService,
-    private readonly customProductCategoryService: CustomProductVariantCategoryService,
     private readonly productAnalytics: ProductAnalyticsService,
   ) {}
 
@@ -166,6 +170,7 @@ export class ProductService {
       colors: colors,
       images: images,
       viewerShipCount: viewershipCount || 0,
+      model: productData.model,
     };
 
     return ResponseHelper.CreateResponse<ProductSummaryOutputDTO>(
@@ -199,57 +204,30 @@ export class ProductService {
       },
     };
     let finalOrderBy: any = { ...order };
-    if (customCategoryExpression) {
-      const configuratorData = await this.getConfiguratorEntries();
 
-      switch (customCategoryExpression) {
-        case CustomFilter.NEW_ARRIVAL:
-          const newArrivalDaysStr =
-            configuratorData.get(CustomFilter.NEW_ARRIVAL)?.value || '30';
-          const newArrivalDays = parseInt(newArrivalDaysStr, 10);
-          finalWhere.product = {
-            ...finalWhere.product,
-            created_at: {
-              gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
+    // filter logic using tags
+    if (customCategoryExpression) {
+      const tagName = CUSTOM_FILTER_TO_TAG[customCategoryExpression];
+      if (tagName) {
+        // Filter products that have the tag
+        finalWhere.product = {
+          ...finalWhere.product,
+          productTags: {
+            some: {
+              tags: {
+                name: tagName,
+              },
             },
-          };
-          finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
-          break;
-        case CustomFilter.TOP_SELLER:
-        case CustomFilter.BEST_SELLER:
-        case CustomFilter.POPULAR:
-          const configEntry = configuratorData.get(customCategoryExpression);
-          if (!configEntry) {
-            console.warn(
-              ` ${Constants.NO_CONFIGURATION_FOUND_FOR_CUSTOM_FILTER_CATEGORY} ${customCategoryExpression}.`,
-            );
-            console.warn(Constants.NO_ASSIGNMENT_FOR_SPECIAL_FILTERS_CATEGORY);
-            throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
-          }
-          const customConfigId = configEntry.id;
-          // TODO: Will update this criteria to match real requirement.
-          const customCategoryEntries =
-            await this.customProductCategoryService.findMany(
-              {
-                custom_filter_configuration_id: customConfigId,
-                valid_from: { lte: new Date() },
-                OR: [{ valid_to: null }, { valid_to: { gte: new Date() } }],
-              },
-              {
-                product_variant_id: true,
-              },
-            );
-          const filteredVariantIds = customCategoryEntries.map(
-            (entry: any) => entry.product_variant_id,
-          );
-          console.warn(Constants.NO_ASSIGNMENT_FOR_SPECIAL_FILTERS_CATEGORY);
-          if (filteredVariantIds.length === 0) {
-            throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
-          }
-          finalWhere = {
-            AND: [finalWhere, { id: { in: filteredVariantIds } }],
-          };
-          break;
+          },
+        };
+      }
+      // For NEW_ARRIVAL, we may also want to filter by created_at (optional)
+      if (customCategoryExpression === CustomFilter.NEW_ARRIVAL) {
+        const newArrivalDays = 30; // or configurable
+        finalWhere.product.created_at = {
+          gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
+        };
+        finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
       }
     }
 
@@ -266,6 +244,13 @@ export class ProductService {
           title: true,
           description: true,
           ...select,
+          model: {
+            select: {
+              id: true,
+              title: true,
+              brand_id: true,
+            },
+          },
           productTags: {
             select: {
               tags: {
@@ -290,7 +275,6 @@ export class ProductService {
       }),
       currency: {
         select: {
-          // Use select on currency_exchange to get only curr (currency symbol)
           curr: true,
         },
       },
@@ -317,6 +301,7 @@ export class ProductService {
           description: string;
           title: string;
           product_slug: string;
+          model: { id: number; title: string; brand_id: number } | null;
           productTags: any[];
         };
         price: number;
@@ -336,36 +321,16 @@ export class ProductService {
         price: pv.price.toFixed(2),
         isFavorite: userId ? !!pv.productVariantFavorite?.[0]?.id : null,
         tags: pv.product?.productTags?.map((p) => p.tags),
+        model: pv.product.model,
       }),
     );
 
-    return ResponseHelper.CreateResponse<any[]>(
-      '',
-      result,
-      HttpStatus.OK,
-      response.getMeta(),
-    );
-  }
-
-  /**
-   * Fetches configurable thresholds/category IDs from the Configurator table.
-   * Caches results if needed for performance.
-   */
-  private async getConfiguratorEntries(): Promise<
-    Map<string, { id: bigint; value: string }>
-  > {
-    const configs = await this.customFilterConfiguratorService.getAllPagedData(
-      1,
-      Constants.MAX_PAGE_SIZE,
-      {
-        select: { id: true, key: true, value: true },
-      },
-    );
-    return new Map(
-      configs?.data?.map((c: { key: any; id: any; value: any }) => [
-        c.key,
-        { id: c.id, value: c.value },
-      ]),
-    );
+    const meta = response.getMeta ? response.getMeta() : {};
+    return ResponseHelper.CreateResponse<any[]>('', result, HttpStatus.OK, {
+      totalCount: (meta as any).totalCount ?? 0,
+      pageNumber: (meta as any).pageNumber ?? 1,
+      pageSize: (meta as any).pageSize ?? 0,
+      numberOfTotalPages: (meta as any).numberOfTotalPages ?? 1,
+    });
   }
 }

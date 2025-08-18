@@ -1,4 +1,4 @@
-import { Controller, Get, HttpStatus } from '@nestjs/common';
+import { Controller, Get, HttpStatus, UseGuards } from '@nestjs/common';
 import ResponseHelper from '@Helper/response-helper';
 import ApiResponse from '@Common/helper/api-response';
 

@@ -1,9 +1,10 @@
-import { JwtAuthGuard } from '@Auth/jwt-auth.guard';
 import { GetAllQueryDTO } from '@DTO/get-all-query.dto';
 import { ProductRatingReviewDTO } from '@DTO/product-rating-reviews';
 import { UserId } from '@Auth/decorators/userId.decorator';
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ReviewsService } from '@Reviews/reviews.service';
+import { AuthenticatedGuard } from '@Auth/guards/authenticated-user.guard';
+import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
 
 @Controller('reviews')
 export class ReviewsController {
@@ -27,7 +28,7 @@ export class ReviewsController {
    * @returns APIResponse<ProductRatingReviewDTO>
    */
   @Post()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(HeaderAuthGuard)
   async review(
     @UserId() userId: bigint,
     @Body() review: ProductRatingReviewDTO,

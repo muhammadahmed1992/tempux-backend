@@ -1,24 +1,20 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AuthModule } from '@Auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
-import { SlugModule } from './slug/slug.module';
-import { CustomFilterConfigurationModule } from './custom-filter-configurator/custom-filter-configurator.module';
-import { CustomProductCategoryModule } from './custom-product-varient-category/custom-product-varient-category.module';
-import { FavoriteModule } from './favorite/favorite.module';
 import { PrismaModule } from './prisma/prisma.module';
-import { ProductAnalyticsModule } from './product-analytics/product-analytics.module';
-import { ProductVariantModule } from './product-variant/product-variant.module';
 import { ReviewsModule } from '@Reviews/reviews.module';
-import { TypeModule } from '@Type/type.module';
+import { GenderModule } from './gender/gender.module';
 import { SizeModule } from '@Size/size.module';
-import { GlobalConfigurationModule } from '@GlobalConfiguration/global-configuration.module';
 import { ColorModule } from '@Color/color.module';
 import { CategoryModule } from '@Category/category.module';
-import { CartController } from '@Cart/cart.controller';
 import { CartModule } from '@Cart/cart.module';
 import { BrandModule } from '@Brand/brand.module';
 import { ProductModule } from '@Product/product.module';
+import { ModelModule } from './model/model.module';
+import { SearchModule } from './search/search.module';
+import { ListingModule } from './common/modules/listing.module';
+import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
 
 @Module({
   imports: [
@@ -35,10 +31,17 @@ import { ProductModule } from '@Product/product.module';
     ProductModule,
     ReviewsModule,
     SizeModule,
-    TypeModule,
+    GenderModule,
     PrismaModule,
+    ModelModule,
+    SearchModule,
+    ListingModule,
   ],
   controllers: [AppController],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply().forRoutes('*');
+  }
+}
