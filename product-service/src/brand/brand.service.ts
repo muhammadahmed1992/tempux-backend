@@ -1,9 +1,10 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { BrandRepository } from './brand.repository';
 import ApiResponse from '@Helper/api-response';
 import { SetupListingDTO } from '@DTO/setup-listing.dto';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
+import Utils from '@Common/utils';
 @Injectable()
 export class BrandService {
   constructor(private readonly repository: BrandRepository) {}
@@ -31,6 +32,20 @@ export class BrandService {
         totalCount,
         numberOfTotalPages: Math.ceil(totalCount / pageSize),
       },
+    );
+  }
+
+  async getAlphabeticalData(): Promise<ApiResponse<Record<string, string[]>>> {
+    const data = await this.repository.findMany({ select: { title: true } });
+    if (!data || data?.length === 0) {
+      throw new NotFoundException(Constants.NO_DATA_FOUND);
+    }
+    const grouped = Utils.groupAlphabetically(data, (item) => item.title);
+
+    return ResponseHelper.CreateResponse<Record<string, string[]>>(
+      Constants.DATA_SUCCESS,
+      grouped,
+      HttpStatus.OK,
     );
   }
 }

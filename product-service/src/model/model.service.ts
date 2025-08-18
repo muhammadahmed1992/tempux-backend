@@ -1,6 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { ModelRepository } from './model.repository';
 import { Prisma } from '@prisma/client';
+import ApiResponse from '@Helper/api-response';
+import Utils from '@Common/utils';
+import Constants from '@Helper/constants';
+import ResponseHelper from '@Helper/response-helper';
 
 @Injectable()
 export class ModelService {
@@ -11,33 +15,6 @@ export class ModelService {
     return this.repository.create({
       ...data,
       created_by: createdBy,
-    });
-  }
-
-  async findUnique(where: Prisma.modelWhereUniqueInput) {
-    return this.repository.findUnique({ where });
-  }
-
-  async findMany(args?: Prisma.modelFindManyArgs) {
-    return this.repository.findMany(args || {});
-  }
-
-  async update(
-    where: Prisma.modelWhereUniqueInput,
-    data: Prisma.modelUpdateInput,
-    updatedBy: bigint,
-  ) {
-    return this.repository.update(where, {
-      ...data,
-      updated_by: updatedBy,
-    });
-  }
-
-  async delete(where: Prisma.modelWhereUniqueInput, deletedBy: bigint) {
-    return this.repository.update(where, {
-      deleted_by: deletedBy,
-      deleted_at: new Date(),
-      is_deleted: true,
     });
   }
 
@@ -54,6 +31,23 @@ export class ModelService {
       where,
       select,
       orderBy,
+    );
+  }
+
+  async getAlphabeticalData(): Promise<ApiResponse<Record<string, string[]>>> {
+    // fetch all items (soft-delete handled in repo)
+    const data = await this.repository.findMany({ select: { title: true } });
+    if (!data || data?.length === 0) {
+      throw new NotFoundException(Constants.NO_DATA_FOUND);
+    }
+
+    // group alphabetically by title
+    const grouped = Utils.groupAlphabetically(data, (item) => item.title);
+    // return wrapped response
+    return ResponseHelper.CreateResponse<Record<string, string[]>>(
+      Constants.DATA_SUCCESS,
+      grouped,
+      HttpStatus.OK,
     );
   }
 }
