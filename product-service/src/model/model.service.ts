@@ -1,29 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import { CollectionRepository } from './collection.repository';
+import { ModelRepository } from './model.repository';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
-export class CollectionService {
-  constructor(private readonly repository: CollectionRepository) {}
+export class ModelService {
+  constructor(private readonly repository: ModelRepository) {}
 
-  async create(data: Prisma.collectionCreateInput, createdBy: bigint) {
+  // TODO: Create DTOs.
+  async create(data: Prisma.modelCreateInput, createdBy: bigint) {
     return this.repository.create({
       ...data,
       created_by: createdBy,
     });
   }
 
-  async findUnique(where: Prisma.collectionWhereUniqueInput) {
+  async findUnique(where: Prisma.modelWhereUniqueInput) {
     return this.repository.findUnique({ where });
   }
 
-  async findMany(args?: Prisma.collectionFindManyArgs) {
+  async findMany(args?: Prisma.modelFindManyArgs) {
     return this.repository.findMany(args || {});
   }
 
   async update(
-    where: Prisma.collectionWhereUniqueInput,
-    data: Prisma.collectionUpdateInput,
+    where: Prisma.modelWhereUniqueInput,
+    data: Prisma.modelUpdateInput,
     updatedBy: bigint,
   ) {
     return this.repository.update(where, {
@@ -32,7 +33,7 @@ export class CollectionService {
     });
   }
 
-  async delete(where: Prisma.collectionWhereUniqueInput, deletedBy: bigint) {
+  async delete(where: Prisma.modelWhereUniqueInput, deletedBy: bigint) {
     return this.repository.update(where, {
       deleted_by: deletedBy,
       deleted_at: new Date(),

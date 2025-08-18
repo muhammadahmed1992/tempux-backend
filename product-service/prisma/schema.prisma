@@ -54,11 +54,11 @@ model brand {
   updated_by BigInt?
   deleted_by BigInt?
   is_deleted Boolean      @default(false)
-  collection collection[] @relation("CollectionBrand")
+  model      model[] @relation("BrandModel")
   product    product[]    @relation("ProductBrand")
 }
 
-model collection {
+model model {
   id         Int       @id @default(autoincrement())
   title      String    @db.VarChar(50)
   order      Int?
@@ -71,8 +71,8 @@ model collection {
   updated_by BigInt?
   deleted_by BigInt?
   is_deleted Boolean   @default(false)
-  brand      brand     @relation("CollectionBrand", fields: [brand_id], references: [id])
-  product    product[] @relation("ProductCollection")
+  brand      brand     @relation("BrandModel", fields: [brand_id], references: [id])
+  product    product[] @relation("ProductModel")
 
   @@unique([brand_id, title])
 }
@@ -241,8 +241,10 @@ model product {
   name                               String              @db.VarChar(150)
   description                        String              @db.VarChar(300)
   title                              String?             @db.VarChar(150)
-  brand_id                           Int
-  category_id                        Int
+  brand_id                           Int?
+  category_id                        Int?
+  model_id                           Int?
+  gender_id                          Int?
   is_accessory                       Boolean             @default(false)
   year_of_production                 Int
   serial_number                      String              @db.VarChar(15)
@@ -258,24 +260,19 @@ model product {
   approximation                      Boolean             @default(false)
   buyer_confidence_boost_description String?             @db.VarChar(5000)
   unknown                            Boolean             @default(false)
-  product_public_id                  String              @unique @db.VarChar(10)
   product_slug                       String              @db.VarChar(255)
-  collection_id                      Int?
-  gender_id                          Int
   productCart                        cart[]              @relation("ProductCart")
   productFavorite                    favorite[]          @relation("FavoriteProducts")
   productOwnership                   ownership_proof[]   @relation("ProductOwnership")
-  brand                              brand               @relation("ProductBrand", fields: [brand_id], references: [id])
-  category                           category            @relation("ProductCategory", fields: [category_id], references: [id])
-  collection                         collection?         @relation("ProductCollection", fields: [collection_id], references: [id])
-  gender                             gender              @relation("ProductGender", fields: [gender_id], references: [id])
+  brand                              brand?               @relation("ProductBrand", fields: [brand_id], references: [id])
+  category                           category?            @relation("ProductCategory", fields: [category_id], references: [id])
+  model                              model?         @relation("ProductModel", fields: [model_id], references: [id])
+  gender                             gender?              @relation("ProductGender", fields: [gender_id], references: [id])
   productAnalytics                   product_analytics[]
   productTags                        product_tag[]       @relation("ProductTags")
   productVariants                    product_variants[]  @relation("ProductVariants")
   productReviews                     reviews_ratings[]   @relation("ProductReviews")
   productSignOfWear                  sign_of_wear[]      @relation("ProductSignOfWear")
-
-  @@index([collection_id])
 }
 
 model product_images {

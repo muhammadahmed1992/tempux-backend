@@ -582,7 +582,7 @@ export default class SeedHelper {
     ];
 
     for (const data of collectionsData) {
-      await tx.collection.upsert({
+      await tx.model.upsert({
         where: {
           brand_id_title: {
             brand_id: data.brand_id,
@@ -1025,8 +1025,7 @@ export default class SeedHelper {
             serial_number: serialNumber,
             reference_number: referenceNumber,
             created_by: creatorId,
-            approval_status_by_admin: 'APPROVED',
-            product_public_id: '', // Temporary placeholder, will be updated
+            approval_status_by_admin: 'PENDING',
             product_slug: initialProductSlug, // Use the generated slug
           },
           include: {
@@ -1065,7 +1064,6 @@ export default class SeedHelper {
       await tx.product.update({
         where: { id: createdProduct.id },
         data: {
-          product_public_id: productPublicId,
           product_slug: productSlug,
         },
       });

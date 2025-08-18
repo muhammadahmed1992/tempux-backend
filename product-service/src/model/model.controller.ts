@@ -9,21 +9,21 @@ import {
   Query,
   HttpStatus,
 } from '@nestjs/common';
-import { CollectionService } from './collection.service';
-import { GetAllQueryDTO } from '../common/dto/get-all-query.dto';
-import ResponseHelper from '../common/helper/response-helper';
-import ApiResponse from '../common/helper/api-response';
-import { UserId } from '../auth/decorators/userId.decorator';
+import { ModelService } from './model.service';
+import { GetAllQueryDTO } from '@Common/dto/get-all-query.dto';
+import ResponseHelper from '@Common/helper/response-helper';
+import ApiResponse from '@Common/helper/api-response';
+import { UserId } from '@Auth/decorators/userId.decorator';
 
-@Controller('collections')
-export class CollectionController {
-  constructor(private readonly collectionService: CollectionService) {}
+@Controller('models')
+export class ModelController {
+  constructor(private readonly modelService: ModelService) {}
 
   @Get()
   async getAll(@Query() query: GetAllQueryDTO): Promise<ApiResponse<any[]>> {
     const { page, pageSize, orderBy, where, select } = query;
 
-    const response = await this.collectionService.getAllPagedData(
+    const response = await this.modelService.getAllPagedData(
       page,
       pageSize,
       orderBy,
@@ -46,19 +46,19 @@ export class CollectionController {
 
   @Get(':id')
   async getById(@Param('id') id: string): Promise<ApiResponse<any>> {
-    const collection = await this.collectionService.findUnique({
+    const model = await this.modelService.findUnique({
       id: parseInt(id),
     });
 
-    if (!collection) {
+    if (!model) {
       return ResponseHelper.CreateResponse<any>(
-        'Collection not found',
+        'Model not found',
         null,
         HttpStatus.NOT_FOUND,
       );
     }
 
-    return ResponseHelper.CreateResponse<any>('', collection, HttpStatus.OK);
+    return ResponseHelper.CreateResponse<any>('', model, HttpStatus.OK);
   }
 
   @Post()
@@ -66,11 +66,11 @@ export class CollectionController {
     @Body() data: any,
     @UserId() userId: bigint,
   ): Promise<ApiResponse<any>> {
-    const collection = await this.collectionService.create(data, userId);
+    const model = await this.modelService.create(data, userId);
 
     return ResponseHelper.CreateResponse<any>(
-      'Collection created successfully',
-      collection,
+      'Model created successfully',
+      model,
       HttpStatus.CREATED,
     );
   }
@@ -81,15 +81,15 @@ export class CollectionController {
     @Body() data: any,
     @UserId() userId: bigint,
   ): Promise<ApiResponse<any>> {
-    const collection = await this.collectionService.update(
+    const model = await this.modelService.update(
       { id: parseInt(id) },
       data,
       userId,
     );
 
     return ResponseHelper.CreateResponse<any>(
-      'Collection updated successfully',
-      collection,
+      'Model updated successfully',
+      model,
       HttpStatus.OK,
     );
   }
@@ -99,10 +99,10 @@ export class CollectionController {
     @Param('id') id: string,
     @UserId() userId: bigint,
   ): Promise<ApiResponse<any>> {
-    await this.collectionService.delete({ id: parseInt(id) }, userId);
+    await this.modelService.delete({ id: parseInt(id) }, userId);
 
     return ResponseHelper.CreateResponse<any>(
-      'Collection deleted successfully',
+      'Model deleted successfully',
       null,
       HttpStatus.OK,
     );
