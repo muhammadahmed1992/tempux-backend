@@ -1630,19 +1630,19 @@ export default class SeedHelper {
   private async seedTags(creatorId: bigint, tx: PrismaClient): Promise<void> {
     console.log('Seeding tags...');
     const tagsData = [
-      { name: 'New Arrival', description: 'Recently added to stock' },
-      { name: 'Best Seller', description: 'Our most popular products' },
-      { name: 'Limited Edition', description: 'Exclusive and rare timepieces' },
-      { name: 'On Sale', description: 'Currently discounted items' },
-      { name: 'Luxury Pick', description: 'Handpicked high-end watches' },
-      { name: 'Smart Tech', description: 'Watches with advanced features' },
-      { name: 'Durable', description: 'Built to last' },
-      { name: 'Classic Design', description: 'Timeless aesthetic' },
+      { title: 'New Arrival', description: 'Recently added to stock' },
+      { title: 'Best Seller', description: 'Our most popular products' },
+      { title: 'Limited Edition', description: 'Exclusive and rare timepieces' },
+      { title: 'On Sale', description: 'Currently discounted items' },
+      { title: 'Luxury Pick', description: 'Handpicked high-end watches' },
+      { title: 'Smart Tech', description: 'Watches with advanced features' },
+      { title: 'Durable', description: 'Built to last' },
+      { title: 'Classic Design', description: 'Timeless aesthetic' },
     ];
 
     for (const data of tagsData) {
       await tx.tags.upsert({
-        where: { name: data.name },
+        where: { title: data.title },
         update: { ...data, updated_by: creatorId },
         create: { ...data, created_by: creatorId },
       });

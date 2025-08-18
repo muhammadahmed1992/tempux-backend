@@ -174,7 +174,7 @@ model favorite {
 
 model tags {
   id          Int           @id @default(autoincrement())
-  name        String        @unique @db.VarChar(20)
+  title        String        @unique @db.VarChar(20)
   description String        @db.VarChar(100)
   valid_from  DateTime?     @db.Timestamptz(6)
   valid_to    DateTime?     @db.Timestamptz(6)
