@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request, Response, NextFunction } from 'express';
 
 interface JwtPayload {
-  sub: number;
+  id: number;
   email: string;
   roles: any[];
 }
@@ -38,7 +38,7 @@ export class AuthForwardingMiddleware implements NestMiddleware {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
 
       // Attach claims as headers
-      req.headers['x-user-id'] = payload.sub.toString();
+      req.headers['x-user-id'] = payload.id.toString();
       req.headers['x-user-email'] = payload.email;
       req.headers['x-user-roles'] = payload.roles;
     } catch {

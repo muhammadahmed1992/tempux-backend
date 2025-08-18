@@ -31,6 +31,13 @@ export class ProductRepository extends BaseRepository<
       select: {
         name: true,
         title: true,
+        model: {
+          select: {
+            id: true,
+            title: true,
+            brand_id: true,
+          },
+        },
         productReviews: {
           select: {
             ratings: true,
