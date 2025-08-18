@@ -134,6 +134,12 @@ export class ProductController {
     );
   }
 
+  @Post()
+  @UseGuards(HeaderAuthGuard)
+  async product(@UserId() userId: bigint) {
+    await this.productService.createProduct(userId);
+  }
+
   @Post('favorite/:id/:itemId')
   @UseGuards(HeaderAuthGuard)
   async favorite(

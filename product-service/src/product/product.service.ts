@@ -14,6 +14,8 @@ import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import { ProductImageOutput } from '@DTO/product-images-info.dto';
 import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
 import { CustomFilter } from '@Common/enums/custom-filter.enum';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ProductCreatedEvent } from './event/product-created.event';
 
 // Mapping from CustomFilter enum to tag names in the DB
 const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
@@ -35,8 +37,18 @@ export class ProductService {
     private readonly repository: ProductRepository,
     private readonly productVariantService: ProductVariantService,
     private readonly productAnalytics: ProductAnalyticsService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
+  async createProduct(userId: bigint) {
+    //TODO: will implement later
+    // fire event without slowing API down
+    // Hardcoding for now.
+    this.eventEmitter.emit(
+      'product.created',
+      new ProductCreatedEvent(userId, 10n),
+    );
+  }
   /**
    * Retrieves a summary of product information including name, title, average rating,
    * formatted price, all associated color options from its variants, and images.

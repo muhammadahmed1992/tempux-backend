@@ -16,6 +16,7 @@ import { ListingModule } from './common/modules/listing.module';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 import { APP_PIPE } from '@nestjs/core';
 import { HashidsModule } from '@HashIds/hash-ids.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { HashidsModule } from '@HashIds/hash-ids.module';
     SearchModule,
     ListingModule,
     HashidsModule,
+    EventEmitterModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
