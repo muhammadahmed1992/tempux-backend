@@ -146,7 +146,7 @@ export default class SeedHelper {
             await this.seedColors(creatorId, tx);
             await this.seedSizes(creatorId, tx);
             await this.seedBrands(creatorId, tx);
-            await this.seedCollections(creatorId, tx);
+            await this.seedModels(creatorId, tx);
             await this.seedCategories(creatorId, tx);
             await this.seedMovements(creatorId, tx);
             await this.seedGenders(creatorId, tx);
@@ -425,163 +425,160 @@ export default class SeedHelper {
     console.log(`Seeded ${brandsData.length} brands.`);
   }
 
-  private async seedCollections(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('Seeding collections (upserting)...');
+  private async seedModels(creatorId: bigint, tx: PrismaClient): Promise<void> {
+    console.log('Seeding models (upserting)...');
 
-    // Get all brands to create collections for
+    // Get all brands to create models for
     const brands = await tx.brand.findMany({
       where: { is_deleted: false },
       select: { id: true, title: true },
     });
 
-    const collectionsData = [
-      // Rolex collections
+    const modelsData = [
+      // Rolex models
       {
         title: 'Submariner',
         brand_id: 1,
         order: 1,
-        image_url: 'https://example.com/collections/submariner.png',
+        image_url: 'https://example.com/models/submariner.png',
       },
       {
         title: 'Daytona',
         brand_id: 1,
         order: 2,
-        image_url: 'https://example.com/collections/daytona.png',
+        image_url: 'https://example.com/models/daytona.png',
       },
       {
         title: 'GMT-Master',
         brand_id: 1,
         order: 3,
-        image_url: 'https://example.com/collections/gmt-master.png',
+        image_url: 'https://example.com/models/gmt-master.png',
       },
       {
         title: 'Datejust',
         brand_id: 1,
         order: 4,
-        image_url: 'https://example.com/collections/datejust.png',
+        image_url: 'https://example.com/models/datejust.png',
       },
 
-      // Omega collections
+      // Omega models
       {
         title: 'Speedmaster',
         brand_id: 2,
         order: 1,
-        image_url: 'https://example.com/collections/speedmaster.png',
+        image_url: 'https://example.com/models/speedmaster.png',
       },
       {
         title: 'Seamaster',
         brand_id: 2,
         order: 2,
-        image_url: 'https://example.com/collections/seamaster.png',
+        image_url: 'https://example.com/models/seamaster.png',
       },
       {
         title: 'Constellation',
         brand_id: 2,
         order: 3,
-        image_url: 'https://example.com/collections/constellation.png',
+        image_url: 'https://example.com/models/constellation.png',
       },
 
-      // Patek Philippe collections
+      // Patek Philippe models
       {
         title: 'Nautilus',
         brand_id: 3,
         order: 1,
-        image_url: 'https://example.com/collections/nautilus.png',
+        image_url: 'https://example.com/models/nautilus.png',
       },
       {
         title: 'Aquanaut',
         brand_id: 3,
         order: 2,
-        image_url: 'https://example.com/collections/aquanaut.png',
+        image_url: 'https://example.com/models/aquanaut.png',
       },
       {
         title: 'Calatrava',
         brand_id: 3,
         order: 3,
-        image_url: 'https://example.com/collections/calatrava.png',
+        image_url: 'https://example.com/models/calatrava.png',
       },
 
-      // Audemars Piguet collections
+      // Audemars Piguet models
       {
         title: 'Royal Oak',
         brand_id: 4,
         order: 1,
-        image_url: 'https://example.com/collections/royal-oak.png',
+        image_url: 'https://example.com/models/royal-oak.png',
       },
       {
         title: 'Royal Oak Offshore',
         brand_id: 4,
         order: 2,
-        image_url: 'https://example.com/collections/royal-oak-offshore.png',
+        image_url: 'https://example.com/models/royal-oak-offshore.png',
       },
 
-      // Vacheron Constantin collections
+      // Vacheron Constantin models
       {
         title: 'Overseas',
         brand_id: 5,
         order: 1,
-        image_url: 'https://example.com/collections/overseas.png',
+        image_url: 'https://example.com/models/overseas.png',
       },
       {
         title: 'Fiftysix',
         brand_id: 5,
         order: 2,
-        image_url: 'https://example.com/collections/fiftysix.png',
+        image_url: 'https://example.com/models/fiftysix.png',
       },
 
-      // IWC collections
+      // IWC models
       {
         title: 'Pilot',
         brand_id: 8,
         order: 1,
-        image_url: 'https://example.com/collections/pilot.png',
+        image_url: 'https://example.com/models/pilot.png',
       },
       {
         title: 'Portuguese',
         brand_id: 8,
         order: 2,
-        image_url: 'https://example.com/collections/portuguese.png',
+        image_url: 'https://example.com/models/portuguese.png',
       },
 
-      // Breitling collections
+      // Breitling models
       {
         title: 'Navitimer',
         brand_id: 9,
         order: 1,
-        image_url: 'https://example.com/collections/navitimer.png',
+        image_url: 'https://example.com/models/navitimer.png',
       },
       {
         title: 'Chronomat',
         brand_id: 9,
         order: 2,
-        image_url: 'https://example.com/collections/chronomat.png',
+        image_url: 'https://example.com/models/chronomat.png',
       },
 
-      // Cartier collections
+      // Cartier models
       {
         title: 'Tank',
         brand_id: 12,
         order: 1,
-        image_url: 'https://example.com/collections/tank.png',
+        image_url: 'https://example.com/models/tank.png',
       },
       {
         title: 'Santos',
         brand_id: 12,
         order: 2,
-        image_url: 'https://example.com/collections/santos.png',
+        image_url: 'https://example.com/models/santos.png',
       },
       {
         title: 'Ballon Bleu',
         brand_id: 12,
         order: 3,
-        image_url: 'https://example.com/collections/ballon-bleu.png',
+        image_url: 'https://example.com/models/ballon-bleu.png',
       },
     ];
 
-    for (const data of collectionsData) {
+    for (const data of modelsData) {
       await tx.model.upsert({
         where: {
           brand_id_title: {
@@ -603,7 +600,7 @@ export default class SeedHelper {
         },
       });
     }
-    console.log(`Seeded ${collectionsData.length} collections.`);
+    console.log(`Seeded ${modelsData.length} models.`);
   }
 
   private async seedCategories(

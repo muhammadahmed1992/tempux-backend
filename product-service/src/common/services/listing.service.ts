@@ -96,7 +96,7 @@ export class ListingService {
   }
 
   /**
-   * Get top brands with product and collection counts
+   * Get top brands with product and model counts
    */
   async getTopBrands(limit: number = 8, featuredOnly: boolean = false) {
     const whereClause = {
@@ -114,7 +114,7 @@ export class ListingService {
         _count: {
           select: {
             product: true,
-            collection: true,
+            model: true,
           },
         },
       },
@@ -128,7 +128,7 @@ export class ListingService {
       image_url: brand.image_url,
       order: brand.order || 0,
       product_count: brand._count.product,
-      collection_count: brand._count.collection,
+      model_count: brand._count.model,
       redirect_url: `/brands/${brand.id}`,
       featured: brand.order !== null,
     }));
@@ -139,7 +139,7 @@ export class ListingService {
    */
   async getAlphabeticalBrands(
     includeProductCount: boolean = true,
-    includeCollectionCount: boolean = true,
+    includeModelCount: boolean = true,
   ) {
     const selectClause = {
       id: true,
@@ -153,10 +153,10 @@ export class ListingService {
           },
         },
       }),
-      ...(includeCollectionCount && {
+      ...(includeModelCount && {
         _count: {
           select: {
-            collection: true,
+            model: true,
           },
         },
       }),
@@ -186,9 +186,7 @@ export class ListingService {
         image_url: brand.image_url,
         order: brand.order,
         product_count: includeProductCount ? brand._count?.product : undefined,
-        collection_count: includeCollectionCount
-          ? brand._count?.collection
-          : undefined,
+        model_count: includeModelCount ? brand._count?.model : undefined,
         redirect_url: `/brands/${brand.id}`,
       };
 
@@ -232,17 +230,14 @@ export class ListingService {
   async getCompleteBrandListing(request: any) {
     const {
       include_product_count = true,
-      include_collection_count = true,
+      include_model_count = true,
       limit_top_brands = 8,
       featured_only = false,
     } = request;
 
     const [topBrands, alphabeticalBrands] = await Promise.all([
       this.getTopBrands(limit_top_brands, featured_only),
-      this.getAlphabeticalBrands(
-        include_product_count,
-        include_collection_count,
-      ),
+      this.getAlphabeticalBrands(include_product_count, include_model_count),
     ]);
 
     const totalBrands = Object.values(alphabeticalBrands).reduce(

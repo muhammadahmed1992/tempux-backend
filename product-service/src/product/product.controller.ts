@@ -26,6 +26,7 @@ import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import { ProductVariantService } from '@ProductVariant/product-variant.service';
 import { AuthenticatedGuard } from '@Auth/guards/authenticated-user.guard';
+import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
 
 @Controller()
 export class ProductController {
@@ -135,7 +136,7 @@ export class ProductController {
   }
 
   @Post('favorite/:id/:itemId')
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(HeaderAuthGuard)
   async favorite(
     @UserId() userId: bigint,
     @Param('id', ParseProductIdPipe) id: bigint,
@@ -146,7 +147,7 @@ export class ProductController {
   }
 
   @Post('/analytics')
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(HeaderAuthGuard)
   async createViewerShipAnalytics(
     @UserId() userId: bigint,
     @Body()
@@ -161,7 +162,7 @@ export class ProductController {
   }
 
   @Post('/order-summary')
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(HeaderAuthGuard)
   async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
     return this.productVariantSerice.getOrderSummary(summary);
   }
@@ -174,7 +175,7 @@ export class ProductController {
    * 4.Limit 5 watches to display
    */
   @Get('/recommendations')
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(HeaderAuthGuard)
   async getUserRecommendations(@UserId() userId: bigint) {
     return this.productAnalyticsService.getUserRecommendedWatches(userId);
   }

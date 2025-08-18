@@ -4,9 +4,7 @@ import { CategoryService } from './category.service';
 
 @Controller('category')
 export class CategoryController {
-  constructor(
-    private readonly categoryService: CategoryService,
-  ) {}
+  constructor(private readonly categoryService: CategoryService) {}
 
   @Get()
   async getAll(@Query() query: GetAllQueryDTO) {
@@ -30,5 +28,11 @@ export class CategoryController {
       where,
       select,
     );
+  }
+
+  @Get('ordered')
+  async getOrderedAll(@Query() query: GetAllQueryDTO) {
+    const { page, pageSize, orderBy, where, select } = query;
+    return this.categoryService.getAlphabeticalData();
   }
 }

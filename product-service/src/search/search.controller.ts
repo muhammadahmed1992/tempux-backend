@@ -13,9 +13,7 @@ export class SearchController {
     @Query() searchDto: SearchRequestDTO,
   ): Promise<ApiResponse<SearchResponseDTO>> {
     try {
-      const results = await this.searchService.searchBrandsAndCollections(
-        searchDto,
-      );
+      const results = await this.searchService.searchBrandsAndmodels(searchDto);
 
       return ResponseHelper.CreateResponse<SearchResponseDTO>(
         'Search completed successfully',
@@ -27,7 +25,7 @@ export class SearchController {
         'Search failed',
         {
           brands: [],
-          collections: [],
+          models: [],
           total_results: 0,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -36,9 +34,7 @@ export class SearchController {
   }
 
   @Get('brands')
-  async searchBrands(
-    @Query('query') query: string,
-  ): Promise<ApiResponse<any[]>> {
+  async searchBrands(@Query() query: string): Promise<ApiResponse<any[]>> {
     try {
       if (!query || query.trim().length === 0) {
         return ResponseHelper.CreateResponse<any[]>(
@@ -64,10 +60,8 @@ export class SearchController {
     }
   }
 
-  @Get('collections')
-  async searchCollections(
-    @Query('query') query: string,
-  ): Promise<ApiResponse<any[]>> {
+  @Get('models')
+  async searchModels(@Query() query: string): Promise<ApiResponse<any[]>> {
     try {
       if (!query || query.trim().length === 0) {
         return ResponseHelper.CreateResponse<any[]>(
@@ -77,16 +71,16 @@ export class SearchController {
         );
       }
 
-      const results = await this.searchService.searchCollectionsOnly(query);
+      const results = await this.searchService.searchmodelsOnly(query);
 
       return ResponseHelper.CreateResponse<any[]>(
-        'Collection search completed successfully',
+        'Model search completed successfully',
         results,
         HttpStatus.OK,
       );
     } catch (error) {
       return ResponseHelper.CreateResponse<any[]>(
-        'Collection search failed',
+        'Model search failed',
         [],
         HttpStatus.INTERNAL_SERVER_ERROR,
       );

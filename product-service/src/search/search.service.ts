@@ -10,7 +10,7 @@ import {
 export class SearchService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async searchBrandsAndCollections(
+  async searchBrandsAndmodels(
     searchDto: SearchRequestDTO,
   ): Promise<SearchResponseDTO> {
     const { query, type = 'all', limit = 20, page = 1 } = searchDto;
@@ -18,7 +18,7 @@ export class SearchService {
     const skip = (page - 1) * limit;
 
     let brands: SearchResultDTO[] = [];
-    let collections: SearchResultDTO[] = [];
+    let models: SearchResultDTO[] = [];
 
     // Search brands if type is 'all' or 'brand'
     if (type === 'all' || type === 'brand') {
@@ -55,9 +55,9 @@ export class SearchService {
       }));
     }
 
-    // Search collections if type is 'all' or 'collection'
-    if (type === 'all' || type === 'collection') {
-      const collectionResults = await this.prisma.collection.findMany({
+    // Search models if type is 'all' or 'model'
+    if (type === 'all' || type === 'model') {
+      const modelResults = await this.prisma.model.findMany({
         where: {
           AND: [
             { is_deleted: false },
@@ -87,22 +87,22 @@ export class SearchService {
         skip: skip,
       });
 
-      collections = collectionResults.map((collection) => ({
-        id: collection.id,
-        title: collection.title,
-        type: 'collection' as const,
-        image_url: collection.image_url,
-        brand_id: collection.brand_id,
-        brand_title: collection.brand.title,
-        redirect_url: `/brands/${collection.brand_id}/collections/${collection.id}`,
+      models = modelResults.map((model) => ({
+        id: model.id,
+        title: model.title,
+        type: 'model' as const,
+        image_url: model.image_url,
+        brand_id: model.brand_id,
+        brand_title: model.brand.title,
+        redirect_url: `/brands/${model.brand_id}/models/${model.id}`,
       }));
     }
 
-    const total_results = brands.length + collections.length;
+    const total_results = brands.length + models.length;
 
     return {
       brands,
-      collections,
+      models,
       total_results,
     };
   }
@@ -141,10 +141,10 @@ export class SearchService {
     }));
   }
 
-  async searchCollectionsOnly(query: string): Promise<SearchResultDTO[]> {
+  async searchmodelsOnly(query: string): Promise<SearchResultDTO[]> {
     const searchQuery = `%${query.toLowerCase()}%`;
 
-    const collectionResults = await this.prisma.collection.findMany({
+    const modelResults = await this.prisma.model.findMany({
       where: {
         AND: [
           { is_deleted: false },
@@ -172,14 +172,14 @@ export class SearchService {
       },
     });
 
-    return collectionResults.map((collection) => ({
-      id: collection.id,
-      title: collection.title,
-      type: 'collection' as const,
-      image_url: collection.image_url,
-      brand_id: collection.brand_id,
-      brand_title: collection.brand.title,
-      redirect_url: `/brands/${collection.brand_id}/collections/${collection.id}`,
+    return modelResults.map((model) => ({
+      id: model.id,
+      title: model.title,
+      type: 'model' as const,
+      image_url: model.image_url,
+      brand_id: model.brand_id,
+      brand_title: model.brand.title,
+      redirect_url: `/brands/${model.brand_id}/models/${model.id}`,
     }));
   }
 }

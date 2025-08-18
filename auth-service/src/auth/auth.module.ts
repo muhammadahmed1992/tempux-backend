@@ -17,7 +17,7 @@ import { AuthenticatedGuard } from './guards/authenticated-user.guard';
 export class AuthModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(HeaderAuthMiddleware)
+      .apply()
       .exclude(
         {
           path: '/health',

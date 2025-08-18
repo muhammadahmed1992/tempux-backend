@@ -31,6 +31,7 @@ import ResponseHelper from '@Helper/response-helper';
 import CookieHelper from './helper/cookie.helper';
 import { ProviderType } from './dtos/user.details.response.dto';
 import { AuthenticatedGuard } from 'src/auth/guards/authenticated-user.guard';
+import { HeaderAuthGuard } from 'src/auth/guards/auth-user-guard';
 @Controller('user')
 export class UserController {
   constructor(
@@ -183,7 +184,7 @@ export class UserController {
     return result;
   }
 
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(HeaderAuthGuard)
   @Get('/me')
   /**
    * @returns It will returns logged-in user's display name and profileImageUrl.
@@ -193,7 +194,7 @@ export class UserController {
     return this.userService.getProfile(request.user.id);
   }
 
-  @UseGuards(AuthenticatedGuard)
+  @UseGuards(HeaderAuthGuard)
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;

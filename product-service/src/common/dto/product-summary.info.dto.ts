@@ -14,7 +14,7 @@ export interface ProductSummaryOutputDTO {
   }[];
   images: ProductImageOutput[];
   viewerShipCount: number;
-  collection?: {
+  model?: {
     id: number;
     title: string;
     brand_id: number;

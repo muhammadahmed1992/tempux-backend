@@ -171,15 +171,15 @@ export class ListingController {
   @Get('brands/alphabetical')
   async getAlphabeticalBrands(
     @Query('include_product_count') includeProductCount?: string,
-    @Query('include_collection_count') includeCollectionCount?: string,
+    @Query('include_Model_count') includeModelCount?: string,
   ): Promise<ApiResponse<any>> {
     try {
       const includeProductCountBool = includeProductCount !== 'false';
-      const includeCollectionCountBool = includeCollectionCount !== 'false';
+      const includeModelCountBool = includeModelCount !== 'false';
 
       const result = await this.listingService.getAlphabeticalBrands(
         includeProductCountBool,
-        includeCollectionCountBool,
+        includeModelCountBool,
       );
 
       return ResponseHelper.CreateResponse<any>(

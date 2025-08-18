@@ -68,7 +68,21 @@ export class ProductAnalyticsRepository extends BaseRepository<
       },
     });
 
-    if (!views.length) return [];
+    // --- If no recent views, fallback to top products ---
+    if (!views.length) {
+      const topProducts = await this.prisma.product.findMany({
+        where: { is_deleted: false },
+        orderBy: { created_at: 'desc' }, // or orderBy: { popularity: "desc" } if you have analytics
+        take: limit,
+        include: {
+          productVariants: { include: { currency: true } },
+          brand: true,
+          category: true,
+        },
+      });
+
+      return topProducts.map(this.mapProductToRecommendation);
+    }
 
     // --- Count brands, categories, price points ---
     const brandCount: Record<number, number> = {};

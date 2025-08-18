@@ -1,7 +1,7 @@
 export interface SearchResultDTO {
   id: number;
   title: string;
-  type: 'brand' | 'collection';
+  type: 'brand' | 'model';
   image_url?: string | null;
   brand_id?: number;
   brand_title?: string;
@@ -10,13 +10,13 @@ export interface SearchResultDTO {
 
 export interface SearchResponseDTO {
   brands: SearchResultDTO[];
-  collections: SearchResultDTO[];
+  models: SearchResultDTO[];
   total_results: number;
 }
 
 export class SearchRequestDTO {
   query!: string;
-  type?: 'brand' | 'collection' | 'all';
+  type?: 'brand' | 'model' | 'all';
   limit?: number;
   page?: number;
 }

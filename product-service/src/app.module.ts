@@ -42,6 +42,6 @@ import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(HeaderAuthMiddleware).forRoutes('*');
+    consumer.apply().forRoutes('*');
   }
 }
