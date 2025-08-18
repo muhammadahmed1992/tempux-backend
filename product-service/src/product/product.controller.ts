@@ -10,7 +10,6 @@ import {
   Post,
   Query,
   UseGuards,
-  ParseIntPipe,
 } from '@nestjs/common';
 import { ProductService } from '@Product/product.service';
 import { FavoriteService } from '@Favorite/favorite.service';
@@ -25,7 +24,6 @@ import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import { ProductVariantService } from '@ProductVariant/product-variant.service';
-import { AuthenticatedGuard } from '@Auth/guards/authenticated-user.guard';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
 
 @Controller()
