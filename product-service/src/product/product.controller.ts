@@ -60,6 +60,7 @@ export class ProductController {
       orderBy,
       where,
       select,
+      customCategoryExpression,
     );
   }
 

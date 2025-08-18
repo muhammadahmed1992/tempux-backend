@@ -6,6 +6,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { BigIntInterceptor } from './common/interceptor/big.int.interceptor';
 import { HashidsInterceptor } from './common/interceptor/encode-decode-senstive-data.interceptor';
 import { HashidsService } from '@HashIds/hashids.service';
+import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

@@ -25,10 +25,10 @@ import { AuthForwardingMiddleware } from './middleware/auth-forwarding.middlewar
       },
     }),
   ],
-  providers: [ServiceResolver, ProxyMiddleware],
+  providers: [ServiceResolver, AuthForwardingMiddleware, ProxyMiddleware],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthForwardingMiddleware, ProxyMiddleware).forRoutes('*');
+    consumer.apply().forRoutes('*');
   }
 }
