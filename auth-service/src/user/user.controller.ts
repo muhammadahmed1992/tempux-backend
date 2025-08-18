@@ -30,7 +30,6 @@ import { SocialAuthRedirectInterceptor } from './interceptor/social-auth-redirec
 import ResponseHelper from '@Helper/response-helper';
 import CookieHelper from './helper/cookie.helper';
 import { ProviderType } from './dtos/user.details.response.dto';
-import { AuthenticatedGuard } from 'src/auth/guards/authenticated-user.guard';
 import { HeaderAuthGuard } from 'src/auth/guards/auth-user-guard';
 @Controller('user')
 export class UserController {

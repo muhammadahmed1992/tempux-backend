@@ -146,10 +146,10 @@ export class ProxyMiddleware implements NestMiddleware {
   }
 
   use(req: Request, res: Response, next: NextFunction) {
-    // Only proxy known microservice routes
-    if (!Utils.ReturnServicePaths().test(req.originalUrl)) {
-      return next();
-    }
+    // // Only proxy known microservice routes
+    // if (!Utils.ReturnServicePaths().test(req.originalUrl)) {
+    //   return next();
+    // }
 
     // Validate service exists before invoking proxy (so router won’t get undefined)
     const [, serviceKey] = req.originalUrl.split('/');

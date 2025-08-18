@@ -19,14 +19,6 @@ import { FavoriteModule } from '@Favorite/favorite.module';
     ProductAnalyticsModule,
   ],
   controllers: [ProductController],
-  providers: [
-    ProductService,
-    ProductRepository,
-    {
-      provide: APP_PIPE,
-      useClass: ParseQueryPipe,
-    },
-    ProductIdResolver,
-  ],
+  providers: [ProductService, ProductRepository, ProductIdResolver],
 })
 export class ProductModule {}

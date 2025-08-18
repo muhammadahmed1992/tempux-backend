@@ -1,6 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
-import { AuthModule } from '@Auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { ReviewsModule } from '@Reviews/reviews.module';
@@ -14,14 +13,15 @@ import { ProductModule } from '@Product/product.module';
 import { ModelModule } from './model/model.module';
 import { SearchModule } from './search/search.module';
 import { ListingModule } from './common/modules/listing.module';
-import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
+import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
+import { APP_PIPE } from '@nestjs/core';
+import { HashidsModule } from '@HashIds/hash-ids.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    AuthModule,
     ReviewsModule,
     ColorModule,
     CategoryModule,
@@ -36,9 +36,15 @@ import { HeaderAuthMiddleware } from '@Auth/middleware/header-auth.middleware';
     ModelModule,
     SearchModule,
     ListingModule,
+    HashidsModule,
   ],
   controllers: [AppController],
-  providers: [],
+  providers: [
+    {
+      provide: APP_PIPE,
+      useClass: ParseQueryPipe,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
