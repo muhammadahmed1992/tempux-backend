@@ -17,6 +17,7 @@ import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 import { APP_PIPE } from '@nestjs/core';
 import { HashidsModule } from '@HashIds/hash-ids.module';
 import { TagModule } from './tag/tag.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { TagModule } from './tag/tag.module';
     ListingModule,
     HashidsModule,
     TagModule,
+    EventEmitterModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
