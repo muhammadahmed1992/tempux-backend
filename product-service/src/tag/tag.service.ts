@@ -4,9 +4,13 @@ import ApiResponse from '@Helper/api-response';
 import { SetupListingDTO } from '@DTO/setup-listing.dto';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
+import { ProductAnalyticsRepository } from '@ProductAnalytics/product.analytics.repository';
 @Injectable()
 export class TagService {
-  constructor(private readonly repository: TagRepository) {}
+  constructor(
+    private readonly repository: TagRepository,
+    private readonly productAnalyticsRepository: ProductAnalyticsRepository,
+  ) {}
   async getAllPagedData(
     pageNumber: number,
     pageSize: number,
@@ -24,7 +28,7 @@ export class TagService {
     return ResponseHelper.CreateResponse<SetupListingDTO[]>(
       Constants.DATA_SUCCESS,
       data.map((tag) => ({
-        title: tag.title,
+        title: tag.name,
         id: tag.id,
         description: tag.description,
         created_at: tag.created_at,
@@ -38,5 +42,31 @@ export class TagService {
         numberOfTotalPages: Math.ceil(totalCount / pageSize),
       },
     );
+  }
+
+  async cleanupExpiredNewArrivalTags(): Promise<void> {
+    const NEW_ARRIVAL_TAG_ID = 1;
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const productTags = await this.repository.findByTagId(NEW_ARRIVAL_TAG_ID);
+
+    for (const pt of productTags) {
+      if (new Date(pt.created_at) < sevenDaysAgo) {
+        await this.repository.removeTag(pt.id);
+      }
+    }
+  }
+
+  async markPopularProductsJob(limit = 10): Promise<void> {
+    const POPULAR_ARRIVAL_TAG_ID = 9;
+    const products =
+      await this.productAnalyticsRepository.getProductsExceedingViewLimit(
+        limit,
+      );
+
+    for (const pt of products) {
+      await this.repository.addTag(pt.productId, POPULAR_ARRIVAL_TAG_ID);
+    }
   }
 }

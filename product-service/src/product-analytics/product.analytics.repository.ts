@@ -44,6 +44,32 @@ export class ProductAnalyticsRepository extends BaseRepository<
     return res.length;
   }
 
+  async getProductsExceedingViewLimit(limit: number) {
+    return this.prisma.product_analytics
+      .groupBy({
+        by: ['product_id'],
+        _count: { product_id: true },
+        having: {
+          product_id: {
+            _count: {
+              gt: limit,
+            },
+          },
+        },
+        orderBy: {
+          _count: {
+            product_id: 'desc',
+          },
+        },
+      })
+      .then((result) =>
+        result.map((r) => ({
+          productId: r.product_id,
+          views: r._count.product_id,
+        })),
+      );
+  }
+
   async getUserRecommendations(userId: bigint, limit = 5) {
     const cutoffTime = new Date();
     cutoffTime.setHours(
