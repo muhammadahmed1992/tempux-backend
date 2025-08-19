@@ -1,89 +1,56 @@
-import { Controller, Get, Query, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { SearchService } from './search.service';
-import { SearchRequestDTO, SearchResponseDTO } from '@DTO/search-response.dto';
-import ResponseHelper from '@Helper/response-helper';
-import ApiResponse from '@Helper/api-response';
+import { GetAllQueryDTO } from '@DTO/search.dto';
 
 @Controller('search')
 export class SearchController {
-  constructor(private readonly searchService: SearchService) {}
+  constructor(private readonly SearchService: SearchService) {}
 
   @Get()
-  async search(
-    @Query() searchDto: SearchRequestDTO,
-  ): Promise<ApiResponse<SearchResponseDTO>> {
-    try {
-      const results = await this.searchService.searchBrandsAndmodels(searchDto);
-
-      return ResponseHelper.CreateResponse<SearchResponseDTO>(
-        'Search completed successfully',
-        results,
-        HttpStatus.OK,
-      );
-    } catch (error) {
-      return ResponseHelper.CreateResponse<SearchResponseDTO>(
-        'Search failed',
-        {
-          brands: [],
-          models: [],
-          total_results: 0,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  async getAll(@Query() queryDto: GetAllQueryDTO) {
+    return this.SearchService.getAllPagedData(queryDto);
   }
 
-  @Get('brands')
-  async searchBrands(@Query() query: string): Promise<ApiResponse<any[]>> {
-    try {
-      if (!query || query.trim().length === 0) {
-        return ResponseHelper.CreateResponse<any[]>(
-          'Query parameter is required',
-          [],
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+  @Get('search')
+  async search(@Query() searchParams: any) {
+    // Extract search parameters matching your filter structure
+    const filters = this.parseFilters(searchParams.filter);
+    const query = filters?.title?.contains || searchParams.query;
+    const type = searchParams.type || 'all';
+    const page = parseInt(searchParams.page) || 1;
+    const pageSize = parseInt(searchParams.pageSize) || 20;
 
-      const results = await this.searchService.searchBrandsOnly(query);
-
-      return ResponseHelper.CreateResponse<any[]>(
-        'Brand search completed successfully',
-        results,
-        HttpStatus.OK,
-      );
-    } catch (error) {
-      return ResponseHelper.CreateResponse<any[]>(
-        'Brand search failed',
-        [],
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+    if (query && query.trim().length > 0) {
+      // Use fast UNION search for simple queries
+      const results = await this.SearchService.fastSearch(query, pageSize);
+      return {
+        data: results,
+        totalCount: results.length,
+        pageNumber: page,
+        pageSize,
+        numberOfTotalPages: Math.ceil(results.length / pageSize),
+      };
     }
+
+    // Use regular method for complex queries
+    return this.SearchService.searchBrandsModelsCategories({
+      query,
+      type,
+      page,
+      limit: pageSize,
+    });
   }
 
-  @Get('models')
-  async searchModels(@Query() query: string): Promise<ApiResponse<any[]>> {
-    try {
-      if (!query || query.trim().length === 0) {
-        return ResponseHelper.CreateResponse<any[]>(
-          'Query parameter is required',
-          [],
-          HttpStatus.BAD_REQUEST,
-        );
+  private parseFilters(filterArray: any[]): any {
+    if (!filterArray || !Array.isArray(filterArray)) return {};
+
+    const filters = {};
+    filterArray.forEach((filter, index) => {
+      if (filter && typeof filter === 'object') {
+        Object.assign(filters, filter);
       }
+    });
 
-      const results = await this.searchService.searchmodelsOnly(query);
-
-      return ResponseHelper.CreateResponse<any[]>(
-        'Model search completed successfully',
-        results,
-        HttpStatus.OK,
-      );
-    } catch (error) {
-      return ResponseHelper.CreateResponse<any[]>(
-        'Model search failed',
-        [],
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    return filters;
   }
 }

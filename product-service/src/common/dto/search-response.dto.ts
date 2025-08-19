@@ -1,3 +1,6 @@
+import { Type } from 'class-transformer';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+
 export interface SearchResultDTO {
   id: number;
   title: string;
@@ -11,12 +14,26 @@ export interface SearchResultDTO {
 export interface SearchResponseDTO {
   brands: SearchResultDTO[];
   models: SearchResultDTO[];
-  total_results: number;
 }
 
 export class SearchRequestDTO {
-  query!: string;
+  @IsOptional()
+  @IsString()
+  query?: string;
+
+  @IsOptional()
+  @IsIn(['brand', 'model', 'all'])
   type?: 'brand' | 'model' | 'all';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   limit?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
   page?: number;
 }
