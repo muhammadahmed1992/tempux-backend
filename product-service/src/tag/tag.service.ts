@@ -23,13 +23,7 @@ export class TagService {
     );
     return ResponseHelper.CreateResponse<SetupListingDTO[]>(
       Constants.DATA_SUCCESS,
-      data.map((tag) => ({
-        title: tag.title,
-        id: tag.id,
-        description: tag.description,
-        created_at: tag.created_at,
-        updated_at: tag.updated_at,
-      })),
+      data,
       HttpStatus.OK,
       {
         pageNumber,
