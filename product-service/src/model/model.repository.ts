@@ -17,4 +17,12 @@ export class ModelRepository extends BaseRepository<
   constructor(private readonly prisma: PrismaService) {
     super(prisma, prisma.model);
   }
+  async getOne(id: number, select?: object) {
+    return this.model.findUnique({
+      where: {
+        id,
+      },
+      select,
+    });
+  }
 }

@@ -14,6 +14,8 @@ import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import { ProductImageOutput } from '@DTO/product-images-info.dto';
 import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
 import { CustomFilter } from '@Common/enums/custom-filter.enum';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ProductCreatedEvent } from './event/product-created.event';
 
 // Mapping from CustomFilter enum to tag names in the DB
 const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
@@ -35,8 +37,18 @@ export class ProductService {
     private readonly repository: ProductRepository,
     private readonly productVariantService: ProductVariantService,
     private readonly productAnalytics: ProductAnalyticsService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
+  async createProduct(userId: bigint) {
+    //TODO: will implement later
+    // fire event without slowing API down
+    // Hardcoding for now.
+    this.eventEmitter.emit(
+      'product.created',
+      new ProductCreatedEvent(userId, 10n),
+    );
+  }
   /**
    * Retrieves a summary of product information including name, title, average rating,
    * formatted price, all associated color options from its variants, and images.
@@ -205,31 +217,33 @@ export class ProductService {
     };
     let finalOrderBy: any = { ...order };
 
-    // filter logic using tags
-    if (customCategoryExpression) {
-      const tagName = CUSTOM_FILTER_TO_TAG[customCategoryExpression];
-      if (tagName) {
-        // Filter products that have the tag
-        finalWhere.product = {
-          ...finalWhere.product,
-          productTags: {
-            some: {
-              tags: {
-                name: tagName,
-              },
-            },
-          },
-        };
-      }
-      // For NEW_ARRIVAL, we may also want to filter by created_at (optional)
-      if (customCategoryExpression === CustomFilter.NEW_ARRIVAL) {
-        const newArrivalDays = 30; // or configurable
-        finalWhere.product.created_at = {
-          gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
-        };
-        finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
-      }
-    }
+    //TODO: Review Later
+
+    // // filter logic using tags
+    // if (customCategoryExpression) {
+    //   const tagName = CUSTOM_FILTER_TO_TAG[customCategoryExpression];
+    //   if (tagName) {
+    //     // Filter products that have the tag
+    //     finalWhere.product = {
+    //       ...finalWhere.product,
+    //       productTags: {
+    //         some: {
+    //           tags: {
+    //             name: tagName,
+    //           },
+    //         },
+    //       },
+    //     };
+    //   }
+    //   // For NEW_ARRIVAL, we may also want to filter by created_at (optional)
+    //   if (customCategoryExpression === CustomFilter.NEW_ARRIVAL) {
+    //     const newArrivalDays = 30; // or configurable
+    //     finalWhere.product.created_at = {
+    //       gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
+    //     };
+    //     finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
+    //   }
+    // }
 
     // This ensures all necessary related data is fetched.
     const selectOptions: any = {
@@ -242,15 +256,7 @@ export class ProductService {
           id: true,
           product_slug: true,
           title: true,
-          description: true,
           ...select,
-          model: {
-            select: {
-              id: true,
-              title: true,
-              brand_id: true,
-            },
-          },
           productTags: {
             select: {
               tags: {
@@ -298,10 +304,8 @@ export class ProductService {
         product: {
           id: bigint;
           name: string;
-          description: string;
           title: string;
           product_slug: string;
-          model: { id: number; title: string; brand_id: number } | null;
           productTags: any[];
         };
         price: number;
@@ -315,13 +319,134 @@ export class ProductService {
         slug: pv.product.product_slug,
         name: pv.product.name,
         title: pv.product.title,
-        description: pv.product.description,
         symb: pv.currency.curr,
         image_url: pv.base_image_url,
         price: pv.price.toFixed(2),
         isFavorite: userId ? !!pv.productVariantFavorite?.[0]?.id : null,
         tags: pv.product?.productTags?.map((p) => p.tags),
-        model: pv.product.model,
+      }),
+    );
+
+    const meta = response.getMeta ? response.getMeta() : {};
+    return ResponseHelper.CreateResponse<any[]>('', result, HttpStatus.OK, {
+      totalCount: (meta as any).totalCount ?? 0,
+      pageNumber: (meta as any).pageNumber ?? 1,
+      pageSize: (meta as any).pageSize ?? 0,
+      numberOfTotalPages: (meta as any).numberOfTotalPages ?? 1,
+    });
+  }
+
+  async getProductListing(
+    pageNumber: number,
+    pageSize: number,
+    userId?: bigint,
+    order?: object,
+    where?: object,
+  ): Promise<ApiResponse<any[]>> {
+    // 🔹 Base filters
+    const finalWhere: any = {
+      product: {
+        is_accessory: false,
+        is_deleted: false,
+      },
+      currency: {
+        is_deleted: false,
+      },
+      ...where,
+    };
+
+    // 🔹 Select options (fetching joined data)
+    const selectOptions: any = {
+      id: true,
+      base_image_url: true,
+      case_material: true,
+      original_box: true,
+      original_paper: true,
+      size: {
+        select: {
+          value: true,
+          widthUnit: true,
+          height: true,
+        },
+      },
+      movement: {
+        select: {
+          title: true,
+        },
+      },
+      product: {
+        select: {
+          id: true,
+          name: true,
+          title: true,
+          year_of_production: true,
+          reference_number: true,
+        },
+      },
+      productVariantFavorite: userId
+        ? {
+            where: {
+              user_id: userId,
+              is_deleted: false,
+            },
+            select: {
+              id: true,
+            },
+          }
+        : false,
+    };
+
+    // 🔹 Fetch paged data
+    const response = await this.productVariantService.getAllPagedData(
+      pageNumber,
+      pageSize,
+      order,
+      finalWhere,
+      selectOptions,
+    );
+
+    if (!response.data || response.data?.length === 0) {
+      throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
+    }
+
+    // 🔹 Map into your expected response
+    const result = response.data.map(
+      (pv: {
+        id: bigint;
+        base_image_url: string;
+        case_material: string | null;
+        original_box: boolean;
+        original_paper: boolean;
+        productVariantFavorite: any;
+        size: { value: number; widthUnit: string; height: number } | null;
+        movement: { title: string } | null;
+        product: {
+          id: bigint;
+          name: string;
+          title: string;
+          year_of_production: number;
+          reference_number: bigint;
+        };
+      }) => ({
+        itemId: pv.id,
+        productId: pv.product.id,
+        image: pv.base_image_url,
+        name: pv.product.name,
+        title: pv.product.title,
+        movement: pv.movement?.title ?? null,
+        yearOfProduction: pv.product.year_of_production,
+        referenceNumber: pv.product.reference_number,
+        location: 'Switzerland', // 🔹 Hardcoded
+        caseMaterial: pv.case_material,
+        condition: 'Pre-owned', // 🔹 Hardcoded
+        scope: {
+          box: pv.original_box,
+          paper: pv.original_paper,
+        },
+        caseDiameter: pv.size
+          ? `${pv.size.value}x${pv.size.height} ${pv.size.widthUnit}`
+          : null,
+        isFavorite: userId ? !!pv.productVariantFavorite?.[0]?.id : null,
       }),
     );
 

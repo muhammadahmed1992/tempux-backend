@@ -44,23 +44,6 @@ export class ModelController {
     );
   }
 
-  @Get(':id')
-  async getById(@Param('id') id: string): Promise<ApiResponse<any>> {
-    const model = await this.modelService.findUnique({
-      id: parseInt(id),
-    });
-
-    if (!model) {
-      return ResponseHelper.CreateResponse<any>(
-        'Model not found',
-        null,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    return ResponseHelper.CreateResponse<any>('', model, HttpStatus.OK);
-  }
-
   @Post()
   async create(
     @Body() data: any,
@@ -75,36 +58,8 @@ export class ModelController {
     );
   }
 
-  @Put(':id')
-  async update(
-    @Param('id') id: string,
-    @Body() data: any,
-    @UserId() userId: bigint,
-  ): Promise<ApiResponse<any>> {
-    const model = await this.modelService.update(
-      { id: parseInt(id) },
-      data,
-      userId,
-    );
-
-    return ResponseHelper.CreateResponse<any>(
-      'Model updated successfully',
-      model,
-      HttpStatus.OK,
-    );
-  }
-
-  @Delete(':id')
-  async delete(
-    @Param('id') id: string,
-    @UserId() userId: bigint,
-  ): Promise<ApiResponse<any>> {
-    await this.modelService.delete({ id: parseInt(id) }, userId);
-
-    return ResponseHelper.CreateResponse<any>(
-      'Model deleted successfully',
-      null,
-      HttpStatus.OK,
-    );
+  @Get('alphabetical')
+  async getAlphabeticalAll() {
+    return await this.modelService.getAlphabeticalData();
   }
 }

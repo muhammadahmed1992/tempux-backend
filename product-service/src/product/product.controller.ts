@@ -52,6 +52,7 @@ export class ProductController {
     const pType = ProductType.Accessory === productType;
     const { page, pageSize, orderBy, where, select, customCategoryExpression } =
       query;
+    console.log(userId);
     return this.productService.getProductListingFiltered(
       page,
       pageSize,
@@ -61,6 +62,21 @@ export class ProductController {
       where,
       select,
       customCategoryExpression,
+    );
+  }
+
+  @Get('/detailed-list-chrono')
+  async getList(
+    @Query() query: GetAllQueryDTO,
+    @OptionalUser() userId?: bigint,
+  ) {
+    const { page, pageSize, orderBy, where } = query;
+    return this.productService.getProductListing(
+      page,
+      pageSize,
+      userId,
+      orderBy,
+      where,
     );
   }
 
@@ -132,6 +148,12 @@ export class ProductController {
       },
       HttpStatus.OK,
     );
+  }
+
+  @Post()
+  @UseGuards(HeaderAuthGuard)
+  async product(@UserId() userId: bigint) {
+    await this.productService.createProduct(userId);
   }
 
   @Post('favorite/:id/:itemId')

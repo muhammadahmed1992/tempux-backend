@@ -30,9 +30,8 @@ export class CategoryController {
     );
   }
 
-  @Get('ordered')
-  async getOrderedAll(@Query() query: GetAllQueryDTO) {
-    const { page, pageSize, orderBy, where, select } = query;
-    return this.categoryService.getAlphabeticalData();
+  @Get('alphabetical')
+  async getAlphabeticalAll() {
+    return await this.categoryService.getAlphabeticalData();
   }
 }

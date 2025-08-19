@@ -14,7 +14,11 @@ export default class CookieHelper {
     res.cookie(key, value, {
       httpOnly: true,
       secure: isProd,
-      sameSite: isRequestComingFromLocalHost ? 'none' : sameSite,
+      sameSite: isProd
+        ? 'strict'
+        : isRequestComingFromLocalHost
+        ? 'none'
+        : sameSite,
       domain: `.${dns}`,
       maxAge: expiry || 15552000000, // 180 days
     });

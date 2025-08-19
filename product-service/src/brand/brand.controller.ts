@@ -17,4 +17,8 @@ export class BrandController {
       select,
     );
   }
+  @Get('alphabetical')
+  async getAlphabeticalAll() {
+    return await this.brandService.getAlphabeticalData();
+  }
 }

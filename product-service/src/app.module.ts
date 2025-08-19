@@ -16,9 +16,13 @@ import { ListingModule } from './common/modules/listing.module';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 import { APP_PIPE } from '@nestjs/core';
 import { HashidsModule } from '@HashIds/hash-ids.module';
+import { TagModule } from './tag/tag.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -37,6 +41,8 @@ import { HashidsModule } from '@HashIds/hash-ids.module';
     SearchModule,
     ListingModule,
     HashidsModule,
+    TagModule,
+    EventEmitterModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [

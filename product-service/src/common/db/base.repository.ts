@@ -1,6 +1,6 @@
 // TODO: Optimization Required...
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 export class BaseRepository<
   TModel extends { is_deleted: boolean },
   TCreateInput,
@@ -13,7 +13,7 @@ export class BaseRepository<
     include?: object | null;
   },
   TFindManyArgs extends object,
-  TFindFirstArgs extends object
+  TFindFirstArgs extends object,
 > {
   protected readonly prismaClient: PrismaClient;
 
@@ -37,7 +37,7 @@ export class BaseRepository<
       }) => Promise<TModel>;
       findFirst: (args: TFindFirstArgs) => Promise<TModel | null>;
       count: (args?: { where?: object }) => Promise<number>;
-    }
+    },
   ) {
     this.prismaClient = prismaClient;
   }
@@ -59,7 +59,7 @@ export class BaseRepository<
   async update(
     where: TWhereUniqueInput,
     data: TUpdateInput,
-    select?: object
+    select?: object,
   ): Promise<TModel> {
     const filteredWhere = this.applyIsDeletedFilter(where);
     const args: {
@@ -109,7 +109,7 @@ export class BaseRepository<
     where?: TWhereInput,
     select?: object,
     order?: object,
-    include?: object
+    include?: object,
   ): Promise<{ data: TModel[]; totalCount: number }> {
     const filteredWhere = this.applyIsDeletedFilter(where as any);
     // if pagenumer is undefined then default page is 1
@@ -143,7 +143,7 @@ export class BaseRepository<
   private applyIsDeletedFilter(userWhere: any): any {
     // If userWhere explicitly defines is_deleted, use that.
     // Otherwise, default to is_deleted: false.
-    if (userWhere && typeof userWhere.is_deleted !== "undefined") {
+    if (userWhere && typeof userWhere.is_deleted !== 'undefined') {
       return userWhere;
     }
     return { ...userWhere, is_deleted: false };

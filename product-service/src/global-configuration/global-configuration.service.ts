@@ -1,3 +1,4 @@
+// global.configuration.service.ts
 import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
 import { StaticConfiguration } from '@Common/static.configurations.keys';
 import ApiResponse from '@Helper/api-response';
@@ -14,54 +15,52 @@ import { GlobalConfigurationRepository } from './global.configuration.repository
 export class GlobalConfigurationService implements OnModuleInit {
   constructor(private readonly repository: GlobalConfigurationRepository) {}
 
-  onModuleInit() {
-    this.getProductViewershipWindowHours().then(
-      (value: ApiResponse<number>) => {
-        console.log(
-          `Setting value for viewershipWindowHours first time$ ${value.data}`,
-        );
-        StaticConfiguration.viewershipWindowHours = value.data;
-      },
-    );
+  async onModuleInit() {
+    this.loadInitialConfigs();
   }
 
-  private async get<T>(key: string, defaultValue?: T): Promise<T> {
-    const config = await this.repository.findUnique({
-      where: { key: key },
+  private async loadInitialConfigs() {
+    const keys = [
+      GlobalConfigKeys.PRODUCT_VIEWERSHIP_LAST_SEEN,
+      GlobalConfigKeys.NEW_ARRIVAL,
+      GlobalConfigKeys.POPULAR,
+      GlobalConfigKeys.BEST_SELLER,
+    ];
+
+    const configs = await this.repository.findMany({
+      where: { key: { in: keys } },
     });
 
-    if (config) {
-      // Basic type conversion, enhance as needed for complex types
-      if (typeof defaultValue === 'number') {
-        return Number(config.value) as T;
-      }
-      return config.value as T;
+    if (!configs || configs.length === 0) {
+      throw new NotFoundException(`Global configurations not found in DB`);
     }
-    throw new NotFoundException(`${key} not found. Please set value via seeed`);
+
+    // Set values in StaticConfiguration
+    configs.forEach((c) => {
+      StaticConfiguration.set(c.key, Number(c.value));
+    });
+
+    console.warn(`Configs loaded`, {
+      viewership: StaticConfiguration.viewershipWindowHours,
+      newArrival: StaticConfiguration.newArrivalWindowHours,
+      popular: StaticConfiguration.popularWindowHours,
+      bestSeller: StaticConfiguration.bestSellerWindowHours,
+    });
   }
 
-  // A specific getter for viewership hours
-  async getProductViewershipWindowHours(): Promise<ApiResponse<number>> {
-    if (!StaticConfiguration.viewershipWindowHours) {
-      const configValue = await this.get<number>(
-        GlobalConfigKeys.PRODUCT_VIEWERSHIP_LAST_SEEN,
-        48,
-      ); // Default to 48 hours
+  getProductViewershipWindowHours(): number {
+    return StaticConfiguration.viewershipWindowHours;
+  }
 
-      return ResponseHelper.CreateResponse<number>(
-        '',
-        configValue,
-        HttpStatus.OK,
-      );
-    } else {
-      console.log(
-        `Getting value from cache ${StaticConfiguration.viewershipWindowHours}`,
-      );
-      return ResponseHelper.CreateResponse<number>(
-        '',
-        StaticConfiguration.viewershipWindowHours,
-        HttpStatus.OK,
-      );
-    }
+  getNewArrivalWindowHours(): number {
+    return StaticConfiguration.newArrivalWindowHours;
+  }
+
+  getPopularWindowHours(): number {
+    return StaticConfiguration.popularWindowHours;
+  }
+
+  getBestSellerWindowHours(): number {
+    return StaticConfiguration.bestSellerWindowHours;
   }
 }
