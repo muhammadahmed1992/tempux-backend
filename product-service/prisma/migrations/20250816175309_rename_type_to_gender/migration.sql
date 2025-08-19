@@ -18,24 +18,6 @@ ADD COLUMN     "gender_id" INTEGER NOT NULL;
 DROP TABLE "products"."type";
 
 -- CreateTable
-CREATE TABLE "products"."collection" (
-    "id" SERIAL NOT NULL,
-    "title" VARCHAR(50) NOT NULL,
-    "order" INTEGER,
-    "image_url" VARCHAR(1000),
-    "brand_id" INTEGER NOT NULL,
-    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" TIMESTAMPTZ(6),
-    "deleted_at" TIMESTAMPTZ(6),
-    "created_by" BIGINT NOT NULL,
-    "updated_by" BIGINT,
-    "deleted_by" BIGINT,
-    "is_deleted" BOOLEAN NOT NULL DEFAULT false,
-
-    CONSTRAINT "collection_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "products"."gender" (
     "id" SERIAL NOT NULL,
     "title" VARCHAR(50) NOT NULL,
@@ -53,19 +35,7 @@ CREATE TABLE "products"."gender" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "collection_brand_id_title_key" ON "products"."collection"("brand_id", "title");
-
--- CreateIndex
 CREATE UNIQUE INDEX "gender_title_key" ON "products"."gender"("title");
-
--- CreateIndex
-CREATE INDEX "product_collection_id_idx" ON "products"."product"("collection_id");
-
--- AddForeignKey
-ALTER TABLE "products"."collection" ADD CONSTRAINT "collection_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "products"."brand"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products"."product" ADD CONSTRAINT "product_gender_id_fkey" FOREIGN KEY ("gender_id") REFERENCES "products"."gender"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "products"."product" ADD CONSTRAINT "product_collection_id_fkey" FOREIGN KEY ("collection_id") REFERENCES "products"."collection"("id") ON DELETE SET NULL ON UPDATE CASCADE;

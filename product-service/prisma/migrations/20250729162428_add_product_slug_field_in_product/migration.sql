@@ -10,7 +10,7 @@
 DROP INDEX "product_reference_number_key";
 
 -- AlterTable
-ALTER TABLE "product" ADD COLUMN     "product_public_id" VARCHAR(10) NOT NULL,
+ALTER TABLE "product"
 ADD COLUMN     "product_slug" VARCHAR(255) NOT NULL;
 
 -- CreateTable
@@ -28,6 +28,3 @@ CREATE TABLE "GlobalConfiguration" (
 
     CONSTRAINT "GlobalConfiguration_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "product_product_public_id_key" ON "product"("product_public_id");
