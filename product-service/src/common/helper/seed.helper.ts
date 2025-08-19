@@ -1630,14 +1630,21 @@ export default class SeedHelper {
   private async seedTags(creatorId: bigint, tx: PrismaClient): Promise<void> {
     console.log('Seeding tags...');
     const tagsData = [
-      { title: 'New Arrival', description: 'Recently added to stock' },
-      { title: 'Best Seller', description: 'Our most popular products' },
-      { title: 'Limited Edition', description: 'Exclusive and rare timepieces' },
-      { title: 'On Sale', description: 'Currently discounted items' },
-      { title: 'Luxury Pick', description: 'Handpicked high-end watches' },
-      { title: 'Smart Tech', description: 'Watches with advanced features' },
-      { title: 'Durable', description: 'Built to last' },
-      { title: 'Classic Design', description: 'Timeless aesthetic' },
+      {
+        key: 'New_Arrival',
+        title: 'New Arrival',
+        description: 'Recently added to stock',
+      },
+      {
+        key: 'POPULAR',
+        title: 'POPULAR',
+        description: 'Our most popular products',
+      },
+      {
+        key: 'Best_Seller',
+        title: 'Best Seller',
+        description: 'Our most sold products',
+      },
     ];
 
     for (const data of tagsData) {
@@ -1655,61 +1662,8 @@ export default class SeedHelper {
     tx: PrismaClient,
   ): Promise<void> {
     console.log('Seeding product tags...');
-    const products = await tx.product.findMany({ select: { id: true } });
-    const tags = await tx.tags.findMany({ select: { id: true } });
-
-    if (products.length === 0 || tags.length === 0) {
-      console.warn(
-        'No products or tags found to create product tags. Skipping.',
-      );
-      return;
-    }
-
-    const productTagsCreated = new Set<string>(); // To track unique [product_id, tag_id] combos
-    let count = 0;
-
-    for (const product of products) {
-      const numTags = getRandomInt(0, Math.min(3, tags.length)); // Assign 0 to 3 tags per product
-
-      for (let i = 0; i < numTags; i++) {
-        const tag = getRandomElement(tags);
-        if (!tag) continue;
-
-        const comboKey = `${product.id}-${tag.id}`;
-        if (productTagsCreated.has(comboKey)) {
-          continue; // Skip if this product-tag combo already exists
-        }
-
-        try {
-          await tx.product_tag.upsert({
-            where: {
-              product_id_tag_id: { product_id: product.id, tag_id: tag.id },
-            },
-            update: { updated_by: creatorId },
-            create: {
-              product_id: product.id,
-              tag_id: tag.id,
-              created_by: creatorId,
-            },
-          });
-          productTagsCreated.add(comboKey);
-          count++;
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002'
-          ) {
-            console.warn(
-              `Product tag for product ${product.id} and tag ${tag.id} already exists. Skipping duplicate.`,
-            );
-          } else {
-            console.error(`Error seeding product tag:`, error);
-            throw error;
-          }
-        }
-      }
-    }
-    console.log(`Seeded ${count} product tags.`);
+    // FYI: External job is implemented for this purpose.
+    console.log('Product not seeded. Now job is implemented to sync data');
   }
 
   private async seedGlobalConfiguration(
