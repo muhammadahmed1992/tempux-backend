@@ -48,17 +48,7 @@ export class GlobalConfigurationService implements OnModuleInit {
     });
   }
 
-  async getConfig<T>(key: string, defaultValue: T): Promise<ApiResponse<T>> {
-    const config = await this.repository.findUnique({
-      where: { key },
-    });
-
-    const value = config
-      ? typeof defaultValue === 'number'
-        ? (Number(config.value) as T)
-        : (config.value as T)
-      : defaultValue;
-
-    return ResponseHelper.CreateResponse('', value, HttpStatus.OK);
+  getProductViewershipWindowHours(): number {
+    return StaticConfiguration.viewershipWindowHours;
   }
 }

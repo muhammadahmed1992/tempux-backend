@@ -3,6 +3,7 @@ import ResponseHelper from '@Helper/response-helper';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ProductAnalyticsRepository } from './product.analytics.repository';
 import { GlobalConfigurationService } from '@GlobalConfiguration/global-configuration.service';
+import { StaticConfiguration } from '@Common/static.configurations.keys';
 
 @Injectable()
 export class ProductAnalyticsService {
@@ -28,11 +29,11 @@ export class ProductAnalyticsService {
   ): Promise<ApiResponse<boolean>> {
     // 1. Get the configured time window for unique viewership
     const viewershipWindowHours =
-      await this.globalConfigService.getProductViewershipWindowHours();
+      this.globalConfigService.getProductViewershipWindowHours();
 
     // 2. Calculate the cutoff time for considering a view "unique"
     const cutoffTime = new Date();
-    cutoffTime.setHours(cutoffTime.getHours() - viewershipWindowHours.data);
+    cutoffTime.setHours(cutoffTime.getHours() - viewershipWindowHours);
 
     // 3. Check if a view for this user, product, and variant exists within the window
     const existingView = await this.repository.findFirst({
