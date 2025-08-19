@@ -1737,6 +1737,60 @@ export default class SeedHelper {
         },
       });
 
+      // Add (or update) the 'NEW_ARRIVAL' configuration
+      await tx.globalConfiguration.upsert({
+        where: {
+          key: 'NEW_ARRIVAL',
+        },
+        update: {
+          value: 7, // Products created in last 7-Days
+          updated_at: new Date(),
+          updated_by: creatorId,
+        },
+        create: {
+          key: 'NEW_ARRIVAL',
+          value: 7, // Products created in last 7-Days.
+          created_at: new Date(),
+          created_by: creatorId,
+        },
+      });
+
+      // Add (or update) the 'POPULAR' configuration
+      await tx.globalConfiguration.upsert({
+        where: {
+          key: 'POPULAR',
+        },
+        update: {
+          value: 15, // select top 10 Product most viewed in last 15 days,
+          updated_at: new Date(),
+          updated_by: creatorId,
+        },
+        create: {
+          key: 'POPULAR',
+          value: 15, // select top 10 Product most viewed in last 15 days,
+          created_at: new Date(),
+          created_by: creatorId,
+        },
+      });
+
+      // Add (or update) the 'BEST_SELLER' configuration
+      await tx.globalConfiguration.upsert({
+        where: {
+          key: 'BEST_SELLER',
+        },
+        update: {
+          value: 10, // select top 10 max products sold in last 10 days
+          updated_at: new Date(),
+          updated_by: creatorId,
+        },
+        create: {
+          key: 'BEST_SELLER',
+          value: 10, // select top 10 max products sold in last 10 days
+          created_at: new Date(),
+          created_by: creatorId,
+        },
+      });
+
       // Add (or update) the 'SEED_SCRIPT_RUN' configuration
       await tx.globalConfiguration.upsert({
         where: {
