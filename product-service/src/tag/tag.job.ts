@@ -13,6 +13,6 @@ export class TagCleanupJob {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handlePopularProductsCron() {
-    await this.tagService.markPopularProductsJob(10);
+    await this.tagService.markPopularProductsJob();
   }
 }

@@ -44,30 +44,29 @@ export class ProductAnalyticsRepository extends BaseRepository<
     return res.length;
   }
 
-  async getProductsExceedingViewLimit(limit: number) {
-    return this.prisma.product_analytics
-      .groupBy({
-        by: ['product_id'],
-        _count: { product_id: true },
-        having: {
-          product_id: {
-            _count: {
-              gt: limit,
-            },
-          },
+  async getProductsExceedingViewLimit(sinceDate: Date, limit: number) {
+    const result = await this.prisma.product_analytics.groupBy({
+      by: ['product_id'],
+      where: {
+        created_at: {
+          gte: sinceDate,
         },
-        orderBy: {
-          _count: {
-            product_id: 'desc',
-          },
+      },
+      _count: {
+        product_id: true,
+      },
+      orderBy: {
+        _count: {
+          product_id: 'desc',
         },
-      })
-      .then((result) =>
-        result.map((r) => ({
-          productId: r.product_id,
-          views: r._count.product_id,
-        })),
-      );
+      },
+      take: limit,
+    });
+
+    return result.map((r) => ({
+      productId: r.product_id,
+      views: r._count.product_id,
+    }));
   }
 
   async getUserRecommendations(userId: bigint, limit = 5) {
