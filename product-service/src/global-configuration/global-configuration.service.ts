@@ -51,4 +51,16 @@ export class GlobalConfigurationService implements OnModuleInit {
   getProductViewershipWindowHours(): number {
     return StaticConfiguration.viewershipWindowHours;
   }
+
+  getNewArrivalWindowHours(): number {
+    return StaticConfiguration.newArrivalWindowHours;
+  }
+
+  getPopularWindowHours(): number {
+    return StaticConfiguration.popularWindowHours;
+  }
+
+  getBestSellerWindowHours(): number {
+    return StaticConfiguration.bestSellerWindowHours;
+  }
 }

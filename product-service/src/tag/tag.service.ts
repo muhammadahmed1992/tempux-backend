@@ -5,11 +5,13 @@ import { SetupListingDTO } from '@DTO/setup-listing.dto';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
 import { ProductAnalyticsRepository } from '@ProductAnalytics/product.analytics.repository';
+import { GlobalConfigurationService } from '@GlobalConfiguration/global-configuration.service';
 @Injectable()
 export class TagService {
   constructor(
     private readonly repository: TagRepository,
     private readonly productAnalyticsRepository: ProductAnalyticsRepository,
+    private readonly globalConfiguration: GlobalConfigurationService,
   ) {}
   async getAllPagedData(
     pageNumber: number,
@@ -28,7 +30,7 @@ export class TagService {
     return ResponseHelper.CreateResponse<SetupListingDTO[]>(
       Constants.DATA_SUCCESS,
       data.map((tag) => ({
-        title: tag.name,
+        title: tag.title,
         id: tag.id,
         description: tag.description,
         created_at: tag.created_at,
@@ -45,9 +47,13 @@ export class TagService {
   }
 
   async cleanupExpiredNewArrivalTags(): Promise<void> {
+    // TODO: Need to get value from database based on key
     const NEW_ARRIVAL_TAG_ID = 1;
     const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setDate(
+      sevenDaysAgo.getDate() -
+        this.globalConfiguration.getNewArrivalWindowHours(),
+    );
 
     const productTags = await this.repository.findByTagId(NEW_ARRIVAL_TAG_ID);
 
@@ -59,12 +65,14 @@ export class TagService {
   }
 
   async markPopularProductsJob(limit = 10): Promise<void> {
+    // TODO: Need to get value from database based on key
     const POPULAR_ARRIVAL_TAG_ID = 9;
     const products =
       await this.productAnalyticsRepository.getProductsExceedingViewLimit(
         limit,
       );
 
+    // TODO: Batch processing needed.
     for (const pt of products) {
       await this.repository.addTag(pt.productId, POPULAR_ARRIVAL_TAG_ID);
     }
