@@ -100,15 +100,12 @@ export class ProductAnalyticsService {
    * @param limit Minimum number of views required
    * @returns List of products with their view counts that exceed the limit
    */
-  async getProductsExceedingViewLimit(
-    limit: number,
-  ): Promise<ApiResponse<{ productId: bigint; views: number }[]>> {
-    const products = await this.repository.getProductsExceedingViewLimit(limit);
-
-    return ResponseHelper.CreateResponse(
-      `Products with views greater than ${limit}`,
-      products,
-      HttpStatus.OK,
+  async getProductsExceedingViewLimit(sinceDate: Date, limit: number) {
+    const products = await this.repository.getProductsExceedingViewLimit(
+      sinceDate,
+      limit,
     );
+
+    return products;
   }
 }
