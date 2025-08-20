@@ -4,14 +4,14 @@ import ApiResponse from '@Helper/api-response';
 import { SetupListingDTO } from '@DTO/setup-listing.dto';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
-import { ProductAnalyticsRepository } from '@ProductAnalytics/product.analytics.repository';
 import { GlobalConfigurationService } from '@GlobalConfiguration/global-configuration.service';
 import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
+import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
 @Injectable()
 export class TagService {
   constructor(
     private readonly repository: TagRepository,
-    private readonly productAnalyticsRepository: ProductAnalyticsRepository,
+    private readonly productAnalyticsService: ProductAnalyticsService,
     private readonly globalConfiguration: GlobalConfigurationService,
   ) {}
   async getAllPagedData(
@@ -84,7 +84,7 @@ export class TagService {
     });
     if (popularID?.id) {
       const products =
-        await this.productAnalyticsRepository.getProductsExceedingViewLimit(
+        await this.productAnalyticsService.getProductsExceedingViewLimit(
           sinceDate,
           10,
         );
@@ -107,12 +107,12 @@ export class TagService {
       if (bestSellerID?.id) {
         await this.repository.addTags(productIds, bestSellerID?.id);
       } else {
-        console.log('[TagService]: Please define best seller in seed data');
+        console.log('Please define best seller in seed data');
       }
       return Promise.resolve(true);
     } catch (e: any) {
       console.error(e);
-      console.error(`[TagService]: Error occurred while tagging best seller.`);
+      console.log(`Error occurred while tagging best seller.`);
       return Promise.resolve(false);
     }
   }
