@@ -107,12 +107,12 @@ export class TagService {
       if (bestSellerID?.id) {
         await this.repository.addTags(productIds, bestSellerID?.id);
       } else {
-        console.log('Please define best seller in seed data');
+        console.log('[TagService]: Please define best seller in seed data');
       }
       return Promise.resolve(true);
     } catch (e: any) {
       console.error(e);
-      console.log(`Error occurred while tagging best seller.`);
+      console.error(`[TagService]: Error occurred while tagging best seller.`);
       return Promise.resolve(false);
     }
   }
