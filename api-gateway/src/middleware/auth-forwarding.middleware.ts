@@ -25,6 +25,11 @@ export class AuthForwardingMiddleware implements NestMiddleware {
     res: Response,
     next: NextFunction,
   ): Promise<void> {
+    const origin = req.headers.origin || req.headers.referer;
+    console.log(`Logging origin from api-gateway: ${origin}`);
+    if (origin) {
+      req.headers['x-client-origin'] = origin;
+    }
     let token = '';
     if (req.cookies && req.cookies['access_token'])
       token = req.cookies['access_token'];

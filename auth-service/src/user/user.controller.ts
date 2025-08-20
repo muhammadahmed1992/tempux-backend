@@ -147,7 +147,9 @@ export class UserController {
       req,
       'provider',
     ) as ProviderType;
-    const socialEmail = CookieHelper.getCookieValue(req, 'ue');
+    const socialEmail = decodeURIComponent(
+      CookieHelper.getCookieValue(req, 'ue')!,
+    );
 
     if (!provider || !socialEmail) {
       this.clearCookies(req, res);
