@@ -1,5 +1,5 @@
 -- CreateSchema
-CREATE SCHEMA IF NOT EXISTS "order";
+CREATE SCHEMA IF NOT EXISTS "orders";
 
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "payments";
@@ -8,7 +8,7 @@ CREATE SCHEMA IF NOT EXISTS "payments";
 CREATE SCHEMA IF NOT EXISTS "shipment";
 
 -- CreateTable
-CREATE TABLE "order"."order" (
+CREATE TABLE "orders"."orders" (
     "id" BIGSERIAL NOT NULL,
     "buyer_id" BIGINT NOT NULL,
     "total_amount" DECIMAL(10,2) NOT NULL,
@@ -26,11 +26,11 @@ CREATE TABLE "order"."order" (
     "deleted_by" BIGINT,
     "is_deleted" BOOLEAN NOT NULL DEFAULT false,
 
-    CONSTRAINT "order_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "orders_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "order"."order_item" (
+CREATE TABLE "orders"."order_item" (
     "id" BIGSERIAL NOT NULL,
     "order_id" BIGINT NOT NULL,
     "seller_id" BIGINT NOT NULL,
@@ -181,7 +181,7 @@ CREATE TABLE "payments"."payout_item_links" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "order_item_order_id_seller_id_product_variant_id_key" ON "order"."order_item"("order_id", "seller_id", "product_variant_id");
+CREATE UNIQUE INDEX "order_item_order_id_seller_id_product_variant_id_key" ON "orders"."order_item"("order_id", "seller_id", "product_variant_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "shipment_provider_name_key" ON "shipment"."shipment_provider"("name");
@@ -199,7 +199,7 @@ CREATE UNIQUE INDEX "payouts_transaction_id_key" ON "payments"."payouts"("transa
 CREATE UNIQUE INDEX "payout_item_links_payout_id_order_item_id_key" ON "payments"."payout_item_links"("payout_id", "order_item_id");
 
 -- AddForeignKey
-ALTER TABLE "order"."order_item" ADD CONSTRAINT "order_item_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "order"."order"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "orders"."order_item" ADD CONSTRAINT "order_item_order_id_fkey" FOREIGN KEY ("order_id") REFERENCES "orders"."orders"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "shipment"."order_item_shipment" ADD CONSTRAINT "order_item_shipment_shipment_id_fkey" FOREIGN KEY ("shipment_id") REFERENCES "shipment"."shipment_provider"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -214,4 +214,4 @@ ALTER TABLE "payments"."payments" ADD CONSTRAINT "payments_payment_method_type_i
 ALTER TABLE "payments"."payout_item_links" ADD CONSTRAINT "payout_item_links_payout_id_fkey" FOREIGN KEY ("payout_id") REFERENCES "payments"."payouts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "payments"."payout_item_links" ADD CONSTRAINT "payout_item_links_order_item_id_fkey" FOREIGN KEY ("order_item_id") REFERENCES "order"."order_item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "payments"."payout_item_links" ADD CONSTRAINT "payout_item_links_order_item_id_fkey" FOREIGN KEY ("order_item_id") REFERENCES "orders"."order_item"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
