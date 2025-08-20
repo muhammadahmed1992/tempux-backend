@@ -1,35 +1,26 @@
 // global.configuration.service.ts
 import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
 import { StaticConfiguration } from '@Common/static.configurations.keys';
-import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { GlobalConfigurationRepository } from './global.configuration.repository';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ProductProxyService } from '@Proxy/product-proxy/product-proxy.service';
 
 @Injectable()
 export class GlobalConfigurationService implements OnModuleInit {
-  constructor(private readonly repository: GlobalConfigurationRepository) {}
+  constructor(private readonly productProxyService: ProductProxyService) {}
 
   async onModuleInit() {
     this.loadInitialConfigs();
   }
 
   private async loadInitialConfigs() {
-    const keys = [GlobalConfigKeys.PLATFORM_COMMISSION];
-
-    const configs = await this.repository.findMany({
-      where: { key: { in: keys } },
-    });
-
-    if (!configs || configs.length === 0) {
-      throw new NotFoundException(`Global configurations not found in DB`);
-    }
-
-    // Set values in StaticConfiguration
-    configs.forEach((c) => {
-      StaticConfiguration.set(c.key, Number(c.value));
-    });
-
+    const response = await this.productProxyService.getPlatformCommission();
+    // Addding a fallback value
+    StaticConfiguration.set(
+      GlobalConfigKeys.PLATFORM_COMMISSION,
+      response || 6.5,
+    );
     console.log(`Configs loaded`, {
-      viewership: StaticConfiguration.platformCommission,
+      platformCommission: StaticConfiguration.platformCommission,
     });
   }
 

@@ -7,9 +7,10 @@ export class AppController {
   constructor() {}
 
   @Get('health')
-  async health(): Promise<ApiResponse<string>> {
-    return ResponseHelper.CreateResponse<string>(
+  async health(): Promise<ApiResponse<boolean>> {
+    return ResponseHelper.CreateResponse<boolean>(
       'Your order service is up and running',
+      true,
       HttpStatus.OK,
     );
   }

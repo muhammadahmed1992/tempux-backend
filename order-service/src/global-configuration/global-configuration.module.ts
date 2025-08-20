@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
-import { GlobalConfigurationController } from './global-configuration.controller';
 import { GlobalConfigurationService } from './global-configuration.service';
-import { GlobalConfigurationRepository } from './global.configuration.repository';
+import { ProductProxyModule } from '@Proxy/product-proxy/product-proxy.module';
 
 @Module({
-  controllers: [GlobalConfigurationController],
-  providers: [GlobalConfigurationService, GlobalConfigurationRepository],
-  exports: [GlobalConfigurationService, GlobalConfigurationRepository],
+  imports: [ProductProxyModule],
+  providers: [GlobalConfigurationService],
+  exports: [GlobalConfigurationService],
 })
 export class GlobalConfigurationModule {}

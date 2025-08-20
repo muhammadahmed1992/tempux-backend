@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom, catchError } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 
 // Define a simple interface for the user data you expect from the User Service
@@ -32,6 +32,25 @@ export class ProductProxyService {
   }
 
   /**
+   * Gets the platform commission value from product service
+   * @returns the value of a platform commission defined in the database.
+   */
+
+  async getPlatformCommission(): Promise<number> {
+    try {
+      const response: AxiosResponse<number> = await firstValueFrom(
+        this.httpService.get<number>(
+          `${this.productSvcUrl}/global-config/platform-commission`,
+        ),
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error(`[OrderService][Product-Proxy-Service]`, error);
+      return 0;
+    }
+  }
+
+  /**
    * Post the completed product details to Product Service, for calculating 'Best Seller' tag and mark them 'Best Seller' If needed.
    * Uses a POST request to handle potentially large lists of IDs.
    * @param productIds An array of Product IDs (string).
@@ -52,7 +71,7 @@ export class ProductProxyService {
       );
 
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`[OrderService][Product-Proxy-Service]`, error);
       return false; // return a safe fallback
     }
