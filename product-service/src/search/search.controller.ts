@@ -4,10 +4,10 @@ import { GetAllQueryDTO } from '@DTO/search.dto';
 
 @Controller('search')
 export class SearchController {
-  constructor(private readonly SearchService: SearchService) {}
+  constructor(private readonly searchService: SearchService) {}
 
   @Get()
   async getAll(@Query() queryDto: GetAllQueryDTO) {
-    return this.SearchService.getAllPagedData(queryDto);
+    return this.searchService.getAllPagedData(queryDto);
   }
 }
