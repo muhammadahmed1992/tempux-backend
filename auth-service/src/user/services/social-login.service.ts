@@ -20,7 +20,7 @@ export class SocialLoginService {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'email,public_profile',
-      state: encodeURIComponent(url),
+      state: url,
     });
     return `https://www.facebook.com/dialog/oauth?${params}`;
   }
@@ -40,7 +40,7 @@ export class SocialLoginService {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'email profile',
-      state: encodeURIComponent(url),
+      state: url,
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }
