@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   CallHandler,
   ExecutionContext,
   HttpStatus,
@@ -25,24 +26,32 @@ export class AuthCookieInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       mergeMap((data) => {
-        const isProd =
-          (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
-          'production';
-        const dns = this.configService.get<string>('DNS')!;
-        const origin = req.headers.origin;
-        const frontendUrl =
-          origin && origin.startsWith('http') && origin.includes('localhost') // validate origin format
-            ? origin
-            : this.configService.get<string>('FRONTEND_URL')!;
+        let origin = '';
+        if (req.query.state) {
+          origin = decodeURIComponent((req.query.state || '') as string);
+        } else {
+          origin = (req.headers['x-client-origin'] || '') as string;
+        }
 
-        //TODO: Will remove
-        console.log(`Print request url in auth.cookie ${frontendUrl}`);
+        console.log(`Logging origin: ${origin}`);
 
         // 2. Check if origin exists and contains 'localhost'
-        // This is used for the cookie's sameSite attribute logic.
-        const isComingFromLocalhost = origin
-          ? origin.includes('localhost')
-          : true;
+        const isComingFromLocalhost = origin.includes('localhost');
+        const frontendUrl = isComingFromLocalhost
+          ? origin
+          : this.configService.get<string>('FRONTEND_URL')!;
+
+        console.log(`Logging frontend url auth.cookie: ${frontendUrl}`);
+
+        const dns = this.configService.get<string>('DNS')!;
+
+        if (!isComingFromLocalhost && !dns) {
+          throw new BadRequestException('DNS is not configured');
+        }
+        if (!frontendUrl) {
+          throw new BadRequestException('FRONTEND_URL is not configured');
+        }
+
         if (
           (data?.statusCode === HttpStatus.OK ||
             data?.statusCode === HttpStatus.CREATED) &&
@@ -52,7 +61,6 @@ export class AuthCookieInterceptor implements NestInterceptor {
           this.userCookieHanlder.handleLoginCookie(
             res as any,
             data?.data?.accessToken,
-            isProd,
             dns,
             isComingFromLocalhost,
           );
