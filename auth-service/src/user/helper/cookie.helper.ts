@@ -4,17 +4,15 @@ export default class CookieHelper {
     res: Response,
     key: string,
     value: any,
-    isProd: boolean,
     dns: string,
     isRequestComingFromLocalHost: boolean,
     expiry?: number,
   ) {
-    //TOOD: Will have to remove this condition
     res.cookie(key, value, {
       httpOnly: true,
-      secure: isRequestComingFromLocalHost ? false : isProd,
+      secure: true,
       sameSite: isRequestComingFromLocalHost ? 'none' : 'strict',
-      domain: isRequestComingFromLocalHost ? undefined : `.${dns}`,
+      domain: isRequestComingFromLocalHost ? undefined : dns,
       maxAge: expiry || 15552000000, // 180 days
     });
   }

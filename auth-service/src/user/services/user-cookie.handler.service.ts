@@ -12,7 +12,6 @@ export class UserCookieHandlerService {
   handleLoginCookie(
     res: Response,
     token: string,
-    isProd: boolean,
     domainUrl: string,
     requestOrigin: boolean,
   ) {
@@ -20,7 +19,6 @@ export class UserCookieHandlerService {
       res as any,
       'access_token',
       token,
-      isProd,
       domainUrl,
       requestOrigin,
     );
@@ -33,7 +31,6 @@ export class UserCookieHandlerService {
   handleUserSocialLoginDetails(
     res: Response,
     data: { socialEmail: string; provider: string },
-    isProd: boolean,
     domainUrl: string,
     isRequestComingFromLocalHost: boolean,
   ) {
@@ -41,7 +38,6 @@ export class UserCookieHandlerService {
       res as any,
       'ue',
       encodeURIComponent(data.socialEmail),
-      isProd,
       domainUrl,
       isRequestComingFromLocalHost,
       3600000, //TODO: 1 hour for now
@@ -50,7 +46,6 @@ export class UserCookieHandlerService {
       res as any,
       'provider',
       data.provider,
-      isProd,
       domainUrl,
       isRequestComingFromLocalHost,
       3600000, //TODO: 1 hour for now
