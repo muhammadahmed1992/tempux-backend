@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   Min,
+  IsArray,
 } from 'class-validator';
 
 export interface SearchResultDTO {
@@ -52,6 +53,11 @@ export class GetAllQueryDTO {
   query?: string;
 
   @IsOptional()
+  @IsString()
   @IsIn(['all', 'brand', 'model', 'category'])
   type?: 'all' | 'brand' | 'model' | 'category';
+
+  @IsOptional()
+  @IsArray()
+  filter?: any[];
 }

@@ -6,10 +6,7 @@ import Constants from '@Helper/constants';
 import { BrandRepository } from '@Brand/brand.repository';
 import { ModelRepository } from '../model/model.repository';
 import { CategoryRepository } from '@Category/category.repository';
-import {
-  GetAllQueryDTO,
-  SearchResultDTO,
-} from '@DTO/search.dto';
+import { GetAllQueryDTO, SearchResultDTO } from '@DTO/search.dto';
 
 @Injectable()
 export class SearchService {
@@ -30,7 +27,7 @@ export class SearchService {
     const updatedQueryDto = { ...queryDto, query: searchQuery };
 
     try {
-      // Route to specific entity if type is specified
+      // Route to specific entity if type is
       if (type !== 'all') {
         return this.getSingleEntityType(type, updatedQueryDto);
       }
@@ -49,7 +46,6 @@ export class SearchService {
     // Check direct query first
     if (queryDto.query) return queryDto.query;
 
-    // Parse filter array structure like filter[0][title][contains]=Rolex
     if (queryDto.filter && Array.isArray(queryDto.filter)) {
       for (const filter of queryDto.filter) {
         if (filter?.title?.contains) {
@@ -91,7 +87,7 @@ export class SearchService {
             id: true,
             title: true,
             image_url: true,
-            brand: { select: { id: true, title: true } }
+            brand: { select: { id: true, title: true } },
           },
           orderBy,
         );
@@ -146,7 +142,7 @@ export class SearchService {
           id: true,
           title: true,
           image_url: true,
-          brand: { select: { id: true, title: true } }
+          brand: { select: { id: true, title: true } },
         },
         orderBy,
       ),
@@ -173,7 +169,10 @@ export class SearchService {
     const endIndex = startIndex + pageSize;
     const paginatedData = sortedData.slice(startIndex, endIndex);
 
-    const totalCount = brandResult.totalCount + modelResult.totalCount + categoryResult.totalCount;
+    const totalCount =
+      brandResult.totalCount +
+      modelResult.totalCount +
+      categoryResult.totalCount;
 
     return ResponseHelper.CreateResponse<SearchResultDTO[]>(
       Constants.DATA_SUCCESS,
@@ -189,11 +188,11 @@ export class SearchService {
   }
 
   private buildSearchWhere(query?: string, baseWhere?: object) {
-    const searchCondition = query ? {
-      OR: [
-        { title: { contains: query, mode: 'insensitive' } },
-      ],
-    } : {};
+    const searchCondition = query
+      ? {
+          OR: [{ title: { contains: query, mode: 'insensitive' } }],
+        }
+      : {};
 
     return {
       AND: [
@@ -226,13 +225,15 @@ export class SearchService {
 
   private sortResults(data: SearchResultDTO[], orderBy?: object) {
     if (!orderBy) {
-      // Default sort: brands first, then models, then categories, all by created_at desc
+      // sorting order: brands first, then models, then categories, all by created_at desc
       return data.sort((a, b) => {
         const typeOrder = { brand: 1, model: 2, category: 3 };
         const typeComparison = typeOrder[a.type] - typeOrder[b.type];
         if (typeComparison !== 0) return typeComparison;
 
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bDate - aDate;
       });
     }
 
@@ -243,6 +244,10 @@ export class SearchService {
     return data.sort((a, b) => {
       const aValue = a[sortField as keyof SearchResultDTO];
       const bValue = b[sortField as keyof SearchResultDTO];
+
+      // Handle null/undefined values
+      if (aValue === null || aValue === undefined) return 1;
+      if (bValue === null || bValue === undefined) return -1;
 
       if (sortDirection === 'asc') {
         return aValue > bValue ? 1 : -1;
@@ -262,99 +267,5 @@ export class SearchService {
       default:
         return '/';
     }
-  }
-
-  // Fast search method using UNION (only for simple search scenarios)
-  async fastSearch(query: string, limit: number = 20): Promise<SearchResultDTO[]> {
-    if (!query || query.trim().length === 0) return [];
-
-    const searchTerm = `%${query.toLowerCase()}%`;
-
-    const result = await this.prisma.$queryRaw`
-      (SELECT id::text, title, 'brand'::text as type, image_url,
-              NULL::text as brand_id, NULL::text as brand_title,
-              created_at, updated_at
-       FROM brands
-       WHERE is_deleted = false AND LOWER(title) LIKE ${searchTerm}
-       ORDER BY title ASC
-       LIMIT ${Math.ceil(limit / 3)})
-
-      UNION ALL
-
-      (SELECT m.id::text, m.title, 'model'::text as type, m.image_url,
-              m.brand_id::text, b.title as brand_title,
-              m.created_at, m.updated_at
-       FROM models m
-       LEFT JOIN brands b ON m.brand_id = b.id
-       WHERE m.is_deleted = false AND LOWER(m.title) LIKE ${searchTerm}
-       ORDER BY m.title ASC
-       LIMIT ${Math.ceil(limit / 3)})
-
-      UNION ALL
-
-      (SELECT id::text, title, 'category'::text as type, image_url,
-              NULL::text as brand_id, NULL::text as brand_title,
-              created_at, updated_at
-       FROM categories
-       WHERE is_deleted = false AND LOWER(title) LIKE ${searchTerm}
-       ORDER BY title ASC
-       LIMIT ${Math.ceil(limit / 3)})
-
-      ORDER BY type, title
-      LIMIT ${limit}
-    `;
-
-    return this.transformResults(result as any[]);
-  }
-
-  private transformResults(rawData: any[]): SearchResultDTO[] {
-    return rawData.map((item) => ({
-      id: item.id,
-      title: item.title,
-      type: item.type as 'brand' | 'model' | 'category',
-      image_url: item.image_url,
-      brand_id: item.brand_id,
-      brand_title: item.brand_title,
-      category_id: item.type === 'category' ? item.id : undefined,
-      category_title: item.type === 'category' ? item.title : undefined,
-      parent_category_id: undefined,
-      created_at: item.created_at,
-      updated_at: item.updated_at,
-      redirect_url: this.generateRedirectUrl(item.type, item),
-    }));
-  }
-
-  // Legacy compatibility method
-  async searchBrandsModelsCategories(searchDto: {
-    query?: string;
-    type?: 'all' | 'brand' | 'model' | 'category';
-    limit?: number;
-    page?: number;
-  }) {
-    // Use fast search for simple queries
-    if (searchDto.query && searchDto.query.trim().length > 0) {
-      const results = await this.fastSearch(searchDto.query, searchDto.limit || 20);
-
-      return {
-        brands: results.filter(r => r.type === 'brand'),
-        models: results.filter(r => r.type === 'model'),
-        categories: results.filter(r => r.type === 'category'),
-      };
-    }
-
-    // Use regular paginated method for complex queries
-    const queryDto: GetAllQueryDTO = {
-      type: searchDto.type || 'all',
-      pageSize: searchDto.limit || 20,
-      page: searchDto.page || 1,
-    };
-
-    const response = await this.getAllPagedData(queryDto);
-
-    return {
-      brands: response.data.filter(r => r.type === 'brand'),
-      models: response.data.filter(r => r.type === 'model'),
-      categories: response.data.filter(r => r.type === 'category'),
-    };
   }
 }
