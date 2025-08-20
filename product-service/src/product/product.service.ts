@@ -261,7 +261,7 @@ export class ProductService {
             select: {
               tags: {
                 select: {
-                  name: true,
+                  title: true,
                 },
               },
             },

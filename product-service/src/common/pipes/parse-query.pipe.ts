@@ -22,6 +22,8 @@ interface RawQueryParams {
   // when using NestJS, but we can also handle a JSON string just in case.
   filter?: string | Record<string, any>;
   expression?: CustomFilter;
+  type?: string;
+  query?: string;
   // This captures all other query parameters that don't match the above
   [key: string]: any;
 }
@@ -36,6 +38,8 @@ export interface TransformedQuery {
   select?: { [key: string]: boolean };
   where?: Record<string, any>;
   customCategoryExpression?: CustomFilter;
+  type?: string;
+  query?: string;
 }
 
 type PrismaOperator =
@@ -102,6 +106,8 @@ export class ParseQueryPipe
       sortDir,
       select,
       expression,
+      type,
+      query,
       ...filterQueryParams
     } = value;
 
@@ -109,6 +115,14 @@ export class ParseQueryPipe
       page: parseInt(page || '1', 10),
       pageSize: Number(pageSize) || Constants.MAX_PAGE_SIZE,
     };
+
+    // Add type and query if they exist
+    if (type) {
+      transformed.type = type;
+    }
+    if (query) {
+      transformed.query = query;
+    }
 
     // 1. Parse and transform 'orderBy'
     if (sortBy && sortDir) {

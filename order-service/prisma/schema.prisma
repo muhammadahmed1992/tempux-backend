@@ -6,10 +6,10 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL_DEV_ORDER")
-  schemas = ["order", "payments", "shipment"]
+  schemas = ["orders", "payments", "shipment"]
 }
 
-model order {
+model orders {
   id           BigInt          @id @default(autoincrement())
   buyer_id     BigInt          @db.BigInt
   total_amount  Decimal       @db.Decimal(10,2)
@@ -29,12 +29,12 @@ model order {
 
   is_deleted   Boolean      @default(false)
   order_items order_item[] @relation("Order")
-  @@schema("order")
+  @@schema("orders")
 }
 model order_item {
   id           BigInt          @id @default(autoincrement())
   order_id    BigInt           @db.BigInt
-  order order @relation("Order", fields:[order_id], references: [id])
+  order orders @relation("Order", fields:[order_id], references: [id])
   seller_id     BigInt          @db.BigInt
   product_variant_id  BigInt    @db.BigInt
   quantity      Int             @db.Integer
@@ -59,7 +59,7 @@ model order_item {
   is_deleted   Boolean      @default(false)
   payout_item_links payout_item_link[]
   @@unique([order_id, seller_id, product_variant_id])
-  @@schema("order")
+  @@schema("orders")
 }
 model shipment_provider {
   id           BigInt          @id @default(autoincrement())
