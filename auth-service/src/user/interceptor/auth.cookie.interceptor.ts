@@ -35,17 +35,14 @@ export class AuthCookieInterceptor implements NestInterceptor {
 
         console.log(`Logging origin: ${origin}`);
 
-        // 2. Check if origin exists and contains 'localhost'
-        const isComingFromLocalhost = origin.includes('localhost');
-        const frontendUrl = isComingFromLocalhost
-          ? origin
-          : this.configService.get<string>('FRONTEND_URL')!;
+        const frontendUrl =
+          origin || this.configService.get<string>('FRONTEND_URL')!;
 
         console.log(`Logging frontend url auth.cookie: ${frontendUrl}`);
 
         const dns = this.configService.get<string>('DNS')!;
 
-        if (!isComingFromLocalhost && !dns) {
+        if (!dns) {
           throw new BadRequestException('DNS is not configured');
         }
         if (!frontendUrl) {
@@ -62,7 +59,6 @@ export class AuthCookieInterceptor implements NestInterceptor {
             res as any,
             data?.data?.accessToken,
             dns,
-            isComingFromLocalhost,
           );
           // We don't need that now as we'd moved this into access_token cookie.
           delete data?.data.accessToken;

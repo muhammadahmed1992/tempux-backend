@@ -5,15 +5,13 @@ export default class CookieHelper {
     key: string,
     value: any,
     dns: string,
-    isRequestComingFromLocalHost: boolean,
     expiry?: number,
   ) {
     res.cookie(key, value, {
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
-      // setting undefined for now TODO:
-      domain: undefined,
+      sameSite: 'strict',
+      domain: dns,
       maxAge: expiry || 15552000000, // 180 days
     });
   }

@@ -9,19 +9,8 @@ export class UserCookieHandlerService {
    * @param token This contains the jwt-token of after successfully logged-in user
    * @returns nothing but creates a access_token http cookie
    */
-  handleLoginCookie(
-    res: Response,
-    token: string,
-    domainUrl: string,
-    requestOrigin: boolean,
-  ) {
-    CookieHelper.setCookies(
-      res as any,
-      'access_token',
-      token,
-      domainUrl,
-      requestOrigin,
-    );
+  handleLoginCookie(res: Response, token: string, domainUrl: string) {
+    CookieHelper.setCookies(res as any, 'access_token', token, domainUrl);
   }
 
   /**
@@ -32,14 +21,12 @@ export class UserCookieHandlerService {
     res: Response,
     data: { socialEmail: string; provider: string },
     domainUrl: string,
-    isRequestComingFromLocalHost: boolean,
   ) {
     CookieHelper.setCookies(
       res as any,
       'ue',
       encodeURIComponent(data.socialEmail),
       domainUrl,
-      isRequestComingFromLocalHost,
       3600000, //TODO: 1 hour for now
     );
     CookieHelper.setCookies(
@@ -47,7 +34,6 @@ export class UserCookieHandlerService {
       'provider',
       data.provider,
       domainUrl,
-      isRequestComingFromLocalHost,
       3600000, //TODO: 1 hour for now
     );
   }
