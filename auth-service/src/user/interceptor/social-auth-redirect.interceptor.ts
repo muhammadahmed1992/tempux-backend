@@ -52,20 +52,16 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       origin = (req.headers['x-client-origin'] || '') as string;
     }
 
-
     console.log(`Logging origin: ${origin}`);
 
-    // 2. Check if origin exists and contains 'localhost'
-    const isComingFromLocalhost = origin.includes('localhost');
-    const frontendUrl = isComingFromLocalhost
-      ? origin
-      : this.configService.get<string>('FRONTEND_URL')!;
+    const frontendUrl =
+      origin || this.configService.get<string>('FRONTEND_URL')!;
 
     console.log(`Logging frontend url social-auth-redirect: ${frontendUrl}`);
 
     const dns = this.configService.get<string>('DNS')!;
 
-    if (!isComingFromLocalhost && !dns) {
+    if (!dns) {
       throw new BadRequestException('DNS is not configured');
     }
     if (!frontendUrl) {
@@ -85,7 +81,6 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
           res as any,
           { socialEmail, provider },
           dns,
-          isComingFromLocalhost,
         );
         safeRedirect(`${frontendUrl}/account-check`);
         return of(null);
@@ -109,7 +104,6 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
               res as any,
               result?.data.accessToken,
               dns,
-              isComingFromLocalhost,
             );
           }
           res.redirect(frontendUrl);
