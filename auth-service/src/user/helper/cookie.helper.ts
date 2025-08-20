@@ -12,9 +12,9 @@ export default class CookieHelper {
     //TOOD: Will have to remove this condition
     res.cookie(key, value, {
       httpOnly: true,
-      secure: isProd,
+      secure: isRequestComingFromLocalHost ? false : isProd,
       sameSite: isRequestComingFromLocalHost ? 'none' : 'strict',
-      domain: `.${dns}`,
+      domain: isRequestComingFromLocalHost ? undefined : `.${dns}`,
       maxAge: expiry || 15552000000, // 180 days
     });
   }
