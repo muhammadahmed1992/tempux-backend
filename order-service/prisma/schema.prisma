@@ -12,6 +12,7 @@ datasource db {
 model orders {
   id           BigInt          @id @default(autoincrement())
   buyer_id     BigInt          @db.BigInt
+  product_Id    BigInt          @db.BigInt
   total_discount      Decimal  @default(0) @db.Decimal(10,2)
   total_tax     Decimal        @db.Decimal(10,2)
   total_shipping_cost Decimal  @db.Decimal(10,2)
