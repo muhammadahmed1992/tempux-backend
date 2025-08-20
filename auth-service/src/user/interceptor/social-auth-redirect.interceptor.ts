@@ -54,8 +54,6 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
         ? origin
         : this.configService.get<string>('FRONTEND_URL')!;
 
-    //TODO: Will remove
-    console.log(`Print request url in social-auth.cookie ${frontendUrl}`);
     const isProd =
       (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
       'production';
