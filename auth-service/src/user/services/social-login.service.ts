@@ -8,7 +8,7 @@ export class SocialLoginService {
   /**
    * @returns url string for facebook login (oAuth)
    */
-  getFacebookLoginUrl() {
+  getFacebookLoginUrl(url: string) {
     const appId = this.configService.get<string>('FACEBOOK_APP_ID');
     const redirectUri = this.configService.get<string>('FACEBOOK_CALLBACK_URL');
     if (!appId) throw new BadRequestException('Facebook App Id is not defined');
@@ -20,6 +20,7 @@ export class SocialLoginService {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'email,public_profile',
+      state: encodeURIComponent(url),
     });
     return `https://www.facebook.com/dialog/oauth?${params}`;
   }
@@ -27,7 +28,7 @@ export class SocialLoginService {
   /**
    * @returns url string for google login (oAuth)
    */
-  getGoogleLoginUrl() {
+  getGoogleLoginUrl(url: string) {
     const appId = this.configService.get<string>('GOOGLE_CLIENT_ID');
     const redirectUri = this.configService.get<string>('GOOGLE_CALLBACK_URL');
     if (!appId) throw new BadRequestException('Facebook App Id is not defined');
@@ -39,6 +40,7 @@ export class SocialLoginService {
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'email profile',
+      state: encodeURIComponent(url),
     });
     return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   }
