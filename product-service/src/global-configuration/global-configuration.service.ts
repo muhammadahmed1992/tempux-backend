@@ -1,14 +1,7 @@
 // global.configuration.service.ts
 import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
 import { StaticConfiguration } from '@Common/static.configurations.keys';
-import ApiResponse from '@Helper/api-response';
-import ResponseHelper from '@Helper/response-helper';
-import {
-  HttpStatus,
-  Injectable,
-  NotFoundException,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { GlobalConfigurationRepository } from './global.configuration.repository';
 
 @Injectable()
@@ -40,7 +33,7 @@ export class GlobalConfigurationService implements OnModuleInit {
       StaticConfiguration.set(c.key, Number(c.value));
     });
 
-    console.warn(`Configs loaded`, {
+    console.log(`Configs loaded`, {
       viewership: StaticConfiguration.viewershipWindowHours,
       newArrival: StaticConfiguration.newArrivalWindowHours,
       popular: StaticConfiguration.popularWindowHours,
