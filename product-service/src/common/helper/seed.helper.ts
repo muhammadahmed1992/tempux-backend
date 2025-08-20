@@ -3,7 +3,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import { HashidsService } from '../../hash-ids/hashids.service'; // Adjust path if necessary
 import { SlugService } from '../../slug/slug.service'; // Adjust path if necessary
 import { ConfigService } from '@nestjs/config';
-import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
+import { GlobalConfigKeys } from '../../common/enums/global-config-keys';
 
 function getRandomElement<T>(arr: T[]): T | undefined {
   if (arr.length === 0) return undefined;
