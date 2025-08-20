@@ -11,4 +11,9 @@ export class GlobalConfigurationController {
   async viewershipAnalytics() {
     return this.globalConfigurationService.getProductViewershipWindowHours();
   }
+
+  @Get('platform-commission')
+  async platformCommission() {
+    return this.globalConfigurationService.getProductViewershipWindowHours();
+  }
 }

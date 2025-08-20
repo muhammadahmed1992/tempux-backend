@@ -35,4 +35,8 @@ export class StaticConfiguration {
   public static get bestSellerWindowHours(): number {
     return this.get(GlobalConfigKeys.BEST_SELLER, 10);
   }
+
+  public static get platformCommission(): number {
+    return this.get(GlobalConfigKeys.PLATFORM_COMMISSION, 6.5);
+  }
 }

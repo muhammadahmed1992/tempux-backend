@@ -21,7 +21,6 @@
       "@Repository/*": ["src/common/db/*"],
       "@DTO/*": ["src/common/dto/*"],
       "@Helper/*": ["src/common/helper/*"],
-      "@Common/*": ["src/common/*"],
       "@Auth/*": ["src/auth/*"],
       "@Brand/*": ["src/brand/*"],
       "@Cart/*": ["src/cart/*"],

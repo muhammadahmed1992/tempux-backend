@@ -28,10 +28,18 @@ export class AuthCookieInterceptor implements NestInterceptor {
         const isProd =
           (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
           'production';
-        const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
         const dns = this.configService.get<string>('DNS')!;
         const origin = req.headers.origin;
+        const frontendUrl =
+          origin && origin.startsWith('http') && origin.includes('localhost') // validate origin format
+            ? origin
+            : this.configService.get<string>('FRONTEND_URL')!;
+
+        //TODO: Will remove
+        console.log(`Print request url in auth.cookie ${frontendUrl}`);
+
         // 2. Check if origin exists and contains 'localhost'
+        // This is used for the cookie's sameSite attribute logic.
         const isComingFromLocalhost = origin
           ? origin.includes('localhost')
           : true;

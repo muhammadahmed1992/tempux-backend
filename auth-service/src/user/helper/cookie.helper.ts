@@ -4,7 +4,6 @@ export default class CookieHelper {
     res: Response,
     key: string,
     value: any,
-    sameSite: 'lax' | 'strict',
     isProd: boolean,
     dns: string,
     isRequestComingFromLocalHost: boolean,
@@ -18,7 +17,7 @@ export default class CookieHelper {
         ? 'strict'
         : isRequestComingFromLocalHost
         ? 'none'
-        : sameSite,
+        : 'strict',
       domain: `.${dns}`,
       maxAge: expiry || 15552000000, // 180 days
     });

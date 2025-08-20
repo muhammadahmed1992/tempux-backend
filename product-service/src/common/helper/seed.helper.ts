@@ -2,9 +2,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { HashidsService } from '../../hash-ids/hashids.service'; // Adjust path if necessary
 import { SlugService } from '../../slug/slug.service'; // Adjust path if necessary
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../../app.module';
 import { ConfigService } from '@nestjs/config';
+import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
 
 function getRandomElement<T>(arr: T[]): T | undefined {
   if (arr.length === 0) return undefined;
@@ -1676,7 +1675,7 @@ export default class SeedHelper {
       // Add (or update) the 'PRODUCT_VIEWERSHIP_LAST_SEEN' configuration
       await tx.globalConfiguration.upsert({
         where: {
-          key: 'PRODUCT_VIEWERSHIP_LAST_SEEN',
+          key: GlobalConfigKeys.PRODUCT_VIEWERSHIP_LAST_SEEN,
         },
         update: {
           value: await this.getAnalyticsWindowHours(), // Dynamic value for analytics window
@@ -1684,7 +1683,7 @@ export default class SeedHelper {
           updated_by: creatorId,
         },
         create: {
-          key: 'PRODUCT_VIEWERSHIP_LAST_SEEN',
+          key: GlobalConfigKeys.PRODUCT_VIEWERSHIP_LAST_SEEN,
           value: await this.getAnalyticsWindowHours(),
           created_at: new Date(),
           created_by: creatorId,
@@ -1694,7 +1693,7 @@ export default class SeedHelper {
       // Add (or update) the 'NEW_ARRIVAL' configuration
       await tx.globalConfiguration.upsert({
         where: {
-          key: 'NEW_ARRIVAL',
+          key: GlobalConfigKeys.NEW_ARRIVAL,
         },
         update: {
           value: 7, // Products created in last 7-Days
@@ -1702,7 +1701,7 @@ export default class SeedHelper {
           updated_by: creatorId,
         },
         create: {
-          key: 'NEW_ARRIVAL',
+          key: GlobalConfigKeys.NEW_ARRIVAL,
           value: 7, // Products created in last 7-Days.
           created_at: new Date(),
           created_by: creatorId,
@@ -1712,7 +1711,7 @@ export default class SeedHelper {
       // Add (or update) the 'POPULAR' configuration
       await tx.globalConfiguration.upsert({
         where: {
-          key: 'POPULAR',
+          key: GlobalConfigKeys.POPULAR,
         },
         update: {
           value: 15, // select top 10 Product most viewed in last 15 days,
@@ -1720,7 +1719,7 @@ export default class SeedHelper {
           updated_by: creatorId,
         },
         create: {
-          key: 'POPULAR',
+          key: GlobalConfigKeys.POPULAR,
           value: 15, // select top 10 Product most viewed in last 15 days,
           created_at: new Date(),
           created_by: creatorId,
@@ -1730,7 +1729,7 @@ export default class SeedHelper {
       // Add (or update) the 'BEST_SELLER' configuration
       await tx.globalConfiguration.upsert({
         where: {
-          key: 'BEST_SELLER',
+          key: GlobalConfigKeys.BEST_SELLER,
         },
         update: {
           value: 10, // select top 10 max products sold in last 10 days
@@ -1738,7 +1737,7 @@ export default class SeedHelper {
           updated_by: creatorId,
         },
         create: {
-          key: 'BEST_SELLER',
+          key: GlobalConfigKeys.BEST_SELLER,
           value: 10, // select top 10 max products sold in last 10 days
           created_at: new Date(),
           created_by: creatorId,
@@ -1748,7 +1747,7 @@ export default class SeedHelper {
       // Add (or update) the 'SEED_SCRIPT_RUN' configuration
       await tx.globalConfiguration.upsert({
         where: {
-          key: 'SEED_SCRIPT_RUN',
+          key: GlobalConfigKeys.SEED_SCRIPT_RUN,
         },
         update: {
           value: await this.getSeedScriptRunFlag(), // Always set to '1' to ensure seed runs on subsequent executions
@@ -1756,13 +1755,30 @@ export default class SeedHelper {
           updated_by: creatorId,
         },
         create: {
-          key: 'SEED_SCRIPT_RUN',
+          key: GlobalConfigKeys.SEED_SCRIPT_RUN,
           value: 1, // Default set to '1' so that it will get executed.
           created_at: new Date(),
           created_by: creatorId,
         },
       });
 
+      // Add (or update) the 'PLATFORM_COMMISSION' configuration
+      await tx.globalConfiguration.upsert({
+        where: {
+          key: GlobalConfigKeys.PLATFORM_COMMISSION,
+        },
+        update: {
+          value: 6.5,
+          updated_at: new Date(),
+          updated_by: creatorId, // Always set to '1' to ensure seed runs on subsequent executions
+        },
+        create: {
+          key: GlobalConfigKeys.PLATFORM_COMMISSION,
+          value: 6.5,
+          created_at: new Date(),
+          created_by: creatorId, // Default set to '1' so that it will get executed.
+        },
+      });
       console.log(`GlobalConfiguration seeded.`);
       console.log(`Seeding finished.`);
     } catch (error) {
