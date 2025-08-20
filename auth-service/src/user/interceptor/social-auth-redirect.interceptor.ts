@@ -45,7 +45,7 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
         SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
       >;
     };
-    const origin = req.headers.origin;
+    const origin = (req.headers['x-client-origin'] || '') as string;
     console.log(`Logging origin: ${origin}`);
     // 2. Check if origin exists and contains 'localhost'
     const isComingFromLocalhost = origin ? origin.includes('localhost') : true;
