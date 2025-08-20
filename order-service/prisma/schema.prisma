@@ -12,13 +12,13 @@ datasource db {
 model orders {
   id           BigInt          @id @default(autoincrement())
   buyer_id     BigInt          @db.BigInt
-  total_amount  Decimal       @db.Decimal(10,2)
-  total_tax     Decimal       @db.Decimal(10,2)
-  discount      Decimal       @default(0) @db.Decimal(10,2)
-  total_commission  Decimal   @db.Decimal(10,2)
-  total_shipping_cost Decimal @db.Decimal(10,2)
-  order_date    DateTime      @default(now()) @db.Timestamptz(6)
-  order_status  String        @default("PENDING") @db.VarChar(15)
+  total_discount      Decimal  @default(0) @db.Decimal(10,2)
+  total_tax     Decimal        @db.Decimal(10,2)
+  total_shipping_cost Decimal  @db.Decimal(10,2)
+  total_amount  Decimal        @db.Decimal(10,2)
+  order_date    DateTime       @default(now()) @db.Timestamptz(6)
+  order_status  String         @default("PENDING") @db.VarChar(15)
+
   created_at   DateTime        @default(now()) @db.Timestamptz(6)
   updated_at   DateTime?       @db.Timestamptz(6)
   deleted_at   DateTime?       @db.Timestamptz(6)
@@ -36,16 +36,16 @@ model order_item {
   order_id    BigInt           @db.BigInt
   order orders @relation("Order", fields:[order_id], references: [id])
   seller_id     BigInt          @db.BigInt
+  product_Id    BigInt          @db.BigInt
   product_variant_id  BigInt    @db.BigInt
   quantity      Int             @db.Integer
-
   price  Decimal       @db.Decimal(10,2)
+  discount Decimal      @db.Decimal(10,2)
   tax_amount     Decimal       @db.Decimal(10,2)
   total_price      Decimal      @db.Decimal(10,2)
-  commission  Decimal   @db.Decimal(10,2)
   order_item_date    DateTime      @default(now()) @db.Timestamptz(6)
   order_status  String        @default("PENDING") @db.VarChar(15)
-  // This is for sellers if their payment is pending.
+  // This is for seller if their payment is pending.
   payout_status  String        @default("PENDING") @db.VarChar(15)
   escrow_status  String        @default("HELD") @db.VarChar(15)
   created_at   DateTime        @default(now()) @db.Timestamptz(6)
@@ -58,7 +58,7 @@ model order_item {
 
   is_deleted   Boolean      @default(false)
   payout_item_links payout_item_link[]
-  @@unique([order_id, seller_id, product_variant_id])
+  @@unique([order_id, seller_id, product_Id, product_variant_id])
   @@schema("orders")
 }
 model shipment_provider {
@@ -135,7 +135,7 @@ model payment_method_type {
   @@schema("payments")
 }
 
-// NEW: Payment Model (Customer's payment for an Order)
+// Payment Model (Customer's payment for an Order)
 model payment {
   id                   BigInt              @id @default(autoincrement())
   order_id             BigInt              @db.BigInt

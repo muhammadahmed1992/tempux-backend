@@ -11,11 +11,10 @@ CREATE SCHEMA IF NOT EXISTS "shipment";
 CREATE TABLE "orders"."orders" (
     "id" BIGSERIAL NOT NULL,
     "buyer_id" BIGINT NOT NULL,
-    "total_amount" DECIMAL(10,2) NOT NULL,
+    "total_discount" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "total_tax" DECIMAL(10,2) NOT NULL,
-    "discount" DECIMAL(10,2) NOT NULL DEFAULT 0,
-    "total_commission" DECIMAL(10,2) NOT NULL,
     "total_shipping_cost" DECIMAL(10,2) NOT NULL,
+    "total_amount" DECIMAL(10,2) NOT NULL,
     "order_date" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "order_status" VARCHAR(15) NOT NULL DEFAULT 'PENDING',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -34,12 +33,13 @@ CREATE TABLE "orders"."order_item" (
     "id" BIGSERIAL NOT NULL,
     "order_id" BIGINT NOT NULL,
     "seller_id" BIGINT NOT NULL,
+    "product_Id" BIGINT NOT NULL,
     "product_variant_id" BIGINT NOT NULL,
     "quantity" INTEGER NOT NULL,
     "price" DECIMAL(10,2) NOT NULL,
+    "discount" DECIMAL(10,2) NOT NULL,
     "tax_amount" DECIMAL(10,2) NOT NULL,
     "total_price" DECIMAL(10,2) NOT NULL,
-    "commission" DECIMAL(10,2) NOT NULL,
     "order_item_date" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "order_status" VARCHAR(15) NOT NULL DEFAULT 'PENDING',
     "payout_status" VARCHAR(15) NOT NULL DEFAULT 'PENDING',
@@ -181,7 +181,7 @@ CREATE TABLE "payments"."payout_item_links" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "order_item_order_id_seller_id_product_variant_id_key" ON "orders"."order_item"("order_id", "seller_id", "product_variant_id");
+CREATE UNIQUE INDEX "order_item_order_id_seller_id_product_Id_product_variant_id_key" ON "orders"."order_item"("order_id", "seller_id", "product_Id", "product_variant_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "shipment_provider_name_key" ON "shipment"."shipment_provider"("name");
