@@ -140,6 +140,7 @@ export class UserController {
   @Post('account-existance')
   async validateAssociatedAccount(
     @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @Body('email') email: string,
   ) {
     const provider = CookieHelper.getCookieValue(
@@ -149,6 +150,7 @@ export class UserController {
     const socialEmail = CookieHelper.getCookieValue(req, 'ue');
 
     if (!provider || !socialEmail) {
+      this.clearCookies(req, res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -162,7 +164,10 @@ export class UserController {
   }
 
   @Post('/social-media')
-  async createUserBySocialMedia(@Req() req: Request) {
+  async createUserBySocialMedia(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const provider = CookieHelper.getCookieValue(
       req,
       'provider',
@@ -170,6 +175,7 @@ export class UserController {
     const socialEmail = CookieHelper.getCookieValue(req, 'ue');
 
     if (!provider || !socialEmail) {
+      this.clearCookies(req, res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -196,17 +202,21 @@ export class UserController {
   @UseGuards(HeaderAuthGuard)
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
-    const isProd =
-      (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
-      'production';
-    CookieHelper.clearAllCookies(req, res, 'strict', isProd, frontEndUrl);
-
+    this.clearCookies(req, res);
     return ResponseHelper.CreateResponse<any>(
       'You have been successfully logout',
       null,
       HttpStatus.OK,
     );
+  }
+
+  // TODO: Will fix typings
+  private async clearCookies(req: any, res: any) {
+    const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
+    const isProd =
+      (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
+      'production';
+    CookieHelper.clearAllCookies(req, res, 'strict', isProd, frontEndUrl);
   }
 }
 
