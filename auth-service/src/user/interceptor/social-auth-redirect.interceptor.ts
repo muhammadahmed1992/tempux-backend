@@ -6,7 +6,7 @@ import {
   NestInterceptor,
   UnauthorizedException,
 } from '@nestjs/common';
-import { defer, from, Observable, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { HttpStatus } from '@nestjs/common';
@@ -16,7 +16,6 @@ import {
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
 } from '@User/dtos/social-login-response.dto';
-import CookieHelper from '@User/helper/cookie.helper';
 import { UserCookieHandlerService } from '@User/services/user-cookie.handler.service';
 
 @Injectable()
@@ -45,22 +44,28 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
         SocialLoginResponseDTO | SocialLoginVerifyUserResponseDTO
       >;
     };
-    const origin = (req.query.state ||
-      req.headers['x-client-origin'] ||
-      '') as string;
-    console.log(`Logging origin: ${origin}`);
-    // 2. Check if origin exists and contains 'localhost'
-    const isComingFromLocalhost = origin ? origin.includes('localhost') : true;
-    const frontendUrl =
-      origin && origin.startsWith('http') && origin.includes('localhost') // validate origin format
-        ? origin
-        : this.configService.get<string>('FRONTEND_URL')!;
 
-    const isProd =
-      (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
-      'production';
-    const dns = this.configService.get<string>('DNS');
-    if (!dns) {
+    let origin = '';
+    if (req.query.state) {
+      origin = decodeURIComponent((req.query.state || '') as string);
+    } else {
+      origin = (req.headers['x-client-origin'] || '') as string;
+    }
+
+
+    console.log(`Logging origin: ${origin}`);
+
+    // 2. Check if origin exists and contains 'localhost'
+    const isComingFromLocalhost = origin.includes('localhost');
+    const frontendUrl = isComingFromLocalhost
+      ? origin
+      : this.configService.get<string>('FRONTEND_URL')!;
+
+    console.log(`Logging frontend url social-auth-redirect: ${frontendUrl}`);
+
+    const dns = this.configService.get<string>('DNS')!;
+
+    if (!isComingFromLocalhost && !dns) {
       throw new BadRequestException('DNS is not configured');
     }
     if (!frontendUrl) {
@@ -79,7 +84,6 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
         this.userCookieHandlerService.handleUserSocialLoginDetails(
           res as any,
           { socialEmail, provider },
-          isProd,
           dns,
           isComingFromLocalhost,
         );
@@ -104,7 +108,6 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
             this.userCookieHandlerService.handleLoginCookie(
               res as any,
               result?.data.accessToken,
-              isProd,
               dns,
               isComingFromLocalhost,
             );
