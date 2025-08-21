@@ -171,6 +171,7 @@ export class UserController {
   async createUserBySocialMedia(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
+    @Body('email') email: string,
   ) {
     const provider = CookieHelper.getCookieValue(
       req,
@@ -179,13 +180,14 @@ export class UserController {
     const socialEmail = decodeURIComponent(
       CookieHelper.getCookieValue(req, 'ue')!,
     );
-    console.log(`social email: ${socialEmail}`);
+    console.log(`social-media: social email: ${socialEmail}`);
     if (!provider || !socialEmail) {
       this.clearCookies(req, res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
     }
+    let processedEmail = email || socialEmail;
 
     const result = await this.userService.createUserBySocialLoginEmail(
       socialEmail,
