@@ -4,14 +4,14 @@ import ApiResponse from '@Helper/api-response';
 import { SetupListingDTO } from '@DTO/setup-listing.dto';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
-import { ProductAnalyticsRepository } from '@ProductAnalytics/product.analytics.repository';
 import { GlobalConfigurationService } from '@GlobalConfiguration/global-configuration.service';
 import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
+import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
 @Injectable()
 export class TagService {
   constructor(
     private readonly repository: TagRepository,
-    private readonly productAnalyticsRepository: ProductAnalyticsRepository,
+    private readonly productAnalyticsService: ProductAnalyticsService,
     private readonly globalConfiguration: GlobalConfigurationService,
   ) {}
   async getAllPagedData(
@@ -84,7 +84,7 @@ export class TagService {
     });
     if (popularID?.id) {
       const products =
-        await this.productAnalyticsRepository.getProductsExceedingViewLimit(
+        await this.productAnalyticsService.getProductsExceedingViewLimit(
           sinceDate,
           10,
         );

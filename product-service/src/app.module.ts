@@ -12,7 +12,6 @@ import { BrandModule } from '@Brand/brand.module';
 import { ProductModule } from '@Product/product.module';
 import { ModelModule } from './model/model.module';
 import { SearchModule } from './search/search.module';
-import { ListingModule } from './common/modules/listing.module';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 import { APP_PIPE } from '@nestjs/core';
 import { HashidsModule } from '@HashIds/hash-ids.module';
@@ -39,7 +38,6 @@ import { ScheduleModule } from '@nestjs/schedule';
     PrismaModule,
     ModelModule,
     SearchModule,
-    ListingModule,
     HashidsModule,
     TagModule,
     EventEmitterModule.forRoot(),

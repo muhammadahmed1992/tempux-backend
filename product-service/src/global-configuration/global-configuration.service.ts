@@ -18,6 +18,7 @@ export class GlobalConfigurationService implements OnModuleInit {
       GlobalConfigKeys.NEW_ARRIVAL,
       GlobalConfigKeys.POPULAR,
       GlobalConfigKeys.BEST_SELLER,
+      GlobalConfigKeys.PLATFORM_COMMISSION,
     ];
 
     const configs = await this.repository.findMany({
@@ -38,6 +39,7 @@ export class GlobalConfigurationService implements OnModuleInit {
       newArrival: StaticConfiguration.newArrivalWindowHours,
       popular: StaticConfiguration.popularWindowHours,
       bestSeller: StaticConfiguration.bestSellerWindowHours,
+      platfromCommission: StaticConfiguration.platformCommission,
     });
   }
 
@@ -55,5 +57,9 @@ export class GlobalConfigurationService implements OnModuleInit {
 
   getBestSellerWindowHours(): number {
     return StaticConfiguration.bestSellerWindowHours;
+  }
+
+  getPlatformCommission(): number {
+    return StaticConfiguration.platformCommission;
   }
 }

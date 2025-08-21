@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   CallHandler,
   ExecutionContext,
   HttpStatus,
@@ -25,16 +26,29 @@ export class AuthCookieInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       mergeMap((data) => {
-        const isProd =
-          (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
-          'production';
-        const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
+        let origin = '';
+        if (req.query.state) {
+          origin = decodeURIComponent((req.query.state || '') as string);
+        } else {
+          origin = (req.headers['x-client-origin'] || '') as string;
+        }
+
+        console.log(`Logging origin: ${origin}`);
+
+        const frontendUrl =
+          origin || this.configService.get<string>('FRONTEND_URL')!;
+
+        console.log(`Logging frontend url auth.cookie: ${frontendUrl}`);
+
         const dns = this.configService.get<string>('DNS')!;
-        const origin = req.headers.origin;
-        // 2. Check if origin exists and contains 'localhost'
-        const isComingFromLocalhost = origin
-          ? origin.includes('localhost')
-          : true;
+
+        if (!dns) {
+          throw new BadRequestException('DNS is not configured');
+        }
+        if (!frontendUrl) {
+          throw new BadRequestException('FRONTEND_URL is not configured');
+        }
+
         if (
           (data?.statusCode === HttpStatus.OK ||
             data?.statusCode === HttpStatus.CREATED) &&
@@ -44,9 +58,7 @@ export class AuthCookieInterceptor implements NestInterceptor {
           this.userCookieHanlder.handleLoginCookie(
             res as any,
             data?.data?.accessToken,
-            isProd,
             dns,
-            isComingFromLocalhost,
           );
           // We don't need that now as we'd moved this into access_token cookie.
           delete data?.data.accessToken;

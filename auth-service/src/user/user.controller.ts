@@ -91,9 +91,10 @@ export class UserController {
 
   // Google Auth
   @Get('google')
-  async googleAuth(@Res() res: Response) {
+  async googleAuth(@Req() req: Request, @Res() res: Response) {
     console.log('--- AuthController.googleAuth() Initial Request ---');
-    const redirectUrl = this.socialLoginService.getGoogleLoginUrl();
+    const url = (req.headers['x-client-origin'] || '') as string;
+    const redirectUrl = this.socialLoginService.getGoogleLoginUrl(url);
     console.log('Generated Google Auth URL:', redirectUrl);
     return res.redirect(redirectUrl);
   }
@@ -111,9 +112,10 @@ export class UserController {
    * This endpoint manually constructs the Facebook OAuth URL with a 'state' parameter.
    */
   @Get('facebook')
-  async facebookAuth(@Res() res: Response) {
+  async facebookAuth(@Req() req: Request, @Res() res: Response) {
     console.log('--- AuthController.facebookAuth() Initial Request ---');
-    const redirectUrl = this.socialLoginService.getFacebookLoginUrl();
+    const url = (req.headers['x-client-origin'] || '') as string;
+    const redirectUrl = this.socialLoginService.getFacebookLoginUrl(url);
     console.log('Generated Facebook Auth URL:', redirectUrl);
 
     return res.redirect(redirectUrl);
@@ -147,7 +149,9 @@ export class UserController {
       req,
       'provider',
     ) as ProviderType;
-    const socialEmail = CookieHelper.getCookieValue(req, 'ue');
+    const socialEmail = decodeURIComponent(
+      CookieHelper.getCookieValue(req, 'ue')!,
+    );
 
     if (!provider || !socialEmail) {
       this.clearCookies(req, res);
@@ -172,8 +176,10 @@ export class UserController {
       req,
       'provider',
     ) as ProviderType;
-    const socialEmail = CookieHelper.getCookieValue(req, 'ue');
-
+    const socialEmail = decodeURIComponent(
+      CookieHelper.getCookieValue(req, 'ue')!,
+    );
+    console.log(`social email: ${socialEmail}`);
     if (!provider || !socialEmail) {
       this.clearCookies(req, res);
       throw new UnauthorizedException(
