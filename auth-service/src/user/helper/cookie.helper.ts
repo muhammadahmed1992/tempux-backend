@@ -23,10 +23,13 @@ export default class CookieHelper {
     isProd: boolean,
     frontendUrl?: string,
   ) {
+    const expiry = new Date();
+    expiry.setDate(-1);
     res.clearCookie(key, {
       httpOnly: true,
       secure: isProd,
       sameSite,
+      expires: expiry,
       domain: this.getDomain(isProd, frontendUrl),
     });
   }
