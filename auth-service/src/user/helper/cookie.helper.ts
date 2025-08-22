@@ -7,10 +7,11 @@ export default class CookieHelper {
     dns: string,
     expiry?: number,
   ) {
+    // TODO: Will uncomment
     res.cookie(key, value, {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
       domain: dns,
       maxAge: expiry || 15552000000, // 180 days
     });
@@ -30,7 +31,7 @@ export default class CookieHelper {
       secure: isProd,
       sameSite,
       expires: expiry,
-      domain: this.getDomain(isProd, frontendUrl),
+      domain: frontendUrl,
     });
   }
 

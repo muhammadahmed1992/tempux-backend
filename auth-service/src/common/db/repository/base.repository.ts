@@ -10,7 +10,7 @@ export class BaseRepository<
     include?: object | null;
   },
   TFindManyArgs extends object,
-  TFindFirstArgs extends object
+  TFindFirstArgs extends object,
 > {
   constructor(
     protected readonly model: {
@@ -31,7 +31,7 @@ export class BaseRepository<
       }) => Promise<TModel>;
       findFirst: (args: TFindFirstArgs) => Promise<TModel | null>;
       count: (args?: { where?: object }) => Promise<number>;
-    }
+    },
   ) {}
 
   async create(data: TCreateInput, select?: object): Promise<TModel> {
@@ -39,7 +39,8 @@ export class BaseRepository<
   }
 
   async findUnique(args: TFindUniqueArgs): Promise<TModel | null> {
-    return this.model.findUnique(args);
+    const filteredWhere = this.applyIsDeletedFilter(args.where);
+    return this.model.findUnique({ ...args, where: filteredWhere } as any);
   }
 
   async findMany(args: TFindManyArgs): Promise<TModel[]> {
@@ -49,7 +50,7 @@ export class BaseRepository<
   async update(
     where: TWhereUniqueInput,
     data: TUpdateInput,
-    select?: object
+    select?: object,
   ): Promise<TModel> {
     return this.model.update({ where, data, select });
   }
@@ -64,5 +65,18 @@ export class BaseRepository<
 
   async count(where?: object): Promise<number> {
     return this.model.count({ where });
+  }
+
+  /**
+   * Helper to apply the default is_deleted: false filter.
+   * If the user explicitly provides is_deleted in their filter, it overrides the default.
+   */
+  private applyIsDeletedFilter(userWhere: any): any {
+    // If userWhere explicitly defines is_deleted, use that.
+    // Otherwise, default to is_deleted: false.
+    if (userWhere && typeof userWhere.is_deleted !== 'undefined') {
+      return userWhere;
+    }
+    return { ...userWhere, is_deleted: false };
   }
 }

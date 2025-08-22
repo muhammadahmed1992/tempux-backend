@@ -20,7 +20,6 @@ import { EmailService } from '@Email/email.service';
 import { OTPVerificationRequestDTO } from '../dtos/otp.verification.dto';
 import { ResendOTPDTO, ResetPasswordRequestDTO } from '../dtos/resend.otp.dto';
 import {
-  SocialLoginLoggedInUserResponseDTO,
   SocialLoginResponseDTO,
   SocialLoginVerifyUserResponseDTO,
 } from '../dtos/social-login-response.dto';
@@ -53,16 +52,15 @@ export class UserService {
     try {
       // TOOD: Will discuss about role implementation...
       //If user already exists returns an error
-      const isExists = await this.userRepository.validateUser(user.email, {
-        id: true,
-      });
-      if (isExists) {
+      const response = await this.validateUserHelper(user.email);
+      if (!response) {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
-          false,
+          !response,
           HttpStatus.FOUND,
         );
       }
+
       const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
       const otpResponse = await this.generateOTPAndExpiry();
       // By Default assigning it buyer and seller
@@ -438,16 +436,12 @@ export class UserService {
 
     // Try to find the user by their social ID
     //TODO: Need to discuss userType issue with client.
-    const user = await this.userRepository.findUserBySocialId(
-      socialIdField,
-      email,
-      {
-        id: true,
-        email: true,
-        otp_verified: true,
-        user_roles: true,
-      },
-    );
+    const user = await this.userRepository.findFirstUserByEmail(email, {
+      id: true,
+      email: true,
+      otp_verified: true,
+      user_roles: true,
+    });
 
     if (user) {
       // User found, return it
@@ -508,48 +502,47 @@ export class UserService {
    * @param userType This the user type which will be gona registered.
    * @returns Promise<ApiResponse<SocialLoginVerifyUserResponseDTO>> which will contains the resetToken for verification.
    */
-  async validateExistingAccount(
+  async mapWithExistingAccount(
     email: string,
     socialEmail: string,
     provider: 'google' | 'facebook',
   ) {
-    const socialLoginFields = {
-      google: 'googleId',
-      facebook: 'facebookId',
-    };
-    // Determine which ID field to use
-    const socialIdField = socialLoginFields[provider];
-    // If user not found by social ID, check if an account with this email already exists
-    // This handles cases where a user might register with email/password, then try social login with the same email.
-    // You might want to link accounts here, or prevent login if email already exists without social link.
+    // const socialLoginFields = {
+    //   google: 'googleId',
+    //   facebook: 'facebookId',
+    // };
+    // // Determine which ID field to use
+    //const socialIdField = socialLoginFields[provider];
+    // // If user not found by social ID, check if an account with this email already exists
+    // // This handles cases where a user might register with email/password, then try social login with the same email.
+    // // You might want to link accounts here, or prevent login if email already exists without social link.
     const result = await this.userRepository.validateUser(email, {
       id: true,
       email: true,
       otp_verified: true,
-      user_roles: true,
     });
 
     if (result) {
       // User found, but we are doing mapping so we need to actually send an email again to verify.
       // TODO: Code optimization...
-      // Send OTP to the user's email.
+      // Send OTP to the user's parent email.
       const otpResponse = await this.generateOTPAndExpiry();
       const token = this.encryptionHelper.encrypt(result.email);
-      this.sendOTPInEmail(
-        email,
-        { otp: otpResponse.plainOTP, resetToken: token },
-        EmailTemplateType.OTP_VERIFICATION,
-      );
       await this.userRepository.update(
         {
           email: result.email,
         },
         {
-          [socialIdField]: socialEmail,
           otp_verified: false,
           otp: otpResponse.otp,
           otp_expires_at: otpResponse.otp_expiry_date_time,
         },
+      );
+      await this.createUserHelper(socialEmail, provider, result.id);
+      this.sendOTPInEmail(
+        email,
+        { otp: otpResponse.plainOTP, resetToken: token },
+        EmailTemplateType.OTP_VERIFICATION,
       );
       return ResponseHelper.CreateResponse<SocialLoginVerifyUserResponseDTO>(
         Constants.OTP_SENT,
@@ -588,41 +581,41 @@ export class UserService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    const otpResponse = await this.generateOTPAndExpiry();
-    // Construct the data object for createUser
-    const password = await bcrypt.hash(
-      'SOCIAL_LOGIN_PASSWORD_PLACEH',
-      this.SALT_ROUND,
-    );
-    // By Default assigning it buyer and seller
-    const roleIds: bigint[] = [3n, 4n];
-    const newUserCreateData: Prisma.UserCreateInput = {
-      name: 'SOCIAL_LOGIN_USER_NAME',
-      email: socialEmail,
-      password: password,
-      user_roles: {
-        create: roleIds.map((roleId) => ({
-          role_id: roleId, // use role_id, not id
-        })),
-      },
-      otp: otpResponse.otp,
-      otp_expires_at: otpResponse.otp_expiry_date_time,
-    };
+    // const otpResponse = await this.generateOTPAndExpiry();
+    // // Construct the data object for createUser
+    // const password = await bcrypt.hash(
+    //   'SOCIAL_LOGIN_PASSWORD_PLACEH',
+    //   this.SALT_ROUND,
+    // );
+    // // By Default assigning it buyer and seller
+    // const roleIds: bigint[] = [3n, 4n];
+    // const newUserCreateData: Prisma.UserCreateInput = {
+    //   name: 'SOCIAL_LOGIN_USER_NAME',
+    //   email: socialEmail,
+    //   password: password,
+    //   user_roles: {
+    //     create: roleIds.map((roleId) => ({
+    //       role_id: roleId, // use role_id, not id
+    //     })),
+    //   },
+    //   otp: otpResponse.otp,
+    //   otp_expires_at: otpResponse.otp_expiry_date_time,
+    // };
 
-    // Conditionally add the social ID field to the data object.
-    // Because Prisma doesn't allow dynamic column.
-    if (provider === 'google') {
-      newUserCreateData.googleId = socialEmail;
-    } else if (provider === 'facebook') {
-      newUserCreateData.facebookId = socialEmail;
-    }
+    // // Conditionally add the social ID field to the data object.
+    // // Because Prisma doesn't allow dynamic column.
+    // if (provider === 'google') {
+    //   newUserCreateData.googleId = socialEmail;
+    // } else if (provider === 'facebook') {
+    //   newUserCreateData.facebookId = socialEmail;
+    // }
 
-    const newUser = await this.userRepository.createUser(newUserCreateData);
-
+    // const newUser = await this.userRepository.createUser(newUserCreateData);
+    const response = await this.createUserHelper(socialEmail, provider);
     const resetToken = this.encryptionHelper.encrypt(socialEmail);
     this.sendOTPInEmail(
       socialEmail,
-      { otp: otpResponse.plainOTP, resetToken: resetToken },
+      { otp: response, resetToken: resetToken },
       EmailTemplateType.OTP_VERIFICATION,
     );
 
@@ -632,6 +625,32 @@ export class UserService {
       HttpStatus.CREATED,
     );
   }
+
+  /**
+   * Checks in the database if user with this email exists or not.
+   * @param email user's email which needs to be checked if exists.
+   * @returns Promise<ApiResponse<boolean>>
+   */
+  async validateUser(email: string): Promise<ApiResponse<boolean>> {
+    const response = !(await this.validateUserHelper(email));
+
+    return ResponseHelper.CreateResponse<boolean>(
+      response ? Constants.USER_ALREADY_EXISTS : '',
+      !response,
+      response ? HttpStatus.FOUND : HttpStatus.OK,
+    );
+  }
+
+  private async validateUserHelper(email: string) {
+    const isExists = await this.userRepository.validateUser(email, {
+      id: true,
+    });
+    if (isExists?.id) {
+      return true;
+    }
+    return false;
+  }
+
   /**
    * Private helper function which actually returns the newly generated OTP and its expiry
    */
@@ -711,5 +730,44 @@ export class UserService {
     const now = new Date();
     now.setMinutes(now.getMinutes() + minutes);
     return now;
+  }
+
+  private async createUserHelper(
+    emailToBeCreated: string,
+    provider: 'google' | 'facebook',
+    parent_Id?: bigint,
+  ) {
+    const otpResponse = await this.generateOTPAndExpiry();
+    // Construct the data object for createUser
+    const password = await bcrypt.hash(
+      'SOCIAL_LOGIN_PASSWORD_PLACEH',
+      this.SALT_ROUND,
+    );
+    // By Default assigning it buyer and seller
+    const roleIds: bigint[] = [3n, 4n];
+    const newUserCreateData: Prisma.UserCreateInput = {
+      name: 'SOCIAL_LOGIN_USER_NAME',
+      email: emailToBeCreated,
+      password: password,
+      parent_Id: parent_Id,
+      user_roles: {
+        create: roleIds.map((roleId) => ({
+          role_id: roleId, // use role_id, not id
+        })),
+      },
+      otp: otpResponse.otp,
+      otp_expires_at: otpResponse.otp_expiry_date_time,
+    };
+
+    // Conditionally add the social ID field to the data object.
+    // Because Prisma doesn't allow dynamic column.
+    if (provider === 'google') {
+      newUserCreateData.googleId = emailToBeCreated;
+    } else if (provider === 'facebook') {
+      newUserCreateData.facebookId = emailToBeCreated;
+    }
+
+    const newUser = await this.userRepository.createUser(newUserCreateData);
+    return otpResponse.plainOTP;
   }
 }
