@@ -36,7 +36,7 @@ export class OrderService {
       createOrderDto.savedShippingAddressId
     ) {
       // Use saved shipping address
-      shippingAddressId = createOrderDto.savedShippingAddressId;
+      shippingAddressId = BigInt(createOrderDto.savedShippingAddressId);
     } else if (createOrderDto.shippingAddress) {
       // Create new shipping address
       shippingAddressId = await this.createShippingAddress(
@@ -49,41 +49,40 @@ export class OrderService {
 
     // Get shipping rate quote
     const shippingRate = await this.shippingService.getRateQuote({
-      shippingAddressId,
+      shippingAddressId: shippingAddressId!,
       orderItems: createOrderDto.orderItems,
     });
 
     // Prepare order data
     const orderData: Prisma.ordersCreateInput = {
-      buyer_id: createOrderDto.buyerId,
+      buyer_id: BigInt(createOrderDto.buyerId),
+      product_Id: BigInt(createOrderDto.orderItems[0].productId), // Using first item's product ID
       total_discount: createOrderDto.totalDiscount,
       total_tax: createOrderDto.totalTax,
       total_shipping_cost: shippingRate.totalCost,
       total_amount: createOrderDto.totalAmount,
       order_status: 'PENDING',
-      payment_status: 'PENDING',
-      fulfillment_status: 'PENDING',
-      shipping_address_id: shippingAddressId,
       created_by: userId,
     };
 
-    // Prepare order items data
-    const orderItemsData: Prisma.order_itemCreateInput[] =
-      createOrderDto.orderItems.map((item: CreateOrderItemDto) => ({
-        seller_id: item.sellerId,
-        product_Id: item.productId,
-        product_variant_id: item.productVariantId,
-        quantity: item.quantity,
-        price: item.price,
-        discount: item.discount,
-        tax_amount: item.taxAmount,
-        total_price:
-          item.price * item.quantity - item.discount + item.taxAmount,
-        order_status: 'PENDING',
-        payout_status: 'PENDING',
-        escrow_status: 'HELD',
-        created_by: userId,
-      }));
+    // Prepare order items data (without order_id as it will be set in transaction)
+    const orderItemsData: Omit<
+      Prisma.order_itemUncheckedCreateInput,
+      'order_id'
+    >[] = createOrderDto.orderItems.map((item: CreateOrderItemDto) => ({
+      seller_id: BigInt(item.sellerId),
+      product_Id: BigInt(item.productId),
+      product_variant_id: BigInt(item.productVariantId),
+      quantity: item.quantity,
+      price: item.price,
+      discount: item.discount,
+      tax_amount: item.taxAmount,
+      total_price: item.price * item.quantity - item.discount + item.taxAmount,
+      order_status: 'PENDING',
+      payout_status: 'PENDING',
+      escrow_status: 'HELD',
+      created_by: userId,
+    }));
 
     // Create order with items
     const { order, orderItems } =
@@ -106,7 +105,7 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    return this.mapToOrderResponse(orderWithItems, orderWithItems.orderItems);
+    return this.mapToOrderResponse(orderWithItems, orderWithItems.order_items);
   }
 
   async getOrdersByBuyerId(
@@ -126,8 +125,8 @@ export class OrderService {
       totalAmount: Number(order.total_amount),
       orderDate: order.order_date,
       orderStatus: order.order_status,
-      paymentStatus: order.payment_status || 'PENDING',
-      fulfillmentStatus: order.fulfillment_status || 'PENDING',
+      paymentStatus: 'PENDING', // Default since not in schema
+      fulfillmentStatus: 'PENDING', // Default since not in schema
       itemCount: 0, // This would need to be calculated from order items
     }));
 
@@ -152,7 +151,7 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    return this.mapToOrderResponse(orderWithItems, orderWithItems.orderItems);
+    return this.mapToOrderResponse(orderWithItems, orderWithItems.order_items);
   }
 
   private async validateOrderItems(
@@ -161,7 +160,7 @@ export class OrderService {
     for (const item of orderItems) {
       // Validate product exists and has sufficient inventory
       const productVariant = await this.productProxyService.getProductVariant(
-        item.productVariantId,
+        BigInt(item.productVariantId),
       );
       if (!productVariant) {
         throw new BadRequestException(
@@ -197,10 +196,10 @@ export class OrderService {
       totalAmount: Number(order.total_amount),
       orderDate: order.order_date,
       orderStatus: order.order_status,
-      paymentStatus: order.payment_status || 'PENDING',
-      fulfillmentStatus: order.fulfillment_status || 'PENDING',
-      shippingAddressId: order.shipping_address_id,
-      billingAddressId: order.billing_address_id,
+      paymentStatus: 'PENDING', // Default since not in schema
+      fulfillmentStatus: 'PENDING', // Default since not in schema
+      shippingAddressId: undefined, // Not in schema
+      billingAddressId: undefined, // Not in schema
       createdAt: order.created_at,
       updatedAt: order.updated_at,
       orderItems: orderItems.map((item) => ({
@@ -224,4 +223,3 @@ export class OrderService {
     };
   }
 }
-

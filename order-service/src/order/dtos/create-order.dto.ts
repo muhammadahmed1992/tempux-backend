@@ -7,22 +7,21 @@ import {
   IsString,
   ValidateNested,
   Min,
-  IsBigInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOrderItemDto {
-  @IsBigInt()
+  @IsNumber()
   @IsNotEmpty()
-  productId!: bigint;
+  productId!: number | bigint;
 
-  @IsBigInt()
+  @IsNumber()
   @IsNotEmpty()
-  productVariantId!: bigint;
+  productVariantId!: number | bigint;
 
-  @IsBigInt()
+  @IsNumber()
   @IsNotEmpty()
-  sellerId!: bigint;
+  sellerId!: number | bigint;
 
   @IsNumber()
   @Min(1)
@@ -72,9 +71,9 @@ export class ShippingAddressDto {
 }
 
 export class CreateOrderDto {
-  @IsBigInt()
+  @IsNumber()
   @IsNotEmpty()
-  buyerId!: bigint;
+  buyerId!: number | bigint;
 
   @IsArray()
   @ValidateNested({ each: true })
@@ -86,8 +85,8 @@ export class CreateOrderDto {
   useSavedShippingAddress?: boolean;
 
   @IsOptional()
-  @IsBigInt()
-  savedShippingAddressId?: bigint;
+  @IsNumber()
+  savedShippingAddressId?: number | bigint;
 
   @IsOptional()
   @ValidateNested()

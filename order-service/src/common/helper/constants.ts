@@ -21,4 +21,6 @@ export default class Constants {
   public static readonly NO_CART_DATA_FOUND = 'Data is not found for this user';
   public static readonly INVALID_PRODUCT_PARAMETER =
     'Invalid parameter, it must be either p or a.';
+  public static readonly DEFAULT_PAGE_SIZE = 10;
+  public static readonly DEFAULT_PAGE = 1;
 }

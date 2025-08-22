@@ -133,13 +133,13 @@ export class ShippingService {
   }
 
   private async getShippingAddress(addressId: bigint): Promise<any> {
-    // This would fetch shipping address from your address storage
+    // This would fetch shipping address from our address storage
     // For now, returning a placeholder
     return {
       addressLine1: '123 Main St',
-      city: 'New York',
-      state: 'NY',
-      postalCode: '10001',
+      city: 'Memphis',
+      state: 'TN',
+      postalCode: '38116',
       countryCode: 'US',
     };
   }
@@ -147,10 +147,10 @@ export class ShippingService {
   private getShipperAddress(): any {
     // This would be your warehouse/fulfillment center address
     return {
-      addressLine1: '456 Warehouse Blvd',
+      addressLine1: '456 Market Street',
       city: 'Los Angeles',
       state: 'CA',
-      postalCode: '90210',
+      postalCode: '90001',
       countryCode: 'US',
     };
   }

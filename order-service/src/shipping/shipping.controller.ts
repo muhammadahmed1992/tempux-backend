@@ -11,10 +11,10 @@ import { ShippingService } from './shipping.service';
 import { RateQuoteRequest } from './shipping.service';
 import ApiResponse from '../common/helper/api-response';
 import ResponseHelper from '../common/helper/response-helper';
-import { AuthUserGuard } from '../auth/guards/auth-user-guard';
+import { HeaderAuthGuard } from '../auth/guards/auth-user-guard';
 
 @Controller('shipments')
-@UseGuards(AuthUserGuard)
+@UseGuards(HeaderAuthGuard)
 export class ShippingController {
   constructor(private readonly shippingService: ShippingService) {}
 

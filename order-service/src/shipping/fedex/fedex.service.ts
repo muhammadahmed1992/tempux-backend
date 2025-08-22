@@ -29,6 +29,11 @@ export class FedExService {
     });
   }
 
+  /**
+   * Todo: a utility builder for creating fedex request sections
+   *
+   */
+
   // 1. OAuth Token Management
   async getAccessToken(): Promise<string> {
     // Check if we have a valid token
@@ -37,12 +42,18 @@ export class FedExService {
     }
 
     try {
+      const oauthUrl = this.configService.get<string>('FEDEX_OAUTH_URL');
+      if (!oauthUrl) throw new Error('FEDEX_OAUTH_URL is not configured');
+      const clientId = this.configService.get<string>('FEDEX_CLIENT_ID') || '';
+      const clientSecret =
+        this.configService.get<string>('FEDEX_CLIENT_SECRET') || '';
+
       const response = await this.httpClient.post<FedExOAuthResponseDto>(
-        this.configService.get<string>('FEDEX_OAUTH_URL'),
+        oauthUrl,
         {
           grant_type: 'client_credentials',
-          client_id: this.configService.get<string>('FEDEX_CLIENT_ID'),
-          client_secret: this.configService.get<string>('FEDEX_CLIENT_SECRET'),
+          client_id: clientId,
+          client_secret: clientSecret,
         },
         {
           headers: {
@@ -51,10 +62,11 @@ export class FedExService {
         },
       );
 
-      this.accessToken = response.data.access_token;
+      const data = response.data as unknown as FedExOAuthResponseDto;
+      this.accessToken = data.access_token;
       // Set token expiry (subtract 5 minutes for safety)
       this.tokenExpiry = new Date(
-        Date.now() + (response.data.expires_in - 300) * 1000,
+        Date.now() + ((data.expires_in || 3600) - 300) * 1000,
       );
 
       this.logger.log('FedEx OAuth token obtained successfully');
@@ -130,6 +142,15 @@ export class FedExService {
       return response.data;
     } catch (error) {
       this.logger.error('Failed to get FedEx rate quote', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any;
+        if (axiosError.response?.data) {
+          this.logger.error(
+            'FedEx API Error Details:',
+            axiosError.response.data,
+          );
+        }
+      }
       throw new BadRequestException('Failed to get shipping rate quote');
     }
   }
@@ -163,22 +184,36 @@ export class FedExService {
                 countryCode: shipmentRequest.shipperAddress.countryCode,
               },
             },
-            recipient: {
-              contact: {
-                personName: shipmentRequest.recipientContact.personName,
-                phoneNumber: shipmentRequest.recipientContact.phoneNumber,
-                emailAddress: shipmentRequest.recipientContact.emailAddress,
+            recipients: [
+              {
+                contact: {
+                  personName: shipmentRequest.recipientContact.personName,
+                  phoneNumber: shipmentRequest.recipientContact.phoneNumber,
+                  emailAddress: shipmentRequest.recipientContact.emailAddress,
+                },
+                address: {
+                  streetLines: [shipmentRequest.recipientAddress.addressLine1],
+                  city: shipmentRequest.recipientAddress.city,
+                  stateOrProvinceCode: shipmentRequest.recipientAddress.state,
+                  postalCode: shipmentRequest.recipientAddress.postalCode,
+                  countryCode: shipmentRequest.recipientAddress.countryCode,
+                },
               },
-              address: {
-                streetLines: [shipmentRequest.recipientAddress.addressLine1],
-                city: shipmentRequest.recipientAddress.city,
-                stateOrProvinceCode: shipmentRequest.recipientAddress.state,
-                postalCode: shipmentRequest.recipientAddress.postalCode,
-                countryCode: shipmentRequest.recipientAddress.countryCode,
+            ],
+            shippingChargesPayment: {
+              paymentType: 'SENDER',
+              payor: {
+                responsibleParty: {
+                  accountNumber: {
+                    value: this.configService.get<string>(
+                      'FEDEX_ACCOUNT_NUMBER',
+                    ),
+                  },
+                },
               },
             },
             pickupType: 'DROPOFF_AT_FEDEX_LOCATION',
-            serviceType: 'FEDEX_STANDARD',
+            serviceType: 'FEDEX_EXPRESS_SAVER', //  TODO: make this dynamic
             packagingType: 'YOUR_PACKAGING',
             requestedPackageLineItems: shipmentRequest.packages.map((pkg) => ({
               weight: {
@@ -199,7 +234,6 @@ export class FedExService {
               ],
             })),
             labelSpecification: {
-              labelFormatType: 'COMMON2D',
               imageType: 'PDF',
               labelStockType: 'PAPER_4X6',
             },
@@ -217,6 +251,15 @@ export class FedExService {
       return response.data;
     } catch (error) {
       this.logger.error('Failed to create FedEx shipment', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as any;
+        if (axiosError.response?.data) {
+          this.logger.error(
+            'FedEx API Error Details:',
+            axiosError.response.data,
+          );
+        }
+      }
       throw new BadRequestException('Failed to create shipment');
     }
   }
@@ -256,4 +299,3 @@ export class FedExService {
     }
   }
 }
-

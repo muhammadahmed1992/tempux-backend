@@ -29,7 +29,9 @@ export class ShipmentRepository extends BaseRepository<
   ): Promise<order_item_shipment> {
     return this.create({
       order_item_id: orderItemId,
-      shipment_id: shipmentData.shipmentId,
+      shipment: {
+        connect: { id: shipmentData.shipmentId },
+      },
       shipment_cost: shipmentData.shipmentCost,
       shipment_status: 'PENDING',
       tracking_id: shipmentData.trackingId,
@@ -40,9 +42,13 @@ export class ShipmentRepository extends BaseRepository<
   async getShipmentsByOrderId(orderId: bigint): Promise<order_item_shipment[]> {
     return this.findMany({
       where: {
-        order_item: {
-          order_id: orderId,
-          is_deleted: false,
+        order_item_id: {
+          in: await this.prisma.order_item
+            .findMany({
+              where: { order_id: orderId, is_deleted: false },
+              select: { id: true },
+            })
+            .then((items) => items.map((item) => item.id)),
         },
       },
       include: {

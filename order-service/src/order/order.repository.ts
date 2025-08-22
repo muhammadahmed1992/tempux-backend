@@ -20,7 +20,7 @@ export class OrderRepository extends BaseRepository<
 
   async createOrderWithItems(
     orderData: Prisma.ordersCreateInput,
-    orderItemsData: Prisma.order_itemCreateInput[],
+    orderItemsData: Omit<Prisma.order_itemUncheckedCreateInput, 'order_id'>[],
   ): Promise<{ order: orders; orderItems: order_item[] }> {
     return this.prisma.$transaction(async (tx) => {
       const order = await tx.orders.create({
@@ -44,15 +44,15 @@ export class OrderRepository extends BaseRepository<
 
   async getOrderWithItems(
     orderId: bigint,
-  ): Promise<(orders & { orderItems: order_item[] }) | null> {
+  ): Promise<(orders & { order_items: order_item[] }) | null> {
     return this.model.findUnique({
       where: { id: orderId },
       include: {
-        orderItems: {
+        order_items: {
           where: { is_deleted: false },
         },
       },
-    });
+    }) as Promise<(orders & { order_items: order_item[] }) | null>;
   }
 
   async getOrdersByBuyerId(
@@ -84,4 +84,3 @@ export class OrderRepository extends BaseRepository<
     );
   }
 }
-

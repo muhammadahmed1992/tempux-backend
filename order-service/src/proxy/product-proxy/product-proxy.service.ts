@@ -11,4 +11,9 @@ export class ProductProxyService {
       price: 99.99,
     };
   }
+
+  async getPlatformCommission(): Promise<number> {
+    // TODO: integrate with product-service global configuration endpoint
+    return 0;
+  }
 }

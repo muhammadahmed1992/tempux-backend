@@ -11,15 +11,15 @@ import {
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dtos/create-order.dto';
+import { OrderQueryDto } from './dtos/order-query.dto';
 import { OrderResponseDto, OrderListingDto } from './dtos/order-response.dto';
 import ApiResponse from '../common/helper/api-response';
 import ResponseHelper from '../common/helper/response-helper';
-import { AuthUserGuard } from '../auth/guards/auth-user-guard';
+import { HeaderAuthGuard } from '../auth/guards/auth-user-guard';
 import { UserId } from '../auth/decorators/userId.decorator';
-import { ParseQueryPipe } from '../common/pipes/parse-query.pipe';
 
 @Controller('orders')
-@UseGuards(AuthUserGuard)
+@UseGuards(HeaderAuthGuard)
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
@@ -38,14 +38,13 @@ export class OrderController {
 
   @Get()
   async getOrders(
+    @Query() query: OrderQueryDto,
     @UserId() userId: bigint,
-    @Query('page', ParseQueryPipe) page: number = 1,
-    @Query('pageSize', ParseQueryPipe) pageSize: number = 10,
   ): Promise<ApiResponse<{ data: OrderListingDto[]; totalCount: number }>> {
     const result = await this.orderService.getOrdersByBuyerId(
       userId,
-      page,
-      pageSize,
+      query.page || 1,
+      query.pageSize || 10,
     );
     return ResponseHelper.CreateResponse(
       'Orders retrieved successfully',
@@ -84,4 +83,3 @@ export class OrderController {
     );
   }
 }
-
