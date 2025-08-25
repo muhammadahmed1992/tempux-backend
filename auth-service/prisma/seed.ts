@@ -22,6 +22,30 @@ function generateOTPAndExpiry() {
 async function main() {
   console.log('🚀 Starting database seeding...');
 
+  // Seed address types first
+  const addressTypes = [
+    { id: 1n, name: 'PRIMARY'   },
+    { id: 2n, name: 'SHIPPING'  },
+    { id: 3n, name: 'BILLING'  },
+    { id: 4n, name: 'WAREHOUSE' },
+  ];
+
+  console.log('Seeding Address Types...');
+  for (const addressType of addressTypes) {
+    await prisma.addressType.upsert({
+      where: { id: addressType.id },
+      update: { name: addressType.name },
+      create: {
+        id: addressType.id,
+        name: addressType.name,
+      },
+    });
+    console.log(
+      `- Upserted Address Type: ${addressType.name} (ID: ${addressType.id})`,
+    );
+  }
+  console.log('Address Types seeding complete.');
+
   // Seed roles
   const roles = [
     { id: 1n, name: 'Super Admin' },
@@ -172,6 +196,13 @@ async function main() {
   }
   console.log('Role Access Management seeding complete.');
 
+  // Get address type IDs for mapping
+  const addressTypeMap = new Map();
+  const addressTypeRecords = await prisma.addressType.findMany();
+  for (const addressType of addressTypeRecords) {
+    addressTypeMap.set(addressType.name, addressType.id);
+  }
+
   // Seed example users with addresses
   const users = [
     {
@@ -291,7 +322,7 @@ async function main() {
           is_default: true,
         },
         {
-          address_type: 'PICKUP',
+          address_type: 'WAREHOUSE',
           label: 'Warehouse',
           address_line1: '111 Storage Way',
           address_line2: 'Unit B',
@@ -302,7 +333,7 @@ async function main() {
           is_default: true,
         },
         {
-          address_type: 'PICKUP',
+          address_type: 'WAREHOUSE',
           label: 'Store Location',
           address_line1: '222 Retail Road',
           city: 'Miami',
@@ -384,10 +415,16 @@ async function main() {
 
     // Create addresses for the user
     for (const addressData of user.addresses) {
+      const addressTypeId = addressTypeMap.get(addressData.address_type);
+      if (!addressTypeId) {
+        console.error(`Address type '${addressData.address_type}' not found!`);
+        continue;
+      }
+
       await prisma.address.create({
         data: {
           user_id: createdUser.id,
-          address_type: addressData.address_type as any,
+          address_type_id: addressTypeId,
           label: addressData.label,
           address_line1: addressData.address_line1,
           address_line2: addressData.address_line2 || null,
@@ -398,10 +435,14 @@ async function main() {
           is_default: addressData.is_default,
         },
       });
-      console.log(`  - Created ${addressData.address_type} address: ${addressData.label}`);
+      console.log(
+        `  - Created ${addressData.address_type} address: ${addressData.label}`,
+      );
     }
 
-    console.log(`- Upserted User: ${user.email} with Role ID: ${user.roleId} and ${user.addresses.length} addresses`);
+    console.log(
+      `- Upserted User: ${user.email} with Role ID: ${user.roleId} and ${user.addresses.length} addresses`,
+    );
   }
   console.log('Users and Addresses seeding complete.');
 
@@ -411,18 +452,18 @@ async function main() {
       user_roles: {
         some: {
           role: {
-            name: 'Seller'
-          }
-        }
-      }
-    }
+            name: 'Seller',
+          },
+        },
+      },
+    },
   });
 
   console.log('Seeding Seller Profile Details...');
   for (const seller of sellerUsers) {
     // Check if seller profile already exists
     const existingProfile = await prisma.sellerProfileDetail.findFirst({
-      where: { user_id: seller.id }
+      where: { user_id: seller.id },
     });
 
     if (!existingProfile) {

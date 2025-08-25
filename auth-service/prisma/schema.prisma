@@ -106,38 +106,44 @@ model UserRoles {
   @@map("user_roles")
 }
 
-// Address Types Enum
-enum AddressType {
-  SHIPPING    // For receiving purchases
-  PICKUP      // For seller pickup locations
-  BILLING     // For billing purposes
-  PRIMARY     // Default/primary address
+// New Address Types Table
+model AddressType {
+  id          BigInt    @id @default(autoincrement())
+  name        String    @unique @db.VarChar(20) // PRIMARY, SHIPPING, BILLING, WAREHOUSE
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @default(now()) @db.Timestamptz(6)
+  is_deleted  Boolean   @default(false)
+
+  addresses   Address[]
+
+  @@map("address_types")
 }
 
-// Address Model
+// Updated Address Model
 model Address {
-  id            BigInt      @id @default(autoincrement())
-  user_id       BigInt      @db.BigInt
-  address_type  AddressType
-  label         String?     @db.VarChar(50) // e.g., "Home", "Office", "Warehouse"
+  id              BigInt      @id @default(autoincrement())
+  user_id         BigInt      @db.BigInt
+  address_type_id BigInt      @db.BigInt
+  label           String?     @db.VarChar(50) // e.g., "Home", "Office", "Warehouse"
 
   // Address fields
-  address_line1 String      @db.VarChar(200)
-  address_line2 String?     @db.VarChar(200)
-  city          String      @db.VarChar(100)
-  state         String      @db.VarChar(100)
-  postal_code   String      @db.VarChar(20)
-  country_code  String      @db.VarChar(10)
+  address_line1   String      @db.VarChar(200)
+  address_line2   String?     @db.VarChar(200)
+  city            String      @db.VarChar(100)
+  state           String      @db.VarChar(100)
+  postal_code     String      @db.VarChar(20)
+  country_code    String      @db.VarChar(10)
 
   // Additional fields
-  is_default    Boolean     @default(false)
-  is_active     Boolean     @default(true)
-  created_at    DateTime    @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime    @default(now()) @db.Timestamptz(6)
-  is_deleted    Boolean     @default(false)
+  is_default      Boolean     @default(false)
+  is_active       Boolean     @default(true)
+  created_at      DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime    @default(now()) @db.Timestamptz(6)
+  is_deleted      Boolean     @default(false)
 
   // Relations
-  user          User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  address_type    AddressType @relation(fields: [address_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("addresses")
 }
