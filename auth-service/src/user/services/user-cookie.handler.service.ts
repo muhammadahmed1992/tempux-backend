@@ -26,7 +26,7 @@ export class UserCookieHandlerService {
       res as any,
       'ue',
       false,
-      encodeURIComponent(data.socialEmail),
+      data.socialEmail,
       domainUrl,
       3600000, //TODO: 1 hour for now
     );
