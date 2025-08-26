@@ -20,12 +20,12 @@ export class LoginRequestDTO {
   @MaxLength(30, { message: 'Password cannot exceed 30 characters.' })
   // Example of a strong password regex (at least one uppercase, one lowercase, one number, one special character)
   // Adjust this regex based on your specific password policy
-  @Matches(
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,30}$/,
-    {
-      message:
-        'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
-    },
-  )
+  // @Matches(
+  //   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,30}$/,
+  //   {
+  //     message:
+  //       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+  //   },
+  // )
   password!: string;
 }
