@@ -24,6 +24,8 @@ export default class Constants {
     'User is already exists with the same social id';
   public static readonly INVALID_EMAIL =
     'Email you provided is invalid. Please try again later.';
+  public static readonly INVALID_CREDENTIALS =
+    'Invalid Credentials. Please check and try again later.';
   public static readonly MAIL_FROM_MISSING_INVALID =
     'Email service configuration error: MAIL_FROM is missing (or) invalid.';
   public static readonly INVALID_OLD_PASSWORD =

@@ -60,7 +60,7 @@ export class UserService {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
           false,
-          HttpStatus.FOUND,
+          HttpStatus.CONFLICT,
         );
       }
       const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
@@ -161,12 +161,12 @@ export class UserService {
         request.password,
         user.password,
       );
-
       if (!isPasswordValid)
+        console.log("password in valid ")
         return ResponseHelper.CreateResponse<LoginDTO>(
-          Constants.USER_NOT_FOUND,
+          Constants.INVALID_CREDENTIALS,
           { accessToken: '' },
-          HttpStatus.NOT_FOUND,
+          HttpStatus.BAD_REQUEST,
         );
     }
     // Extract the role IDs from the user_roles array
