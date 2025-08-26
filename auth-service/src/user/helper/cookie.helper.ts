@@ -3,15 +3,16 @@ export default class CookieHelper {
   public static setCookies(
     res: Response,
     key: string,
+    httpOnly: boolean,
     value: any,
     dns: string,
     expiry?: number,
   ) {
     // TODO: Will uncomment
     res.cookie(key, value, {
-      httpOnly: true,
+      httpOnly,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       domain: dns,
       path: '/',
       maxAge: expiry || 15552000000, // 180 days
@@ -21,15 +22,16 @@ export default class CookieHelper {
   public static clearCookies(
     res: Response,
     key: string,
+    httpOnly: boolean,
     sameSite: 'lax' | 'strict',
     isProd: boolean,
     dns?: string,
   ) {
     const expiry = new Date(0);
     res.clearCookie(key, {
-      httpOnly: true,
+      httpOnly,
       secure: isProd,
-      sameSite: 'none',
+      sameSite: 'strict',
       path: '/',
       expires: expiry,
       domain: dns,
