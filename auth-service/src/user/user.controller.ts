@@ -150,9 +150,9 @@ export class UserController {
       req,
       'provider',
     ) as ProviderType;
-    const socialEmail = decodeURIComponent(
-      CookieHelper.getCookieValue(req, 'ue')!,
-    );
+    const socialEmail =
+      CookieHelper.getCookieValue(req, 'ue') &&
+      decodeURIComponent(CookieHelper.getCookieValue(req, 'ue')!);
 
     if (!provider || !socialEmail) {
       this.clearCookies(req, res);

@@ -11,7 +11,7 @@ export default class CookieHelper {
     res.cookie(key, value, {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
       domain: dns,
       path: '/',
       maxAge: expiry || 15552000000, // 180 days
@@ -29,7 +29,7 @@ export default class CookieHelper {
     res.clearCookie(key, {
       httpOnly: true,
       secure: isProd,
-      sameSite,
+      sameSite: 'none',
       path: '/',
       expires: expiry,
       domain: dns,
