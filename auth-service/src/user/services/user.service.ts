@@ -56,8 +56,8 @@ export class UserService {
       if (!response) {
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
-          !response,
-          HttpStatus.FOUND,
+          false,
+          HttpStatus.CONFLICT,
         );
       }
 
@@ -159,12 +159,12 @@ export class UserService {
         request.password,
         user.password,
       );
-
       if (!isPasswordValid)
+        console.log("password in valid ")
         return ResponseHelper.CreateResponse<LoginDTO>(
-          Constants.USER_NOT_FOUND,
+          Constants.INVALID_CREDENTIALS,
           { accessToken: '' },
-          HttpStatus.NOT_FOUND,
+          HttpStatus.BAD_REQUEST,
         );
     }
     // Extract the role IDs from the user_roles array
