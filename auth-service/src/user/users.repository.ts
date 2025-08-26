@@ -54,7 +54,7 @@ export class UserRepository extends BaseRepository<
    */
   async findFirstUserByEmail(email: string, select?: object) {
     // Changed from findUnique to findFirst to allow querying by non-unique fields
-    return this.model.findFirst({
+    return this.model.findUnique({
       where: { email },
       select,
     });

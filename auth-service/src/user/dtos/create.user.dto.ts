@@ -18,14 +18,11 @@ export class CreateUserDto {
 
   @IsString()
   @IsEmail()
-  @MaxLength(150)
+  @MaxLength(254)
   email!: string;
 
+  @IsNotEmpty({ message: 'New password is required.' })
   @IsString()
-  @IsNotEmpty({ message: 'New password is required.' })
-  @MinLength(8, { message: 'New password must be at least 8 characters long.' })
-  @MaxLength(30, { message: 'New password cannot exceed 30 characters.' })
-  @IsNotEmpty({ message: 'New password is required.' })
   @MinLength(8, { message: 'New password must be at least 8 characters long.' })
   @MaxLength(30, { message: 'New password cannot exceed 30 characters.' })
   // Example of a strong password regex (at least one uppercase, one lowercase, one number, one special character)

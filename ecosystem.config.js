@@ -21,6 +21,7 @@ module.exports = {
         PORT: "INJECT_GATEWAY_PORT",
         ALLOWED_ORIGINS: "INECT_ALLOWED_ORIGINS",
       },
+      time: true,
     },
     {
       name: "auth-service",
@@ -57,6 +58,7 @@ module.exports = {
         DATABASE_URL_DEV_USERS: "INJECT_DATABASE_URL_DEV_USERS",
         DNS: "INJECT_DNS",
       },
+      time: true,
     },
     {
       name: "product-service",
@@ -75,6 +77,7 @@ module.exports = {
         DATABASE_URL_DEV_PRODUCT: "INJECT_DATABASE_URL_DEV_PRODUCT",
         HASHIDS_SALT: "INJECT_HASHIDS_SALT",
       },
+      time: true,
     },
   ],
 };

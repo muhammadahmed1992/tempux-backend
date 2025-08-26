@@ -91,7 +91,7 @@ CREATE TABLE "users"."user_roles" (
 CREATE TABLE "users"."users" (
     "id" BIGSERIAL NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    "email" VARCHAR(150) NOT NULL,
+    "email" VARCHAR(254) NOT NULL,
     "full_name" VARCHAR(100),
     "password" VARCHAR(150) NOT NULL,
     "telephone" VARCHAR(15),
@@ -102,8 +102,9 @@ CREATE TABLE "users"."users" (
     "otp" CHAR(60),
     "otp_expires_at" TIMESTAMPTZ(6),
     "otp_verified" BOOLEAN NOT NULL DEFAULT false,
-    "googleId" VARCHAR(400),
-    "facebookId" VARCHAR(400),
+    "parent_Id" BIGINT,
+    "googleId" VARCHAR(254),
+    "facebookId" VARCHAR(254),
     "onboarded" BOOLEAN NOT NULL DEFAULT false,
     "is_seller_approved" BOOLEAN NOT NULL DEFAULT false,
 

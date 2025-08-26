@@ -7,11 +7,13 @@ export default class CookieHelper {
     dns: string,
     expiry?: number,
   ) {
+    // TODO: Will uncomment
     res.cookie(key, value, {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict',
+      sameSite: 'none',
       domain: dns,
+      path: '/',
       maxAge: expiry || 15552000000, // 180 days
     });
   }
@@ -21,16 +23,16 @@ export default class CookieHelper {
     key: string,
     sameSite: 'lax' | 'strict',
     isProd: boolean,
-    frontendUrl?: string,
+    dns?: string,
   ) {
-    const expiry = new Date();
-    expiry.setDate(-1);
+    const expiry = new Date(0);
     res.clearCookie(key, {
       httpOnly: true,
       secure: isProd,
-      sameSite,
+      sameSite: 'none',
+      path: '/',
       expires: expiry,
-      domain: this.getDomain(isProd, frontendUrl),
+      domain: dns,
     });
   }
 
@@ -46,12 +48,12 @@ export default class CookieHelper {
     res: Response,
     sameSite: 'lax' | 'strict',
     isProd: boolean,
-    frontendUrl?: string,
+    dns?: string,
   ) {
     if (!this.hasCookies(req)) return;
 
     for (const key of Object.keys(req.cookies)) {
-      this.clearCookies(res, key, sameSite, isProd, frontendUrl);
+      this.clearCookies(res, key, sameSite, isProd, dns);
     }
   }
 

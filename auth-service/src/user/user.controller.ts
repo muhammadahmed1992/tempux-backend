@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpStatus,
+  Param,
   Post,
   Put,
   Req,
@@ -139,19 +140,19 @@ export class UserController {
     return this.userService.findUsersByIds(userIds);
   }
 
-  @Post('account-existance')
-  async validateAssociatedAccount(
+  @Post('map')
+  async mapWithExistingAccount(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: false }) res: Response,
     @Body('email') email: string,
   ) {
     const provider = CookieHelper.getCookieValue(
       req,
       'provider',
     ) as ProviderType;
-    const socialEmail = decodeURIComponent(
-      CookieHelper.getCookieValue(req, 'ue')!,
-    );
+    const socialEmail =
+      CookieHelper.getCookieValue(req, 'ue') &&
+      decodeURIComponent(CookieHelper.getCookieValue(req, 'ue')!);
 
     if (!provider || !socialEmail) {
       this.clearCookies(req, res);
@@ -160,18 +161,38 @@ export class UserController {
       );
     }
 
-    return this.userService.validateExistingAccount(
+    return this.userService.mapWithExistingAccount(
       email,
       socialEmail,
       provider,
     );
   }
 
-  @Post('/social-media')
+  @Post('register/predefined-user')
+  async predefinedUser(@Body() email: string): Promise<ApiResponse<boolean>> {
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('Invalid email address');
+    }
+
+    return this.userService.create({
+      email,
+      password: 'SOCIAL_LOGIN_PASSWORD_PLACEH',
+      username: 'SOCIAL',
+      fullName: 'SOCIAL_LOGIN_USERNAME',
+    });
+  }
+
+  @Get('validate/:email')
+  async validateUser(
+    @Param('email') email: string,
+  ): Promise<ApiResponse<boolean>> {
+    return this.userService.validateUser(email);
+  }
+
+  @Post('social-media')
   async createUserBySocialMedia(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-    @Body('email') email: string,
   ) {
     const provider = CookieHelper.getCookieValue(
       req,
@@ -187,7 +208,6 @@ export class UserController {
         'Your session has been expired. Please re-login again',
       );
     }
-    let processedEmail = email || socialEmail;
 
     const result = await this.userService.createUserBySocialLoginEmail(
       socialEmail,
@@ -220,11 +240,11 @@ export class UserController {
 
   // TODO: Will fix typings
   private async clearCookies(req: any, res: any) {
-    const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
+    const dns = this.configService.get<string>('DNS')!;
     const isProd =
       (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
       'production';
-    CookieHelper.clearAllCookies(req, res, 'strict', isProd, frontEndUrl);
+    CookieHelper.clearAllCookies(req, res, 'strict', isProd, dns);
   }
 }
 
