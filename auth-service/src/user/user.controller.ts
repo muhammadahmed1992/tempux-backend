@@ -143,7 +143,7 @@ export class UserController {
   @Post('map')
   async mapWithExistingAccount(
     @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
+    @Res({ passthrough: false }) res: Response,
     @Body('email') email: string,
   ) {
     const provider = CookieHelper.getCookieValue(
