@@ -169,7 +169,7 @@ export class UserController {
   }
 
   @Post('register/predefined-user')
-  async predefinedUser(@Body() email: string) {
+  async predefinedUser(@Body() email: string): Promise<ApiResponse<boolean>> {
     if (!email || !email.includes('@')) {
       throw new BadRequestException('Invalid email address');
     }
@@ -177,14 +177,16 @@ export class UserController {
     return this.userService.create({
       email,
       password: 'SOCIAL_LOGIN_PASSWORD_PLACEH',
-      username: '',
+      username: 'SOCIAL',
       fullName: 'SOCIAL_LOGIN_USERNAME',
     });
   }
 
   @Get('validate/:email')
-  async validateUser(@Param('email') email: string) {
-    this.userService.validateUser(email);
+  async validateUser(
+    @Param('email') email: string,
+  ): Promise<ApiResponse<boolean>> {
+    return this.userService.validateUser(email);
   }
 
   @Post('social-media')
