@@ -182,13 +182,6 @@ export class UserController {
     });
   }
 
-  @Get('validate/:email')
-  async validateUser(
-    @Param('email') email: string,
-  ): Promise<ApiResponse<boolean>> {
-    return this.userService.validateUser(email);
-  }
-
   @Post('social-media')
   async createUserBySocialMedia(
     @Req() req: Request,
