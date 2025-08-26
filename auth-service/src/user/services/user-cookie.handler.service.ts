@@ -10,7 +10,7 @@ export class UserCookieHandlerService {
    * @returns nothing but creates a access_token http cookie
    */
   handleLoginCookie(res: Response, token: string, domainUrl: string) {
-    CookieHelper.setCookies(res as any, 'access_token', token, domainUrl);
+    CookieHelper.setCookies(res as any, 'access_token', true, token, domainUrl);
   }
 
   /**
@@ -25,6 +25,7 @@ export class UserCookieHandlerService {
     CookieHelper.setCookies(
       res as any,
       'ue',
+      false,
       encodeURIComponent(data.socialEmail),
       domainUrl,
       3600000, //TODO: 1 hour for now
@@ -32,6 +33,7 @@ export class UserCookieHandlerService {
     CookieHelper.setCookies(
       res as any,
       'provider',
+      false,
       data.provider,
       domainUrl,
       3600000, //TODO: 1 hour for now
