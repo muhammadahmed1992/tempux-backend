@@ -30,6 +30,7 @@ import { EncryptionHelper } from '@Helper/encryption.helper';
 import { ForgotPasswordDTO } from '../dtos/update.password.dto';
 import { UserDetailsResponseDto } from '../dtos/user.details.response.dto';
 import { UserProfileDTO } from '../dtos/user-profile.dto';
+import { ValidateUnique } from '@User/decorators/validate-email';
 
 @Injectable()
 export class UserService {
@@ -47,19 +48,19 @@ export class UserService {
         'Please check SALT_ROUND environment variable. It is missing or invalid',
       );
   }
-
+  @ValidateUnique((args) => args[0].email) // CreateUserDto -> user.email
   async create(user: CreateUserDto): Promise<ApiResponse<boolean>> {
     try {
       // TOOD: Will discuss about role implementation...
       //If user already exists returns an error
-      const response = await this.validateUserHelper(user.email);
-      if (!response) {
-        return ResponseHelper.CreateResponse<boolean>(
-          Constants.USER_ALREADY_EXISTS,
-          false,
-          HttpStatus.CONFLICT,
-        );
-      }
+      // const response = await this.validateUserHelper(user.email);
+      // if (!response) {
+      //   return ResponseHelper.CreateResponse<boolean>(
+      //     Constants.USER_ALREADY_EXISTS,
+      //     false,
+      //     HttpStatus.CONFLICT,
+      //   );
+      // }
 
       const hashedPassword = await bcrypt.hash(user.password, this.SALT_ROUND);
       const otpResponse = await this.generateOTPAndExpiry();
@@ -159,13 +160,12 @@ export class UserService {
         request.password,
         user.password,
       );
-      if (!isPasswordValid)
-        console.log("password in valid ")
-        return ResponseHelper.CreateResponse<LoginDTO>(
-          Constants.INVALID_CREDENTIALS,
-          { accessToken: '' },
-          HttpStatus.BAD_REQUEST,
-        );
+      if (!isPasswordValid) console.log('password in valid ');
+      return ResponseHelper.CreateResponse<LoginDTO>(
+        Constants.INVALID_CREDENTIALS,
+        { accessToken: '' },
+        HttpStatus.BAD_REQUEST,
+      );
     }
     // Extract the role IDs from the user_roles array
     const roleIds = (user as any).user_roles.map((role: any) =>
@@ -563,6 +563,7 @@ export class UserService {
    * @param userType This the user type which will be gona registered.
    * @returns
    */
+  @ValidateUnique((args) => args[0]) // SocialEmail -> first args[0] = socialEmail
   async createUserBySocialLoginEmail(
     socialEmail: string,
     provider: 'google' | 'facebook',
@@ -573,41 +574,13 @@ export class UserService {
 
     // TODO: Will refactor later with actual create method of user service
     // Check if user exists
-    const isExists = await this.userRepository.validateUser(socialEmail);
-    if (isExists) {
-      return ResponseHelper.CreateResponse<boolean>(
-        Constants.USER_ALREADY_EXISTS,
-        false,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-    // const otpResponse = await this.generateOTPAndExpiry();
-    // // Construct the data object for createUser
-    // const password = await bcrypt.hash(
-    //   'SOCIAL_LOGIN_PASSWORD_PLACEH',
-    //   this.SALT_ROUND,
-    // );
-    // // By Default assigning it buyer and seller
-    // const roleIds: bigint[] = [3n, 4n];
-    // const newUserCreateData: Prisma.UserCreateInput = {
-    //   name: 'SOCIAL_LOGIN_USER_NAME',
-    //   email: socialEmail,
-    //   password: password,
-    //   user_roles: {
-    //     create: roleIds.map((roleId) => ({
-    //       role_id: roleId, // use role_id, not id
-    //     })),
-    //   },
-    //   otp: otpResponse.otp,
-    //   otp_expires_at: otpResponse.otp_expiry_date_time,
-    // };
-
-    // // Conditionally add the social ID field to the data object.
-    // // Because Prisma doesn't allow dynamic column.
-    // if (provider === 'google') {
-    //   newUserCreateData.googleId = socialEmail;
-    // } else if (provider === 'facebook') {
-    //   newUserCreateData.facebookId = socialEmail;
+    // const isExists = await this.userRepository.validateUser(socialEmail);
+    // if (isExists) {
+    //   return ResponseHelper.CreateResponse<boolean>(
+    //     Constants.USER_ALREADY_EXISTS,
+    //     false,
+    //     HttpStatus.BAD_REQUEST,
+    //   );
     // }
 
     // const newUser = await this.userRepository.createUser(newUserCreateData);
@@ -631,24 +604,24 @@ export class UserService {
    * @param email user's email which needs to be checked if exists.
    * @returns Promise<ApiResponse<boolean>>
    */
-  async validateUser(email: string): Promise<ApiResponse<boolean>> {
-    const response = !(await this.validateUserHelper(email));
+  // async validateUser(email: string): Promise<ApiResponse<boolean>> {
+  //   const response = !(await this.validateUserHelper(email));
 
-    return ResponseHelper.CreateResponse<boolean>(
-      response ? Constants.USER_ALREADY_EXISTS : '',
-      !response,
-      response ? HttpStatus.FOUND : HttpStatus.OK,
-    );
-  }
+  //   return ResponseHelper.CreateResponse<boolean>(
+  //     response ? Constants.USER_ALREADY_EXISTS : '',
+  //     !response,
+  //     response ? HttpStatus.FOUND : HttpStatus.OK,
+  //   );
+  // }
 
-  private async validateUserHelper(email: string) {
+  public async validateUserHelper(email: string) {
     const isExists = await this.userRepository.validateUser(email, {
       id: true,
     });
     if (isExists?.id) {
-      return true;
+      return false;
     }
-    return false;
+    return true;
   }
 
   /**

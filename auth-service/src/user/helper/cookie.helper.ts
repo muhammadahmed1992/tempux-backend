@@ -55,7 +55,7 @@ export default class CookieHelper {
     if (!this.hasCookies(req)) return;
 
     for (const key of Object.keys(req.cookies)) {
-      this.clearCookies(res, key, sameSite, isProd, dns);
+      this.clearCookies(res, key, true, sameSite, isProd, dns);
     }
   }
 
