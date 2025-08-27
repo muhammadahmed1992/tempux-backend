@@ -32,6 +32,7 @@ import ResponseHelper from '@Helper/response-helper';
 import CookieHelper from './helper/cookie.helper';
 import { ProviderType } from './dtos/user.details.response.dto';
 import { HeaderAuthGuard } from 'src/auth/guards/auth-user-guard';
+import { LogoutCookieInterceptor } from './interceptor/logout.cookie.interceptor';
 @Controller('user')
 export class UserController {
   constructor(
@@ -155,7 +156,7 @@ export class UserController {
       decodeURIComponent(CookieHelper.getCookieValue(req, 'ue')!);
 
     if (!provider || !socialEmail) {
-      this.clearCookies(req, res);
+      this.clearCookies(res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -196,7 +197,7 @@ export class UserController {
     );
     console.log(`social-media: social email: ${socialEmail}`);
     if (!provider || !socialEmail) {
-      this.clearCookies(req, res);
+      this.clearCookies(res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -221,9 +222,9 @@ export class UserController {
   }
 
   @UseGuards(HeaderAuthGuard)
+  @UseInterceptors(LogoutCookieInterceptor)
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    this.clearCookies(req, res);
     return ResponseHelper.CreateResponse<any>(
       'You have been successfully logout',
       null,
@@ -232,12 +233,13 @@ export class UserController {
   }
 
   // TODO: Will fix typings
-  private async clearCookies(req: any, res: any) {
+  private async clearCookies(res: any) {
     const dns = this.configService.get<string>('DNS')!;
-    const isProd =
-      (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
-      'production';
-    CookieHelper.clearAllCookies(req, res, 'strict', isProd, dns);
+
+    // We need to clear cookies explicitly so that passing exact params which were used while during creation.
+    CookieHelper.clearCookies(res as any, 'access_token', 'strict', true, dns);
+    CookieHelper.clearCookies(res as any, 'ue', 'strict', false, dns);
+    CookieHelper.clearCookies(res as any, 'provider', 'strict', false, dns);
   }
 }
 
