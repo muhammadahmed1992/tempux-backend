@@ -160,12 +160,13 @@ export class UserService {
         request.password,
         user.password,
       );
-      if (!isPasswordValid) console.log('password in valid ');
-      return ResponseHelper.CreateResponse<LoginDTO>(
-        Constants.INVALID_CREDENTIALS,
-        { accessToken: '' },
-        HttpStatus.BAD_REQUEST,
-      );
+      if (!isPasswordValid) {
+        return ResponseHelper.CreateResponse<LoginDTO>(
+          Constants.INVALID_CREDENTIALS,
+          { accessToken: '' },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
     // Extract the role IDs from the user_roles array
     const roleIds = (user as any).user_roles.map((role: any) =>

@@ -32,6 +32,7 @@ import ResponseHelper from '@Helper/response-helper';
 import CookieHelper from './helper/cookie.helper';
 import { ProviderType } from './dtos/user.details.response.dto';
 import { HeaderAuthGuard } from 'src/auth/guards/auth-user-guard';
+import { LogoutCookieInterceptor } from './interceptor/logout.cookie.interceptor';
 @Controller('user')
 export class UserController {
   constructor(
@@ -221,9 +222,9 @@ export class UserController {
   }
 
   @UseGuards(HeaderAuthGuard)
+  @UseInterceptors(LogoutCookieInterceptor)
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    this.clearCookies(res);
     return ResponseHelper.CreateResponse<any>(
       'You have been successfully logout',
       null,
