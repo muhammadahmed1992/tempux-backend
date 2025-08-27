@@ -155,7 +155,7 @@ export class UserController {
       decodeURIComponent(CookieHelper.getCookieValue(req, 'ue')!);
 
     if (!provider || !socialEmail) {
-      this.clearCookies(req, res);
+      this.clearCookies(res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -196,7 +196,7 @@ export class UserController {
     );
     console.log(`social-media: social email: ${socialEmail}`);
     if (!provider || !socialEmail) {
-      this.clearCookies(req, res);
+      this.clearCookies(res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
