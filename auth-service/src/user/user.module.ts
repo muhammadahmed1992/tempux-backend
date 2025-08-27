@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UserController } from '@User/user.controller';
 import { UserService } from '@User/services/user.service';
+import { AddressService } from '@User/services/address.service';
 import { GoogleStrategy } from './strategies/google-strategy';
 import { FacebookStrategy } from './strategies/facebook-strategy';
 import { UserRepository } from './users.repository';
@@ -31,6 +32,7 @@ import { UserCookieHandlerService } from './services/user-cookie.handler.service
   controllers: [UserController],
   providers: [
     UserService,
+    AddressService,
     GoogleStrategy,
     FacebookStrategy,
     UserRepository,

@@ -1,18 +1,15 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { OrderRepository } from './order.repository';
 import { ShippingService } from '../shipping/shipping.service';
 import { ProductProxyService } from '../proxy/product-proxy/product-proxy.service';
+import { AuthProxyService } from '../proxy/auth-proxy/auth-proxy.service';
 import {
   CreateOrderDto,
   CreateOrderItemDto,
   ShippingAddressDto,
 } from './dtos/create-order.dto';
 import { OrderResponseDto, OrderListingDto } from './dtos/order-response.dto';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class OrderService {
@@ -20,6 +17,7 @@ export class OrderService {
     private readonly orderRepository: OrderRepository,
     private readonly shippingService: ShippingService,
     private readonly productProxyService: ProductProxyService,
+    private readonly authProxyService: AuthProxyService,
   ) {}
 
   async createOrder(
@@ -28,21 +26,32 @@ export class OrderService {
   ): Promise<OrderResponseDto> {
     // Validate products and inventory
     await this.validateOrderItems(createOrderDto.orderItems);
-
+   // Extract Seller Id - assuming all items are from the same seller
+  const sellerId = BigInt(createOrderDto.orderItems[0].sellerId);
     // Handle shipping address
     let shippingAddressId: bigint | undefined;
     if (
       createOrderDto.useSavedShippingAddress &&
       createOrderDto.savedShippingAddressId
     ) {
-      // Use saved shipping address
+      // Validate that the saved address belongs to the user
+      const isValidAddress =
+        await this.authProxyService.validateAddressOwnership(
+          BigInt(createOrderDto.savedShippingAddressId),
+          userId,
+          'SHIPPING',
+        );
+      if (!isValidAddress) {
+        throw new BadRequestException('Invalid shipping address');
+      }
       shippingAddressId = BigInt(createOrderDto.savedShippingAddressId);
     } else if (createOrderDto.shippingAddress) {
-      // Create new shipping address
-      shippingAddressId = await this.createShippingAddress(
+      // For new addresses, we'll create them in the database
+      const newAddressId = await this.authProxyService.createShippingAddress(
         createOrderDto.shippingAddress,
         userId,
       );
+      shippingAddressId = newAddressId;
     } else {
       throw new BadRequestException('Shipping address is required');
     }
@@ -51,12 +60,14 @@ export class OrderService {
     const shippingRate = await this.shippingService.getRateQuote({
       shippingAddressId: shippingAddressId!,
       orderItems: createOrderDto.orderItems,
+      userId,
+      sellerId
     });
 
     // Prepare order data
     const orderData: Prisma.ordersCreateInput = {
       buyer_id: BigInt(createOrderDto.buyerId),
-      product_Id: BigInt(createOrderDto.orderItems[0].productId), // Using first item's product ID
+      product_Id: BigInt(createOrderDto.orderItems[0].productId),
       total_discount: createOrderDto.totalDiscount,
       total_tax: createOrderDto.totalTax,
       total_shipping_cost: shippingRate.totalCost,
@@ -65,7 +76,7 @@ export class OrderService {
       created_by: userId,
     };
 
-    // Prepare order items data (without order_id as it will be set in transaction)
+    // Prepare order items data
     const orderItemsData: Omit<
       Prisma.order_itemUncheckedCreateInput,
       'order_id'
@@ -89,10 +100,12 @@ export class OrderService {
       await this.orderRepository.createOrderWithItems(
         orderData,
         orderItemsData,
+
       );
 
     // Create shipments for order items
-    await this.shippingService.createShipmentsForOrder(order.id, orderItems);
+    await this.shippingService.createShipmentsForOrder(order.id, orderItems ,
+      userId, shippingAddressId);
 
     return this.mapToOrderResponse(order, orderItems);
   }
@@ -102,7 +115,7 @@ export class OrderService {
       orderId,
     );
     if (!orderWithItems) {
-      throw new NotFoundException('Order not found');
+      throw new BadRequestException('Order not found');
     }
 
     return this.mapToOrderResponse(orderWithItems, orderWithItems.order_items);
@@ -148,7 +161,7 @@ export class OrderService {
     );
 
     if (!orderWithItems) {
-      throw new NotFoundException('Order not found');
+      throw new BadRequestException('Order not found');
     }
 
     return this.mapToOrderResponse(orderWithItems, orderWithItems.order_items);
@@ -174,16 +187,6 @@ export class OrderService {
         );
       }
     }
-  }
-
-  private async createShippingAddress(
-    shippingAddress: ShippingAddressDto,
-    userId: bigint,
-  ): Promise<bigint> {
-    // This would create a shipping address record
-    // For now, we'll return a placeholder
-    // TODO: Implement shipping address creation
-    return BigInt(1);
   }
 
   private mapToOrderResponse(order: any, orderItems: any[]): OrderResponseDto {

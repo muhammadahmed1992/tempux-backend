@@ -5,6 +5,7 @@ import ResponseHandlerInterceptor from './common/interceptor/response-handler.in
 import { AllExceptionsFilter } from './common/filters/global.exception.filter';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import { BigIntInterceptor } from '@Common/interceptor/big.int.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -33,6 +34,7 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
+  app.useGlobalInterceptors(new BigIntInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
   console.log(`running port of auth is : ${process.env.PORT}`);
 

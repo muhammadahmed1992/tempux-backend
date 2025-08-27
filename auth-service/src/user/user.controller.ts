@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpStatus,
+  Param,
   Post,
   Put,
   Req,
@@ -13,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { UserService } from './services/user.service';
+import { AddressService } from './services/address.service';
 import { CreateUserDto } from './dtos/create.user.dto';
 import ApiResponse from '@Helper/api-response';
 import { LoginRequestDTO } from './dtos/login-request.dto';
@@ -31,10 +33,16 @@ import ResponseHelper from '@Helper/response-helper';
 import CookieHelper from './helper/cookie.helper';
 import { ProviderType } from './dtos/user.details.response.dto';
 import { HeaderAuthGuard } from 'src/auth/guards/auth-user-guard';
+import {
+  CreateAddressDto,
+  UpdateAddressDto,
+  ValidateAddressOwnershipDto,
+} from './dtos/address.dto';
 @Controller('user')
 export class UserController {
   constructor(
     private readonly userService: UserService,
+    private readonly addressService: AddressService,
     private readonly socialLoginService: SocialLoginService,
     private readonly configService: ConfigService,
   ) {}
@@ -212,6 +220,113 @@ export class UserController {
     return ResponseHelper.CreateResponse<any>(
       'You have been successfully logout',
       null,
+      HttpStatus.OK,
+    );
+  }
+
+  // Address endpoints
+  @UseGuards(HeaderAuthGuard)
+  @Post('addresses')
+  async createAddress(
+    @Req() request: Request & { user?: JwtUser },
+    @Body() createAddressDto: CreateAddressDto,
+  ): Promise<ApiResponse<any>> {
+    if (!request.user) throw new UnauthorizedException();
+    const result = await this.addressService.createAddress(
+      request.user.id,
+      createAddressDto,
+    );
+    return ResponseHelper.CreateResponse<any>(
+      'Address created successfully',
+      result,
+      HttpStatus.CREATED,
+    );
+  }
+
+  @UseGuards(HeaderAuthGuard)
+  @Get('addresses/:addressId')
+  async findAddressById(
+    @Req() request: Request & { user?: JwtUser },
+    @Param('addressId') addressId: string,
+  ): Promise<ApiResponse<any>> {
+    if (!request.user) throw new UnauthorizedException();
+
+    const addressIdBigInt = BigInt(addressId);
+    const result = await this.addressService.findAddressById(
+      addressIdBigInt,
+      request.user.id,
+    );
+    return ResponseHelper.CreateResponse<any>(
+      'Address retrieved successfully',
+      result,
+      HttpStatus.OK,
+    );
+  }
+
+  @Post('addresses/context/:context')
+  async findUserAddressesByContext(
+    @Param('context') context: 'buyer' | 'seller',
+    @Body() body: { userId: string | number },
+  ): Promise<ApiResponse<any>> {
+    const bigIntUserId = BigInt(body.userId);
+
+    const result = await this.addressService.findUserAddressesByContext(
+      bigIntUserId,
+      context,
+    );
+    return ResponseHelper.CreateResponse<any>(
+      'Addresses retrieved successfully',
+      result,
+      HttpStatus.OK,
+    );
+  }
+
+  @Get('addresses/default/:addressType')
+  async getDefaultAddressByType(
+    @Req() request: Request & { user?: JwtUser },
+    @Param('addressType') addressType: string,
+  ): Promise<ApiResponse<any>> {
+    if (!request.user) throw new UnauthorizedException();
+    const result = await this.addressService.getDefaultAddressByType(
+      request.user.id,
+      addressType,
+    );
+    return ResponseHelper.CreateResponse<any>(
+      'Default address retrieved successfully',
+      result,
+      HttpStatus.OK,
+    );
+  }
+
+  @UseGuards(HeaderAuthGuard)
+  @Post('addresses/order-addresses')
+  async getOrderAddresses(
+    @Body() body: { buyerId: number | bigint; sellerId: number | bigint },
+  ): Promise<ApiResponse<any>> {
+    const result = await this.addressService.getOrderAddresses(
+      BigInt(body.buyerId),
+      BigInt(body.sellerId),
+    );
+    return ResponseHelper.CreateResponse<any>(
+      'Order addresses retrieved successfully',
+      result,
+      HttpStatus.OK,
+    );
+  }
+
+  @UseGuards(HeaderAuthGuard)
+  @Post('addresses/validate-ownership')
+  async validateAddressOwnership(
+    @Body() validateDto: ValidateAddressOwnershipDto,
+  ): Promise<ApiResponse<boolean>> {
+    const result = await this.addressService.validateAddressOwnership(
+      BigInt(validateDto.addressId),
+      BigInt(validateDto.userId),
+      validateDto.expectedType,
+    );
+    return ResponseHelper.CreateResponse<boolean>(
+      'Address ownership validated',
+      result,
       HttpStatus.OK,
     );
   }

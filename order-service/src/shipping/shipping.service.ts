@@ -11,10 +11,17 @@ import {
 } from './fedex/dtos/fedex-shipment.dto';
 import { CreateOrderItemDto } from '../order/dtos/create-order.dto';
 import { order_item } from '@prisma/client';
+import {
+  AddressesByContextResponse,
+  AddressResponse,
+  AuthProxyService,
+} from '@Proxy/auth-proxy/auth-proxy.service';
 
 export interface RateQuoteRequest {
   shippingAddressId: bigint;
   orderItems: CreateOrderItemDto[];
+  userId: bigint;
+  sellerId: bigint;
 }
 
 export interface RateQuoteResponse {
@@ -38,29 +45,28 @@ export class ShippingService {
   constructor(
     private readonly shipmentRepository: ShipmentRepository,
     private readonly fedExService: FedExService,
+    private readonly authProxyService: AuthProxyService,
   ) {}
 
   async getRateQuote(request: RateQuoteRequest): Promise<RateQuoteResponse> {
     try {
-      // Get shipping address details (this would be implemented based on your address storage)
       const shippingAddress = await this.getShippingAddress(
         request.shippingAddressId,
+        request.userId,
       );
 
-      // Get shipper address (your warehouse/fulfillment center)
-      const shipperAddress = this.getShipperAddress();
-
+      const warehouseAddress = await this.getShipperAddress(request.sellerId);
       // Calculate package dimensions and weight from order items
       const packages = await this.calculatePackages(request.orderItems);
 
       // Prepare FedEx rate quote request
       const fedExRateRequest: FedExRateQuoteRequestDto = {
         shipperAddress: {
-          addressLine1: shipperAddress.addressLine1,
-          city: shipperAddress.city,
-          state: shipperAddress.state,
-          postalCode: shipperAddress.postalCode,
-          countryCode: shipperAddress.countryCode,
+          addressLine1: warehouseAddress.addressLine1,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          postalCode: warehouseAddress.postalCode,
+          countryCode: warehouseAddress.countryCode,
         },
         recipientAddress: {
           addressLine1: shippingAddress.addressLine1,
@@ -99,6 +105,8 @@ export class ShippingService {
   async createShipmentsForOrder(
     orderId: bigint,
     orderItems: order_item[],
+    userId: bigint,
+    addressId: bigint,
   ): Promise<void> {
     try {
       const fedExProvider = await this.shipmentRepository.getFedExProvider();
@@ -115,6 +123,8 @@ export class ShippingService {
           sellerId,
           items,
           fedExProvider.id,
+          userId,
+          addressId,
         );
       }
     } catch (error) {
@@ -132,33 +142,50 @@ export class ShippingService {
     }
   }
 
-  private async getShippingAddress(addressId: bigint): Promise<any> {
-    // This would fetch shipping address from our address storage
-    // For now, returning a placeholder
-    return {
-      addressLine1: '123 Main St',
-      city: 'Memphis',
-      state: 'TN',
-      postalCode: '38116',
-      countryCode: 'US',
-    };
+  private async getShippingAddress(
+    addressId: bigint,
+    userId: bigint,
+  ): Promise<any> {
+    // Use proxy to get the shipping address from database
+    try {
+      const address = this.authProxyService.findAddressById(addressId, userId);
+      return address;
+    } catch (error) {
+      this.logger.error('Failed to get shipping address', error);
+      throw new BadRequestException('Failed to get shipping address');
+    }
   }
 
-  private getShipperAddress(): any {
-    // This would be your warehouse/fulfillment center address
-    return {
-      addressLine1: '456 Market Street',
-      city: 'Los Angeles',
-      state: 'CA',
-      postalCode: '90001',
-      countryCode: 'US',
-    };
+  private async getShipperAddress(sellerId: bigint): Promise<AddressResponse> {
+    try {
+      const addressResponse =
+        await this.authProxyService.findUserAddressesByContext(
+          sellerId,
+          'seller',
+        );
+      // default warehouse address first
+      if (addressResponse.defaultWarehouseAddress) {
+        return addressResponse.defaultWarehouseAddress;
+      }
+
+      // Fallback to first warehouse address
+      const firstWarehouseAddress = addressResponse.warehouseAddresses?.[0];
+      if (firstWarehouseAddress) {
+        return firstWarehouseAddress;
+      }
+
+      throw new BadRequestException('No warehouse address found for seller');
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to retrieve seller warehouse address',
+      );
+    }
   }
 
   private async calculatePackages(
     orderItems: CreateOrderItemDto[],
   ): Promise<any[]> {
-    // This would calculate package dimensions and weight based on products
+    // Todo: would calculate package dimensions and weight based on products
     // For now, returning a simple package calculation
     const totalWeight = orderItems.reduce(
       (sum, item) => sum + item.quantity * 1,
@@ -194,26 +221,30 @@ export class ShippingService {
     sellerId: bigint,
     orderItems: order_item[],
     fedExProviderId: bigint,
+    userId: bigint,
+    addressId: bigint,
   ): Promise<void> {
     try {
       // Get shipping address for the order
-      const shippingAddress = await this.getShippingAddress(BigInt(1)); // Placeholder
-      const shipperAddress = this.getShipperAddress();
+      const shippingAddress = await this.getShippingAddress(addressId, userId);
+      const warehouseAddress = await this.getShipperAddress(sellerId);
 
       // Prepare FedEx shipment request
       const fedExShipmentRequest: FedExShipmentRequestDto = {
+        // Todo: We'll implement to use the actual info
         shipperContact: {
           personName: 'Warehouse Manager',
           phoneNumber: '555-123-4567',
           emailAddress: 'warehouse@company.com',
         },
         shipperAddress: {
-          addressLine1: shipperAddress.addressLine1,
-          city: shipperAddress.city,
-          state: shipperAddress.state,
-          postalCode: shipperAddress.postalCode,
-          countryCode: shipperAddress.countryCode,
+          addressLine1: warehouseAddress.addressLine1,
+          city: warehouseAddress.city,
+          state: warehouseAddress.state,
+          postalCode: warehouseAddress.postalCode,
+          countryCode: warehouseAddress.countryCode,
         },
+        // Todo: We'll implement to use the actual info
         recipientContact: {
           personName: 'Customer',
           phoneNumber: '555-987-6543',
@@ -239,7 +270,6 @@ export class ShippingService {
       const fedExResponse = await this.fedExService.createShipment(
         fedExShipmentRequest,
       );
-
       // Extract tracking number and create shipment records
       const shipmentResult = fedExResponse.output?.shipmentResults?.[0];
       if (shipmentResult) {

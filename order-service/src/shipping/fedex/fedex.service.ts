@@ -30,7 +30,7 @@ export class FedExService {
   }
 
   /**
-   * Todo: a utility builder for creating fedex request sections
+   * Todo: Willl create a utility builder for creating fedex request sections
    *
    */
 
@@ -160,85 +160,84 @@ export class FedExService {
     shipmentRequest: FedExShipmentRequestDto,
   ): Promise<FedExShipmentResponseDto> {
     const accessToken = await this.getAccessToken();
-
-    try {
-      const response = await this.httpClient.post<FedExShipmentResponseDto>(
-        '/ship/v1/shipments',
-        {
-          accountNumber: {
-            value: this.configService.get<string>('FEDEX_ACCOUNT_NUMBER'),
+    // Preparing request to send it
+    const request = {
+      accountNumber: {
+        value: this.configService.get<string>('FEDEX_ACCOUNT_NUMBER'),
+      },
+      labelResponseOptions: 'LABEL',
+      requestedShipment: {
+        shipper: {
+          contact: {
+            personName: shipmentRequest.shipperContact.personName,
+            phoneNumber: shipmentRequest.shipperContact.phoneNumber,
+            emailAddress: shipmentRequest.shipperContact.emailAddress,
           },
-          labelResponseOptions: 'LABEL',
-          requestedShipment: {
-            shipper: {
-              contact: {
-                personName: shipmentRequest.shipperContact.personName,
-                phoneNumber: shipmentRequest.shipperContact.phoneNumber,
-                emailAddress: shipmentRequest.shipperContact.emailAddress,
-              },
-              address: {
-                streetLines: [shipmentRequest.shipperAddress.addressLine1],
-                city: shipmentRequest.shipperAddress.city,
-                stateOrProvinceCode: shipmentRequest.shipperAddress.state,
-                postalCode: shipmentRequest.shipperAddress.postalCode,
-                countryCode: shipmentRequest.shipperAddress.countryCode,
-              },
+          address: {
+            streetLines: [shipmentRequest.shipperAddress.addressLine1],
+            city: shipmentRequest.shipperAddress.city,
+            stateOrProvinceCode: shipmentRequest.shipperAddress.state,
+            postalCode: shipmentRequest.shipperAddress.postalCode,
+            countryCode: shipmentRequest.shipperAddress.countryCode,
+          },
+        },
+        recipients: [
+          {
+            contact: {
+              personName: shipmentRequest.recipientContact.personName,
+              phoneNumber: shipmentRequest.recipientContact.phoneNumber,
+              emailAddress: shipmentRequest.recipientContact.emailAddress,
             },
-            recipients: [
-              {
-                contact: {
-                  personName: shipmentRequest.recipientContact.personName,
-                  phoneNumber: shipmentRequest.recipientContact.phoneNumber,
-                  emailAddress: shipmentRequest.recipientContact.emailAddress,
-                },
-                address: {
-                  streetLines: [shipmentRequest.recipientAddress.addressLine1],
-                  city: shipmentRequest.recipientAddress.city,
-                  stateOrProvinceCode: shipmentRequest.recipientAddress.state,
-                  postalCode: shipmentRequest.recipientAddress.postalCode,
-                  countryCode: shipmentRequest.recipientAddress.countryCode,
-                },
-              },
-            ],
-            shippingChargesPayment: {
-              paymentType: 'SENDER',
-              payor: {
-                responsibleParty: {
-                  accountNumber: {
-                    value: this.configService.get<string>(
-                      'FEDEX_ACCOUNT_NUMBER',
-                    ),
-                  },
-                },
-              },
+            address: {
+              streetLines: [shipmentRequest.recipientAddress.addressLine1],
+              city: shipmentRequest.recipientAddress.city,
+              stateOrProvinceCode: shipmentRequest.recipientAddress.state,
+              postalCode: shipmentRequest.recipientAddress.postalCode,
+              countryCode: shipmentRequest.recipientAddress.countryCode,
             },
-            pickupType: 'DROPOFF_AT_FEDEX_LOCATION',
-            serviceType: 'FEDEX_EXPRESS_SAVER', //  TODO: make this dynamic
-            packagingType: 'YOUR_PACKAGING',
-            requestedPackageLineItems: shipmentRequest.packages.map((pkg) => ({
-              weight: {
-                units: 'LB',
-                value: pkg.weight,
+          },
+        ],
+        shippingChargesPayment: {
+          paymentType: 'SENDER',
+          payor: {
+            responsibleParty: {
+              accountNumber: {
+                value: this.configService.get<string>('FEDEX_ACCOUNT_NUMBER'),
               },
-              dimensions: {
-                length: pkg.length,
-                width: pkg.width,
-                height: pkg.height,
-                units: 'IN',
-              },
-              customerReferences: [
-                {
-                  customerReferenceType: 'CUSTOMER_REFERENCE',
-                  value: pkg.customerReference,
-                },
-              ],
-            })),
-            labelSpecification: {
-              imageType: 'PDF',
-              labelStockType: 'PAPER_4X6',
             },
           },
         },
+        pickupType: 'DROPOFF_AT_FEDEX_LOCATION',
+        serviceType: 'FEDEX_EXPRESS_SAVER', //  TODO: make this dynamic
+        packagingType: 'YOUR_PACKAGING',
+        requestedPackageLineItems: shipmentRequest.packages.map((pkg) => ({
+          weight: {
+            units: 'LB',
+            value: pkg.weight,
+          },
+          dimensions: {
+            length: pkg.length,
+            width: pkg.width,
+            height: pkg.height,
+            units: 'IN',
+          },
+          customerReferences: [
+            {
+              customerReferenceType: 'CUSTOMER_REFERENCE',
+              value: pkg.customerReference,
+            },
+          ],
+        })),
+        labelSpecification: {
+          imageType: 'PDF',
+          labelStockType: 'PAPER_4X6',
+        },
+      },
+    };
+    try {
+      const response = await this.httpClient.post<FedExShipmentResponseDto>(
+        '/ship/v1/shipments',
+        request,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
