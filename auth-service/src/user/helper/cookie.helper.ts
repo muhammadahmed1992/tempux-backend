@@ -22,17 +22,16 @@ export default class CookieHelper {
   public static clearCookies(
     res: Response,
     key: string,
-    httpOnly: boolean,
     sameSite: 'lax' | 'strict',
-    isProd: boolean,
+    httpOnly: boolean,
     dns?: string,
   ) {
     const expiry = new Date(0);
     res.clearCookie(key, {
-      httpOnly,
-      secure: isProd,
-      sameSite: 'strict',
+      secure: true,
+      sameSite: sameSite,
       path: '/',
+      httpOnly,
       expires: expiry,
       domain: dns,
     });
@@ -43,43 +42,6 @@ export default class CookieHelper {
       return req.cookies[key];
     }
     return undefined;
-  }
-
-  public static clearAllCookies(
-    req: Request,
-    res: Response,
-    sameSite: 'lax' | 'strict',
-    isProd: boolean,
-    dns?: string,
-  ) {
-    if (!this.hasCookies(req)) return;
-
-    for (const key of Object.keys(req.cookies)) {
-      this.clearCookies(res, key, sameSite, isProd, dns);
-    }
-  }
-
-  private static getDomain(
-    isProd: boolean,
-    frontendUrl?: string,
-  ): string | undefined {
-    if (!isProd || !frontendUrl) return undefined; // Let browser handle for dev/local
-
-    try {
-      const urlObj = new URL(frontendUrl);
-      let cookieDomain = urlObj.hostname;
-
-      // Strip subdomain for cross-subdomain cookies
-      const parts = cookieDomain.split('.');
-      if (parts.length > 2) {
-        cookieDomain = '.' + parts.slice(-2).join('.');
-      }
-      console.log('in setting cookie');
-      console.log(cookieDomain);
-      return cookieDomain;
-    } catch {
-      return undefined;
-    }
   }
 
   private static hasCookies(
