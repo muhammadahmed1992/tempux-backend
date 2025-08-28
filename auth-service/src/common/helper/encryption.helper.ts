@@ -1,24 +1,28 @@
 // src/common/encryption/encryption.helper.ts
 
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import * as crypto from "crypto";
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { AppLoggerService } from '../logging/logger.service';
+import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class EncryptionHelper {
   private readonly encryptionKey: Buffer;
-  private readonly algorithm = "aes-256-gcm"; // Define algorithm as a class property
+  private readonly algorithm = 'aes-256-gcm'; // Define algorithm as a class property
 
-  constructor(private readonly configService: ConfigService) {
-    const key = this.configService.get<string>("EMAIL_ENCRYPTION_KEY");
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: AppLoggerService,
+  ) {
+    const key = this.configService.get<string>('EMAIL_ENCRYPTION_KEY');
 
     if (!key || key.length !== 64) {
       // Validate key length immediately on instantiation
       throw new InternalServerErrorException(
-        "EncryptionHelper: EMAIL_ENCRYPTION_KEY is missing or invalid in environment variables. It must be a 64-character hex string (32 bytes)."
+        'EncryptionHelper: EMAIL_ENCRYPTION_KEY is missing or invalid in environment variables. It must be a 64-character hex string (32 bytes).',
       );
     }
-    this.encryptionKey = Buffer.from(key, "hex");
+    this.encryptionKey = Buffer.from(key, 'hex');
   }
 
   /**
@@ -34,14 +38,14 @@ export class EncryptionHelper {
     const cipher = crypto.createCipheriv(
       this.algorithm,
       this.encryptionKey,
-      iv
+      iv,
     ); // Use instance properties
 
-    let encrypted = cipher.update(text, "utf8", "hex");
-    encrypted += cipher.final("hex");
-    const authTag = cipher.getAuthTag().toString("hex"); // Authentication Tag
+    let encrypted = cipher.update(text, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex'); // Authentication Tag
 
-    return `${iv.toString("hex")}:${encrypted}:${authTag}`;
+    return `${iv.toString('hex')}:${encrypted}:${authTag}`;
   }
 
   /**
@@ -53,47 +57,54 @@ export class EncryptionHelper {
    */
   public decrypt(encryptedText: string): string {
     // Changed to instance method (removed static)
-    const parts = encryptedText.split(":");
+    const parts = encryptedText.split(':');
     if (parts.length !== 3) {
       throw new InternalServerErrorException( // Use NestJS exception for consistent response
-        "Invalid encrypted data format. Expected iv:encryptedData:authTag"
+        'Invalid encrypted data format. Expected iv:encryptedData:authTag',
       );
     }
 
-    const iv = Buffer.from(parts[0], "hex");
-    const encryptedDataBuffer = Buffer.from(parts[1], "hex"); // Ensure this is a Buffer
-    const authTag = Buffer.from(parts[2], "hex");
+    const iv = Buffer.from(parts[0], 'hex');
+    const encryptedDataBuffer = Buffer.from(parts[1], 'hex'); // Ensure this is a Buffer
+    const authTag = Buffer.from(parts[2], 'hex');
 
     try {
       const decipher = crypto.createDecipheriv(
         this.algorithm,
         this.encryptionKey,
-        iv
+        iv,
       ); // Use instance properties
       decipher.setAuthTag(authTag); // Set the authentication tag BEFORE update/final
 
       // Corrected line: If encryptedDataBuffer is already a Buffer,
       // the second argument is the output encoding directly.
       // Fix: Call update to get a Buffer, then convert to string
-      let decrypted = decipher.update(encryptedDataBuffer).toString("utf8");
-      decrypted += decipher.final().toString("utf8"); // Final also returns Buffer, convert it
+      let decrypted = decipher.update(encryptedDataBuffer).toString('utf8');
+      decrypted += decipher.final().toString('utf8'); // Final also returns Buffer, convert it
       return decrypted;
     } catch (error) {
       // Catch specific error for invalid authentication tag
       if (
         (error as any).message ===
-        "Unsupported state or unable to authenticate data"
+        'Unsupported state or unable to authenticate data'
       ) {
-        console.error(
-          "Decryption Error: Invalid authentication tag or corrupted data. This could indicate tampering or incorrect key/IV."
-        );
+        this.logger.error({
+          message:
+            'Decryption Error: Invalid authentication tag or corrupted data',
+          context: { operation: 'decrypt' },
+          error: error as any,
+        });
         throw new InternalServerErrorException(
-          "Decryption failed: Data integrity compromised or invalid key."
+          'Decryption failed: Data integrity compromised or invalid key.',
         );
       }
-      console.error("Decryption Error:", error);
+      this.logger.error({
+        message: 'Decryption Error',
+        context: { operation: 'decrypt' },
+        error: error as any,
+      });
       throw new InternalServerErrorException(
-        `Decryption failed: ${(error as any).message}`
+        `Decryption failed: ${(error as any).message}`,
       );
     }
   }

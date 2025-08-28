@@ -22,14 +22,13 @@ export default class CookieHelper {
   public static clearCookies(
     res: Response,
     key: string,
-    httpOnly: boolean,
     sameSite: 'lax' | 'strict',
     isProd: boolean,
     dns?: string,
   ) {
     const expiry = new Date(0);
     res.clearCookie(key, {
-      httpOnly,
+      httpOnly: true,
       secure: isProd,
       sameSite: 'strict',
       path: '/',
@@ -74,8 +73,6 @@ export default class CookieHelper {
       if (parts.length > 2) {
         cookieDomain = '.' + parts.slice(-2).join('.');
       }
-      console.log('in setting cookie');
-      console.log(cookieDomain);
       return cookieDomain;
     } catch {
       return undefined;

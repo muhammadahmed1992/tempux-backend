@@ -30,6 +30,7 @@ import { EncryptionHelper } from '@Helper/encryption.helper';
 import { ForgotPasswordDTO } from '../dtos/update.password.dto';
 import { UserDetailsResponseDto } from '../dtos/user.details.response.dto';
 import { UserProfileDTO } from '../dtos/user-profile.dto';
+import { AppLoggerService } from '../../common/logging/logger.service';
 
 @Injectable()
 export class UserService {
@@ -40,6 +41,7 @@ export class UserService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly encryptionHelper: EncryptionHelper,
+    private readonly logger: AppLoggerService,
   ) {
     this.SALT_ROUND = Number(this.configService.get<number>('SALT_ROUND')!);
     if (!this.SALT_ROUND)
@@ -49,11 +51,27 @@ export class UserService {
   }
 
   async create(user: CreateUserDto): Promise<ApiResponse<boolean>> {
+    const startTime = Date.now();
+
+    this.logger.logAuthEvent(
+      'user_registration_attempt',
+      undefined,
+      user.email,
+    );
+
     try {
       // TOOD: Will discuss about role implementation...
       //If user already exists returns an error
       const response = await this.validateUserHelper(user.email);
       if (!response) {
+        this.logger.logAuthEvent(
+          'user_registration_failed',
+          undefined,
+          user.email,
+          undefined,
+          false,
+          new Error('User already exists'),
+        );
         return ResponseHelper.CreateResponse<boolean>(
           Constants.USER_ALREADY_EXISTS,
           false,
@@ -92,13 +110,40 @@ export class UserService {
         },
         EmailTemplateType.OTP_VERIFICATION,
       );
+
+      const duration = Date.now() - startTime;
+      this.logger.logAuthEvent(
+        'user_registration_success',
+        result.id.toString(),
+        user.email,
+      );
+      this.logger.debug({
+        message: `User registration completed for ${user.email} in ${duration}ms`,
+        context: {
+          userId: result.id.toString(),
+          email: user.email,
+          duration,
+          operation: 'user_registration_complete',
+        },
+      });
+
       return ResponseHelper.CreateResponse<boolean>(
         Constants.USER_CREATED_SUCCESS,
         result.id ? true : false,
         HttpStatus.CREATED,
       );
     } catch (e: unknown) {
-      console.error(e);
+      const duration = Date.now() - startTime;
+      this.logger.error({
+        message: `User registration failed for ${user.email} in ${duration}ms`,
+        context: {
+          email: user.email,
+          duration,
+          operation: 'user_registration_error',
+        },
+        error: e as Error,
+      });
+
       return ResponseHelper.CreateResponse<boolean>(
         Constants.ERROR_MESSAGE,
         false,
@@ -110,6 +155,10 @@ export class UserService {
   async login(
     request: LoginRequestDTO | SocialLoginResponseDTO,
   ): Promise<ApiResponse<LoginDTO>> {
+    const startTime = Date.now();
+
+    this.logger.logAuthEvent('login_attempt', undefined, request.email);
+
     const user = await this.userRepository.validateUser(request.email, {
       id: true,
       otp_verified: true,
@@ -121,12 +170,22 @@ export class UserService {
         },
       },
     });
-    if (!user)
+
+    if (!user) {
+      this.logger.logAuthEvent(
+        'login_failed',
+        undefined,
+        request.email,
+        undefined,
+        false,
+        new Error('User not found'),
+      );
       return ResponseHelper.CreateResponse<LoginDTO>(
         Constants.USER_NOT_FOUND,
         { accessToken: '' },
         HttpStatus.NOT_FOUND,
       );
+    }
     if (!user.otp_verified) {
       // TODO: Code optimization...
       // Send OTP to the user's email.
@@ -159,13 +218,21 @@ export class UserService {
         request.password,
         user.password,
       );
-      if (!isPasswordValid)
-        console.log("password in valid ")
+      if (!isPasswordValid) {
+        this.logger.logAuthEvent(
+          'login_failed',
+          user.id.toString(),
+          request.email,
+          undefined,
+          false,
+          new Error('Invalid password'),
+        );
         return ResponseHelper.CreateResponse<LoginDTO>(
           Constants.INVALID_CREDENTIALS,
           { accessToken: '' },
           HttpStatus.BAD_REQUEST,
         );
+      }
     }
     // Extract the role IDs from the user_roles array
     const roleIds = (user as any).user_roles.map((role: any) =>
@@ -177,6 +244,23 @@ export class UserService {
       roles: roleIds,
     };
     const token = await this.jwtService.signAsync(payload);
+
+    const duration = Date.now() - startTime;
+    this.logger.logAuthEvent(
+      'login_success',
+      user.id.toString(),
+      request.email,
+    );
+    this.logger.debug({
+      message: `Login completed for user ${user.email} in ${duration}ms`,
+      context: {
+        userId: user.id.toString(),
+        email: user.email,
+        duration,
+        operation: 'login_complete',
+      },
+    });
+
     return ResponseHelper.CreateResponse<LoginDTO>(
       Constants.USER_LOGGED_IN_SUCCESSFULLY,
       { accessToken: token },
@@ -749,7 +833,7 @@ export class UserService {
       name: 'SOCIAL_LOGIN_USER_NAME',
       email: emailToBeCreated,
       password: password,
-      parent_Id: parent_Id,
+      // parent_Id: parent_Id, // Removed as it's not in the schema
       user_roles: {
         create: roleIds.map((roleId) => ({
           role_id: roleId, // use role_id, not id

@@ -30,7 +30,20 @@
     "nodemon": "^3.1.10",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
-    "passport-local": "^1.0.0"
+    "passport-local": "^1.0.0",
+    "pino": "^9.5.0",
+    "pino-pretty": "^12.0.0",
+    "pino-http": "^10.3.0",
+    "uuid": "^11.0.3",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.56.0",
+    "@opentelemetry/resources": "^1.28.0",
+    "@opentelemetry/semantic-conventions": "^1.28.0",
+    "@opentelemetry/instrumentation-http": "^0.55.0",
+    "@opentelemetry/instrumentation-express": "^0.44.0",
+    "@opentelemetry/instrumentation-nestjs-core": "^0.40.0",
+    "@opentelemetry/exporter-jaeger": "^1.28.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.56.0"
   },
   "devDependencies": {
     "@prisma/client": "^6.12.0",
@@ -41,6 +54,7 @@
     "@types/node": "^24.0.0",
     "@types/nodemailer": "^6.4.17",
     "@types/passport-google-oauth20": "^2.0.16",
+    "@types/uuid": "^10.0.0",
     "prisma": "^6.13.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0"

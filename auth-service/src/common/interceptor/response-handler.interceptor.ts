@@ -20,7 +20,7 @@ export default class ResponseHandlerInterceptor<T>
     return next.handle().pipe(
       map((data) => {
         const response = context.switchToHttp().getResponse();
-        console.log(data);
+        // unified logging handled by global LoggingInterceptor
         if (!data) {
           response.status(HttpStatus.INTERNAL_SERVER_ERROR);
         } else {

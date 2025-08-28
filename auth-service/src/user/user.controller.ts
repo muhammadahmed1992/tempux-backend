@@ -32,12 +32,14 @@ import ResponseHelper from '@Helper/response-helper';
 import CookieHelper from './helper/cookie.helper';
 import { ProviderType } from './dtos/user.details.response.dto';
 import { HeaderAuthGuard } from 'src/auth/guards/auth-user-guard';
+import { AppLoggerService } from '../common/logging/logger.service';
 @Controller('user')
 export class UserController {
   constructor(
     private readonly userService: UserService,
     private readonly socialLoginService: SocialLoginService,
     private readonly configService: ConfigService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   @Post('register')
@@ -93,10 +95,16 @@ export class UserController {
   // Google Auth
   @Get('google')
   async googleAuth(@Req() req: Request, @Res() res: Response) {
-    console.log('--- AuthController.googleAuth() Initial Request ---');
+    this.logger.debug({
+      message: 'AuthController.googleAuth initial request',
+      context: { operation: 'oauth_redirect', provider: 'google' },
+    });
     const url = (req.headers['x-client-origin'] || '') as string;
     const redirectUrl = this.socialLoginService.getGoogleLoginUrl(url);
-    console.log('Generated Google Auth URL:', redirectUrl);
+    this.logger.debug({
+      message: 'Generated Google Auth URL',
+      context: { operation: 'oauth_redirect', provider: 'google', redirectUrl },
+    });
     return res.redirect(redirectUrl);
   }
 
@@ -104,7 +112,10 @@ export class UserController {
   @UseGuards(AuthGuard('google'))
   @UseInterceptors(SocialAuthRedirectInterceptor, AuthCookieInterceptor)
   async googleAuthRedirect() {
-    console.log('Google callback endpoint hit!');
+    this.logger.debug({
+      message: 'Google callback endpoint hit',
+      context: { operation: 'oauth_callback', provider: 'google' },
+    });
   }
 
   /**
@@ -114,10 +125,20 @@ export class UserController {
    */
   @Get('facebook')
   async facebookAuth(@Req() req: Request, @Res() res: Response) {
-    console.log('--- AuthController.facebookAuth() Initial Request ---');
+    this.logger.debug({
+      message: 'AuthController.facebookAuth initial request',
+      context: { operation: 'oauth_redirect', provider: 'facebook' },
+    });
     const url = (req.headers['x-client-origin'] || '') as string;
     const redirectUrl = this.socialLoginService.getFacebookLoginUrl(url);
-    console.log('Generated Facebook Auth URL:', redirectUrl);
+    this.logger.debug({
+      message: 'Generated Facebook Auth URL',
+      context: {
+        operation: 'oauth_redirect',
+        provider: 'facebook',
+        redirectUrl,
+      },
+    });
 
     return res.redirect(redirectUrl);
   }
@@ -131,7 +152,10 @@ export class UserController {
   @UseGuards(AuthGuard('facebook')) // Use AuthGuard for 'facebook' strategy
   @UseInterceptors(SocialAuthRedirectInterceptor, AuthCookieInterceptor)
   async facebookAuthRedirect() {
-    console.log('Facebook Callback endpoint hit!');
+    this.logger.debug({
+      message: 'Facebook callback endpoint hit',
+      context: { operation: 'oauth_callback', provider: 'facebook' },
+    });
   }
 
   @Post('details-by-ids')
@@ -194,7 +218,10 @@ export class UserController {
     const socialEmail = decodeURIComponent(
       CookieHelper.getCookieValue(req, 'ue')!,
     );
-    console.log(`social-media: social email: ${socialEmail}`);
+    this.logger.debug({
+      message: 'Social media user email decoded',
+      context: { operation: 'social_login', email: socialEmail },
+    });
     if (!provider || !socialEmail) {
       this.clearCookies(req, res);
       throw new UnauthorizedException(

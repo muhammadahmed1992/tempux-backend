@@ -17,6 +17,7 @@ import {
   SocialLoginVerifyUserResponseDTO,
 } from '@User/dtos/social-login-response.dto';
 import { UserCookieHandlerService } from '@User/services/user-cookie.handler.service';
+import { AppLoggerService } from '../../common/logging/logger.service';
 
 @Injectable()
 export class SocialAuthRedirectInterceptor implements NestInterceptor {
@@ -24,6 +25,7 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly userCookieHandlerService: UserCookieHandlerService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   async intercept(
@@ -52,12 +54,18 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       origin = (req.headers['x-client-origin'] || '') as string;
     }
 
-    console.log(`Logging origin: ${origin}`);
+    this.logger.debug({
+      message: 'Social redirect origin',
+      context: { operation: 'oauth_redirect', origin },
+    });
 
     const frontendUrl =
       origin || this.configService.get<string>('FRONTEND_URL')!;
 
-    console.log(`Logging frontend url social-auth-redirect: ${frontendUrl}`);
+    this.logger.debug({
+      message: 'Social redirect frontend URL',
+      context: { operation: 'oauth_redirect', frontendUrl },
+    });
 
     const dns = this.configService.get<string>('DNS')!;
 
@@ -108,7 +116,11 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
           }
           res.redirect(frontendUrl);
         } catch (err) {
-          console.error('Login error:', err);
+          this.logger.error({
+            message: 'Login error during social redirect',
+            context: { operation: 'oauth_redirect' },
+            error: err as any,
+          });
           safeRedirect(`${frontendUrl}/server-error`);
           return of(null);
         }
@@ -126,7 +138,11 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       safeRedirect(`${frontendUrl}/server-error`);
       return of(null);
     } catch (err) {
-      console.error('Error during social login redirect:', err);
+      this.logger.error({
+        message: 'Error during social login redirect',
+        context: { operation: 'oauth_redirect' },
+        error: err as any,
+      });
       safeRedirect(`${frontendUrl}/server-error`);
       return of(null);
     }
