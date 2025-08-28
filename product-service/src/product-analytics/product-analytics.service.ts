@@ -63,9 +63,6 @@ export class ProductAnalyticsService {
         },
         created_by: auditorId,
       });
-      console.log(
-        `[ProductAnalytics] Recorded new unique view for User:${userId}, Product:${productId}, Variant:${variantId}`,
-      );
     }
 
     return ResponseHelper.CreateResponse<boolean>('', true, HttpStatus.OK);

@@ -1,14 +1,15 @@
-import Meta from "@Helper/meta";
-import ResponseHelper from "@Helper/response-helper";
+import Meta from '@Helper/meta';
+import ResponseHelper from '@Helper/response-helper';
 import {
   Catch,
   ArgumentsHost,
   HttpException,
   HttpStatus,
   ExceptionFilter,
-} from "@nestjs/common";
+} from '@nestjs/common';
 // Import Request and Response from express
-import { Request, Response } from "express";
+import { Request, Response } from 'express';
+import { AppLoggerService } from '../logging/logger.service';
 
 /**
  * A global exception filter that catches all unhandled exceptions
@@ -16,6 +17,7 @@ import { Request, Response } from "express";
  */
 @Catch() // @Catch() without arguments catches all exceptions
 export class AllExceptionsFilter implements ExceptionFilter {
+  constructor(private readonly logger: AppLoggerService) {}
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -33,34 +35,40 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       errorResponse = exception.getResponse(); // Get the original error response from HttpException
-      if (typeof errorResponse === "string") {
+      if (typeof errorResponse === 'string') {
         message = errorResponse; // If it's a simple string message
-      } else if (typeof errorResponse === "object" && errorResponse !== null) {
+      } else if (typeof errorResponse === 'object' && errorResponse !== null) {
         // For validation errors or other structured HttpExceptions
-        message = errorResponse.message || "An unexpected error occurred.";
+        message = errorResponse.message || 'An unexpected error occurred.';
       } else {
-        message = "An unexpected HTTP error occurred.";
+        message = 'An unexpected HTTP error occurred.';
       }
     } else if (exception instanceof Error) {
       message = exception.message; // For generic JavaScript Errors
     } else {
-      message = "An unknown server error occurred."; // For anything else
+      message = 'An unknown server error occurred.'; // For anything else
     }
 
-    // Log the full exception for debugging purposes (in development)
-    console.error("--- Product Service Global Exception Caught ---");
-    console.error("Path:", request.url);
-    console.error("Status:", status);
-    console.error("Exception Type:", (exception as any).name || "Unknown");
-    console.error("Exception Details:", exception);
-    console.error("-----------------------------");
+    this.logger.error({
+      message: 'Global exception caught',
+      context: {
+        path: request.url,
+        status,
+        exceptionType: (exception as any)?.name || 'Unknown',
+        operation: 'global_exception',
+      },
+      error:
+        (exception as any) instanceof Error
+          ? (exception as Error)
+          : new Error(String(exception)),
+    });
 
     // Construct the consistent error response payload
 
     const errorResposne = ResponseHelper.CreateResponse<any>(
       message,
       request.originalUrl,
-      status
+      status,
     );
     // Send the response
     response.status(status).json(errorResposne);

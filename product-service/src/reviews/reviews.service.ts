@@ -38,7 +38,6 @@ export class ReviewsService {
     where?: object,
     select?: object,
   ): Promise<ApiResponse<EnrichedReviewResponseDto[]>> {
-    console.log(select);
     const { data, totalCount } = await this.repository.findManyPaginated(
       pageNumber,
       pageSize,
@@ -91,7 +90,6 @@ export class ReviewsService {
     where?: object,
     select?: object,
   ): Promise<ApiResponse<EnrichedReviewResponseHomePageDto[]>> {
-    console.log(select);
     const { data, totalCount } = await this.repository.findManyPaginated(
       pageNumber,
       pageSize,
@@ -240,7 +238,6 @@ export class ReviewsService {
       );
       return userDetailsMap;
     } catch (error) {
-      console.error('Failed to fetch user details for reviews:', error);
       // Decide how to handle this: return reviews without user data, throw error, etc.
       // For now, we'll proceed, and 'user' will be undefined for reviews where user data couldn't be fetched.
       throw new BadRequestException(

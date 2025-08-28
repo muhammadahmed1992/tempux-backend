@@ -1,10 +1,14 @@
 import { GetAllQueryDTO } from '@DTO/get-all-query.dto';
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { TagService } from './tag.service';
+import { AppLoggerService } from '../common/logging/logger.service';
 
 @Controller('tag')
 export class TagController {
-  constructor(private readonly tagService: TagService) {}
+  constructor(
+    private readonly tagService: TagService,
+    private readonly logger: AppLoggerService,
+  ) {}
 
   @Get()
   async getAll(@Query() query: GetAllQueryDTO) {
@@ -20,8 +24,10 @@ export class TagController {
 
   @Post('tagging-best-seller')
   async taggingBestSeller(@Body() payload: { productIds: number[] }) {
-    console.log(`In tag controller taggingBestSeller`);
-    console.log(payload);
+    this.logger.debug({
+      message: 'In tag controller taggingBestSeller',
+      context: { operation: 'tagging_best_seller', payload },
+    });
     const convertedProductIds = payload.productIds.map((productId) =>
       BigInt(productId),
     );

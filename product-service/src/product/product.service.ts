@@ -16,6 +16,7 @@ import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.ser
 import { CustomFilter } from '@Common/enums/custom-filter.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProductCreatedEvent } from './event/product-created.event';
+import { AppLoggerService } from '@Common/logging';
 
 // Mapping from CustomFilter enum to tag names in the DB
 const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
@@ -38,6 +39,7 @@ export class ProductService {
     private readonly productVariantService: ProductVariantService,
     private readonly productAnalytics: ProductAnalyticsService,
     private eventEmitter: EventEmitter2,
+    private logger: AppLoggerService,
   ) {}
 
   async createProduct(userId: bigint) {
@@ -73,18 +75,18 @@ export class ProductService {
     if (productResult.status === 'fulfilled') {
       productData = productResult.value;
       if (!productData) {
-        console.warn(`Product with ID ${productId} not found.`);
+        this.logger.warn(`Product with ID ${productId} not found.`);
         throw new NotFoundException(`Product with ID ${productId} not found.`);
       }
     } else {
       // Product data fetching failed
       // TODO: This can be improved later on
-      console.error(
+      this.logger.error(
         `Error fetching product summary for ID ${productId}:`,
         productResult.reason,
       );
       // TODO: This can be improved later on
-      console.error(productResult.reason);
+      this.logger.error(productResult.reason);
       throw new InternalServerErrorException(
         `There is an error while making a request`,
       );
@@ -94,7 +96,7 @@ export class ProductService {
     if (viewerShipCountResult.status === 'fulfilled') {
       viewershipCount = viewerShipCountResult?.value?.data;
     } else {
-      console.warn(
+      this.logger.warn(
         `Could not fetch viewership count for product ID ${productId}:`,
         viewerShipCountResult.reason,
       );

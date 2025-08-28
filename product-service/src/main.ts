@@ -33,7 +33,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalInterceptors(new BigIntInterceptor());
   app.useGlobalInterceptors(new HashidsInterceptor(hashidsService));
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(new AllExceptionsFilter(logger));
   await app.listen(3003);
 }
 bootstrap();

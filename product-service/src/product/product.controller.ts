@@ -25,6 +25,7 @@ import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import { ProductVariantService } from '@ProductVariant/product-variant.service';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
+import { AppLoggerService } from '../common/logging/logger.service';
 
 @Controller()
 export class ProductController {
@@ -33,6 +34,7 @@ export class ProductController {
     private readonly favoriteService: FavoriteService,
     private readonly productAnalyticsService: ProductAnalyticsService,
     private readonly productVariantSerice: ProductVariantService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   /**
@@ -52,7 +54,10 @@ export class ProductController {
     const pType = ProductType.Accessory === productType;
     const { page, pageSize, orderBy, where, select, customCategoryExpression } =
       query;
-    console.log(userId);
+    this.logger.debug({
+      message: 'getAll listing',
+      context: { operation: 'product_list', userId },
+    });
     return this.productService.getProductListingFiltered(
       page,
       pageSize,

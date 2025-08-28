@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { AppLoggerService } from '../common/logging/logger.service';
 import { TagRepository } from './tag.repository';
 import ApiResponse from '@Helper/api-response';
 import { SetupListingDTO } from '@DTO/setup-listing.dto';
@@ -13,6 +14,7 @@ export class TagService {
     private readonly repository: TagRepository,
     private readonly productAnalyticsService: ProductAnalyticsService,
     private readonly globalConfiguration: GlobalConfigurationService,
+    private readonly logger: AppLoggerService,
   ) {}
   async getAllPagedData(
     pageNumber: number,
@@ -63,10 +65,13 @@ export class TagService {
       if (expiredProductIds.length > 0) {
         await this.repository.removeTags(expiredProductIds, arrivalID?.id);
       } else {
-        console.log(`No products found to remove from New Arrival`);
+        this.logger.warn({
+          message: 'No products found to remove from New Arrival',
+          context: { operation: 'tagging_cleanup' },
+        });
       }
     } else {
-      console.warn(
+      this.logger.warn(
         `Arrival Key is not found in the database while removing. Process is not runned. Please seed data`,
       );
     }
@@ -107,12 +112,18 @@ export class TagService {
       if (bestSellerID?.id) {
         await this.repository.addTags(productIds, bestSellerID?.id);
       } else {
-        console.log('Please define best seller in seed data');
+        this.logger.warn({
+          message: 'Please define best seller in seed data',
+          context: { operation: 'tagging_best_seller' },
+        });
       }
       return Promise.resolve(true);
     } catch (e: any) {
-      console.error(e);
-      console.log(`Error occurred while tagging best seller.`);
+      this.logger.error({
+        message: 'Error occurred while tagging best seller',
+        context: { operation: 'tagging_best_seller' },
+        error: e,
+      });
       return Promise.resolve(false);
     }
   }
