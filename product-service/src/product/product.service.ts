@@ -9,7 +9,7 @@ import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
 import { ProductRepository } from './product.repository';
-import { ProductVariantService } from '@ProductVariant/product-variant.service';
+import { ProductItemService } from '@ProductItem/product-item.service';
 import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import { ProductImageOutput } from '@DTO/product-images-info.dto';
 import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
@@ -35,7 +35,7 @@ type ViewershipCountResult = number;
 export class ProductService {
   constructor(
     private readonly repository: ProductRepository,
-    private readonly productVariantService: ProductVariantService,
+    private readonly productItemService: ProductItemService,
     private readonly productAnalytics: ProductAnalyticsService,
     private eventEmitter: EventEmitter2,
   ) {}
@@ -51,7 +51,7 @@ export class ProductService {
   }
   /**
    * Retrieves a summary of product information including name, title, average rating,
-   * formatted price, all associated color options from its variants, and images.
+   * formatted price, all associated color options from its items, and images.
    * @param productId The ID of the product to retrieve.
    * @returns A Promise that resolves to a ProductSummaryOutputDTO object.
    * @throws NotFoundException if the product is not found or is deleted.
@@ -114,10 +114,10 @@ export class ProductService {
         : 0;
 
     // 2. Determine Price with Currency Symbol
-    const firstActiveVariant = productData.productVariants.find(
-      (variant: any) => !variant.is_deleted,
+    const firstActiveItem = productData.productItems.find(
+      (item: any) => !item.is_deleted,
     );
-    const price = firstActiveVariant.price.toFixed(2);
+    const price = firstActiveItem.price.toFixed(2);
 
     // 3. Extract Unique Color Information
     const uniqueColorsMap = new Map<
@@ -134,18 +134,18 @@ export class ProductService {
       }
     >();
 
-    productData.productVariants.forEach((variant: any, idx: number) => {
-      if (variant.color) {
-        uniqueColorsMap.set(variant.id, {
-          itemId: variant.id,
-          id: variant.color.id,
-          name: variant.color.name,
-          hexCode: variant.color.hex_code || '#000000',
-          price: variant.price.toFixed(2),
-          discount: variant.discount ? variant.discount.toFixed(2) : 0,
-          inStock: variant.quantity > 0,
-          isFavorite: variant.productVariantFavorite
-            ? !!variant.productVariantFavorite[idx]?.id
+    productData.productItems.forEach((item: any, idx: number) => {
+      if (item.color) {
+        uniqueColorsMap.set(item.id, {
+          itemId: item.id,
+          id: item.color.id,
+          name: item.color.name,
+          hexCode: item.color.hex_code || '#000000',
+          price: item.price.toFixed(2),
+          discount: item.discount ? item.discount.toFixed(2) : 0,
+          inStock: item.quantity > 0,
+          isFavorite: item.productItemFavorite
+            ? !!item.productItemFavorite[idx]?.id
             : null,
         });
       }
@@ -155,8 +155,8 @@ export class ProductService {
 
     // 4. Extract Image Information
     const uniqueImagesMap = new Map<string, ProductImageOutput>(); // Use img_url as key for uniqueness
-    productData.productVariants.forEach((variant: any) => {
-      variant.image.forEach((img: any) => {
+    productData.productItems.forEach((item: any) => {
+      item.image.forEach((img: any) => {
         if (!uniqueImagesMap.has(img.img_url)) {
           // Add only if URL is not already present
           uniqueImagesMap.set(img.img_url, {
@@ -178,7 +178,7 @@ export class ProductService {
       title: productData.title || null,
       averageRating: averageRating,
       price: price,
-      symbol: firstActiveVariant.currency?.symbol || '$',
+      symbol: firstActiveItem.currency?.symbol || '$',
       colors: colors,
       images: images,
       viewerShipCount: viewershipCount || 0,
@@ -269,7 +269,7 @@ export class ProductService {
         },
       },
       ...(userId && {
-        productVariantFavorite: {
+        productItemFavorite: {
           where: {
             user_id: userId,
             is_deleted: false,
@@ -286,7 +286,7 @@ export class ProductService {
       },
     };
 
-    const response = await this.productVariantService.getAllPagedData(
+    const response = await this.productItemService.getAllPagedData(
       pageNumber,
       pageSize,
       finalOrderBy,
@@ -312,7 +312,7 @@ export class ProductService {
         description: string;
         title: string;
         currency: { curr: string };
-        productVariantFavorite: any;
+        productItemFavorite: any;
       }) => ({
         itemId: pv.id,
         productId: pv.product.id,
@@ -322,7 +322,7 @@ export class ProductService {
         symb: pv.currency.curr,
         image_url: pv.base_image_url,
         price: pv.price.toFixed(2),
-        isFavorite: userId ? !!pv.productVariantFavorite?.[0]?.id : null,
+        isFavorite: userId ? !!pv.productItemFavorite?.[0]?.id : null,
         tags: pv.product?.productTags?.map((p) => p.tags),
       }),
     );
@@ -383,7 +383,7 @@ export class ProductService {
           reference_number: true,
         },
       },
-      productVariantFavorite: userId
+      productItemFavorite: userId
         ? {
             where: {
               user_id: userId,
@@ -397,7 +397,7 @@ export class ProductService {
     };
 
     // 🔹 Fetch paged data
-    const response = await this.productVariantService.getAllPagedData(
+    const response = await this.productItemService.getAllPagedData(
       pageNumber,
       pageSize,
       order,
@@ -417,7 +417,7 @@ export class ProductService {
         case_material: string | null;
         original_box: boolean;
         original_paper: boolean;
-        productVariantFavorite: any;
+        productItemFavorite: any;
         size: { value: number; widthUnit: string; height: number } | null;
         movement: { title: string } | null;
         product: {
@@ -446,7 +446,7 @@ export class ProductService {
         caseDiameter: pv.size
           ? `${pv.size.value}x${pv.size.height} ${pv.size.widthUnit}`
           : null,
-        isFavorite: userId ? !!pv.productVariantFavorite?.[0]?.id : null,
+        isFavorite: userId ? !!pv.productItemFavorite?.[0]?.id : null,
       }),
     );
 

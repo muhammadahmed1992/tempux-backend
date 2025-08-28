@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
 import { ProductRepository } from './product.repository';
-import { ProductVariantModule } from '@ProductVariant/product-variant.module';
+import { ProductItemModule } from '@ProductItem/product-item.module';
 import { ProductAnalyticsModule } from '@ProductAnalytics/product-analytics.module';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 import { APP_PIPE } from '@nestjs/core';
@@ -16,7 +16,7 @@ import { ProductCreatedListener } from './listener/product-created.listener';
   imports: [
     HashidsModule,
     FavoriteModule,
-    ProductVariantModule,
+    ProductItemModule,
     ProductAnalyticsModule,
   ],
   controllers: [ProductController],

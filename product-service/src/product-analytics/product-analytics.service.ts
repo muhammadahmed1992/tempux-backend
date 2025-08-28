@@ -13,18 +13,18 @@ export class ProductAnalyticsService {
   ) {}
 
   /**
-   * Records a unique product variant view for a logged-in user within a configured time window.
-   * If the user has already viewed this variant within the window, no new record is created.
+   * Records a unique product item view for a logged-in user within a configured time window.
+   * If the user has already viewed this item within the window, no new record is created.
    *
    * @param userId The ID of the logged-in user.
    * @param productId The ID of the main product.
-   * @param variantId The ID of the specific product variant being viewed.
+   * @param itemId The ID of the specific product item being viewed.
    * @param auditorId The ID of the user performing the action (usually same as userId).
    */
   async recordProductView(
     userId: bigint,
     productId: bigint,
-    variantId: bigint,
+    itemId: bigint,
     auditorId: bigint,
   ): Promise<ApiResponse<boolean>> {
     // 1. Get the configured time window for unique viewership
@@ -35,12 +35,12 @@ export class ProductAnalyticsService {
     const cutoffTime = new Date();
     cutoffTime.setHours(cutoffTime.getHours() - viewershipWindowHours);
 
-    // 3. Check if a view for this user, product, and variant exists within the window
+    // 3. Check if a view for this user, product, and item exists within the window
     const existingView = await this.repository.findFirst({
       where: {
         user_id: userId,
         product_id: productId,
-        product_variant_id: variantId,
+        product_item_id: itemId,
         viewed_at: {
           gte: cutoffTime, // Greater than or equal to the cutoff time
         },
@@ -56,15 +56,15 @@ export class ProductAnalyticsService {
             id: productId,
           },
         },
-        productVariant: {
+        productItem: {
           connect: {
-            id: variantId,
+            id: itemId,
           },
         },
         created_by: auditorId,
       });
       console.log(
-        `[ProductAnalytics] Recorded new unique view for User:${userId}, Product:${productId}, Variant:${variantId}`,
+        `[ProductAnalytics] Recorded new unique view for User:${userId}, Product:${productId}, Item:${itemId}`,
       );
     }
 
@@ -73,13 +73,13 @@ export class ProductAnalyticsService {
 
   /**
    * @param productId Particular product which is being viewed by the user
-   * @param variantId Particular product variant which is being viewed by the user
-   * @returns The unique count against this passed product and variant within cut-off time i.e in last 48 hours.
+   * @param itemId Particular product item which is being viewed by the user
+   * @returns The unique count against this passed product and item within cut-off time i.e in last 48 hours.
    */
-  async getProductUniqueViewershipCount(productId: bigint, variantId?: bigint) {
+  async getProductUniqueViewershipCount(productId: bigint, itemId?: bigint) {
     const count = await this.repository.getViewershipUniqueCount(
       productId,
-      variantId,
+      itemId,
     );
     return ResponseHelper.CreateResponse<number>('', count, HttpStatus.OK);
   }

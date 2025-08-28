@@ -1,32 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, product_variants } from '@prisma/client';
+import { Prisma, product_items } from '@prisma/client';
 import { BaseRepository } from '@Common/db/base.repository';
 import { PrismaService } from '@Prisma/prisma.service';
 
 @Injectable()
-export class ProductVariantRepository extends BaseRepository<
-  product_variants,
-  Prisma.product_variantsCreateInput,
-  Prisma.product_variantsUpdateInput,
-  Prisma.product_variantsWhereUniqueInput,
-  Prisma.product_variantsWhereInput,
-  Prisma.product_variantsFindUniqueArgs,
-  Prisma.product_variantsFindManyArgs,
-  Prisma.product_variantsFindFirstArgs
+export class ProductItemRepository extends BaseRepository<
+  product_items,
+  Prisma.product_itemsCreateInput,
+  Prisma.product_itemsUpdateInput,
+  Prisma.product_itemsWhereUniqueInput,
+  Prisma.product_itemsWhereInput,
+  Prisma.product_itemsFindUniqueArgs,
+  Prisma.product_itemsFindManyArgs,
+  Prisma.product_itemsFindFirstArgs
 > {
   constructor(private readonly prisma: PrismaService) {
-    super(prisma, prisma.product_variants);
+    super(prisma, prisma.product_items);
   }
 
   /**
-   * @param productId Parent productId for specific product variant
-   * @param product_variant_Id specific variant id which is going to check
+   * @param productId Parent productId for specific product item
+   * @param product_items_Id specific item id which is going to check
    * @param quantity Total.no.of quantity to be check if exists in stock/inventory
-   * @returns bolean. Return true/false depending upon the existance of the product & variant for particular quantity
+   * @returns bolean. Return true/false depending upon the existance of the product & item for particular quantity
    */
   async checkIfStockAvailable(
     productId: bigint,
-    product_variant_Id: bigint,
+    product_items_Id: bigint,
     quantity: number,
   ): Promise<boolean> {
     const result = await this.model.findFirst({
@@ -34,7 +34,7 @@ export class ProductVariantRepository extends BaseRepository<
         product: {
           id: productId,
         },
-        id: product_variant_Id,
+        id: product_items_Id,
         quantity: {
           gte: quantity,
         },
@@ -48,17 +48,15 @@ export class ProductVariantRepository extends BaseRepository<
   }
 
   /**
-   * This method will returns the price, discount & tax information against particular variant
-   * @param product_variant_Id[] specific variant id which is going to check
-   * @returns Returns the product_variant entit(ies) against id(s)
+   * This method will returns the price, discount & tax information against particular item
+   * @param product_items_Id[] specific item id which is going to check
+   * @returns Returns the product_items entit(ies) against id(s)
    */
-  async getProductVariantsWithTax(
-    product_variant_Ids: bigint[],
-  ): Promise<any[]> {
+  async getProductItemsWithTax(product_items_Ids: bigint[]): Promise<any[]> {
     return this.model.findMany({
       where: {
         id: {
-          in: product_variant_Ids,
+          in: product_items_Ids,
         },
       },
       select: {

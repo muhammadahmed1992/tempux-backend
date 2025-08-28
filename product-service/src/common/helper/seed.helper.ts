@@ -151,17 +151,17 @@ export default class SeedHelper {
             await this.seedGenders(creatorId, tx);
             await this.seedCurrenciesAndTaxes(creatorId, tx);
 
-            // Seed products and variants (these must exist for dependent models)
-            await this.seedProductsAndVariants(creatorId, numberOfProducts, tx);
+            // Seed products and items (these must exist for dependent models)
+            // await this.seedProductsAndItems(creatorId, numberOfProducts, tx);
 
-            // Seed related media and user-generated content after products/variants are ready
+            // Seed related media and user-generated content after products/items are ready
             await this.seedOwnershipProofs(creatorId, tx);
             await this.seedSignOfWears(creatorId, tx);
             await this.seedProductImages(creatorId, tx);
             await this.seedTags(creatorId, tx); // Seed tags before product_tags
             await this.seedProductTags(creatorId, tx);
             await this.seedReviewsAndRatings(creatorId, tx); // Seed after products exist
-            await this.seedFavorites(creatorId, tx); // Seed after products/variants exist
+            await this.seedFavorites(creatorId, tx); // Seed after products/items exist
           } else {
             console.log(
               `Seed doesn't run as per its configuration (SEED_SCRIPT_RUN is not 1).`,
@@ -286,31 +286,36 @@ export default class SeedHelper {
     console.log('Seeding sizes (upserting) with MM units...');
     // Generating common watch case sizes in MM, ensuring all have widthUnit and heightUnit
     const sizesData = [
-      { value: 28, height: 28, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 30, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 32, height: 32, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 34, height: 34, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 36, height: 36, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 37, height: 37, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 38, height: 38, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 39, height: 39, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 40, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 41, height: 41, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 42, height: 42, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 43, height: 43, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 44, height: 44, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 45, height: 45, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 46, height: 46, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 47, height: 47, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 48, height: 48, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 28, caseHeight: 28, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 30, caseHeight: 30, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 32, caseHeight: 32, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 34, caseHeight: 34, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 36, caseHeight: 36, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 37, caseHeight: 37, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 38, caseHeight: 38, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 39, caseHeight: 39, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 40, caseHeight: 40, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 41, caseHeight: 41, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 42, caseHeight: 42, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 43, caseHeight: 43, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 44, caseHeight: 44, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 45, caseHeight: 45, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 46, caseHeight: 46, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 47, caseHeight: 47, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 48, caseHeight: 48, widthUnit: 'MM', heightUnit: 'MM' },
       // Example of rectangular watch sizes, ensuring units are explicit
-      { value: 25, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 30, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 25, caseHeight: 30, widthUnit: 'MM', heightUnit: 'MM' },
+      { caseWidth: 30, caseHeight: 40, widthUnit: 'MM', heightUnit: 'MM' },
     ];
 
     for (const data of sizesData) {
       await tx.size.upsert({
-        where: { value_height: { value: data.value, height: data.height } },
+        where: {
+          caseWidth_caseHeight: {
+            caseWidth: data.caseWidth,
+            caseHeight: data.caseHeight,
+          },
+        },
         update: { ...data, updated_by: creatorId },
         create: { ...data, created_by: creatorId },
       });
@@ -813,7 +818,7 @@ export default class SeedHelper {
     console.log('Currencies and Tax Rules seeded.');
   }
 
-  private async seedProductsAndVariants(
+  private async seedProductsAndItems(
     creatorId: bigint,
     numberOfProducts: number,
     tx: PrismaClient, // Use the transactional client
@@ -848,7 +853,7 @@ export default class SeedHelper {
       allGenders.length === 0
     ) {
       console.error(
-        'Missing required base data (currency, tax, or lookup entities like brands, categories, movements, colors, sizes, types) for product variant seeding. Please ensure they are seeded.',
+        'Missing required base data (currency, tax, or lookup entities like brands, categories, movements, colors, sizes, types) for product item seeding. Please ensure they are seeded.',
       );
       return;
     }
@@ -867,17 +872,17 @@ export default class SeedHelper {
 
     let productsCreated = 0;
     const existingReferenceNumbers = new Set(
-      (await tx.product.findMany({ select: { reference_number: true } })).map(
-        (p) => Number(p.reference_number),
-      ),
+      (
+        await tx.product_items.findMany({ select: { reference_number: true } })
+      ).map((p) => Number(p.reference_number)),
     );
     const existingSerialNumbers = new Set(
-      (await tx.product.findMany({ select: { serial_number: true } })).map(
-        (p) => p.serial_number,
-      ),
+      (
+        await tx.product_items.findMany({ select: { serial_number: true } })
+      ).map((p) => p.serial_number),
     );
     const existingSkus = new Set(
-      (await tx.product_variants.findMany({ select: { sku: true } })).map(
+      (await tx.product_items.findMany({ select: { sku: true } })).map(
         (pv) => pv.sku,
       ),
     );
@@ -1017,18 +1022,13 @@ export default class SeedHelper {
             category_id: category.id,
             gender_id: gender.id,
             is_accessory: false,
-            year_of_production: productionYear,
-            serial_number: serialNumber,
-            reference_number: referenceNumber,
             created_by: creatorId,
-            approval_status_by_admin: 'PENDING',
             product_slug: initialProductSlug, // Use the generated slug
           },
           include: {
             // Include relations to get their names for accurate slug generation in the next step
             brand: true,
             category: true,
-            gender: true,
           },
         });
         productsCreated++;
@@ -1064,191 +1064,196 @@ export default class SeedHelper {
         },
       });
 
-      const numberOfVariants = getRandomInt(1, 4);
-      const usedVariantCombos = new Set<string>();
+      const numberOfItems = getRandomInt(1, 4);
+      const usedItemCombos = new Set<string>();
       const MAX_VARIANT_ATTEMPTS = 10;
 
-      for (let j = 0; j < numberOfVariants; j++) {
-        let variantAttemptCount = 0;
-        let mainColor, braceletColor, dialColor, size, movement;
-        let variantSku;
+      // for (let j = 0; j < numberOfItems; j++) {
+      //   let itemAttemptCount = 0;
+      //   let mainColor, braceletColor, dialColor, size, movement;
+      //   let itemSku;
 
-        do {
-          mainColor = getRandomElement(allColors);
-          braceletColor = getRandomElement(allColors);
-          dialColor = getRandomElement(allColors);
-          size = getRandomElement(allSizes);
-          const tempMovement = getRandomElement(allMovements);
+      //   do {
+      //     mainColor = getRandomElement(allColors);
+      //     braceletColor = getRandomElement(allColors);
+      //     dialColor = getRandomElement(allColors);
+      //     size = getRandomElement(allSizes);
+      //     const tempMovement = getRandomElement(allMovements);
 
-          if (
-            category.title.includes('Smartwatch') &&
-            tempMovement?.title !== 'Smartwatch'
-          ) {
-            movement = allMovements.find((m) => m.title === 'Smartwatch');
-          } else if (
-            !category.title.includes('Smartwatch') &&
-            tempMovement?.title === 'Smartwatch'
-          ) {
-            movement = getRandomElement(
-              allMovements.filter((m) => m.title !== 'Smartwatch'),
-            );
-          } else {
-            movement = tempMovement;
-          }
+      //     if (
+      //       category.title.includes('Smartwatch') &&
+      //       tempMovement?.title !== 'Smartwatch'
+      //     ) {
+      //       movement = allMovements.find((m) => m.title === 'Smartwatch');
+      //     } else if (
+      //       !category.title.includes('Smartwatch') &&
+      //       tempMovement?.title === 'Smartwatch'
+      //     ) {
+      //       movement = getRandomElement(
+      //         allMovements.filter((m) => m.title !== 'Smartwatch'),
+      //       );
+      //     } else {
+      //       movement = tempMovement;
+      //     }
 
-          if (
-            !mainColor ||
-            !braceletColor ||
-            !dialColor ||
-            !size ||
-            !movement
-          ) {
-            console.warn(
-              `Incomplete data for variant creation (color, size, or movement). Retrying variant.`,
-            );
-            variantAttemptCount++;
-            continue;
-          }
+      //     if (
+      //       !mainColor ||
+      //       !braceletColor ||
+      //       !dialColor ||
+      //       !size ||
+      //       !movement
+      //     ) {
+      //       console.warn(
+      //         `Incomplete data for item creation (color, size, or movement). Retrying item.`,
+      //       );
+      //       itemAttemptCount++;
+      //       continue;
+      //     }
 
-          const comboKey = `${mainColor.id}-${braceletColor.id}-${dialColor.id}-${size.id}`;
-          if (usedVariantCombos.has(comboKey)) {
-            variantAttemptCount++;
-            continue;
-          }
+      //     const comboKey = `${mainColor.id}-${braceletColor.id}-${dialColor.id}-${size.id}`;
+      //     if (usedItemCombos.has(comboKey)) {
+      //       itemAttemptCount++;
+      //       continue;
+      //     }
 
-          // Use size.value directly as it's now numeric
-          variantSku = generateSku(
-            brand.title,
-            category.title,
-            Number(createdProduct.reference_number),
-            mainColor.name,
-            size.value, // Pass the numeric size value
-            createdProduct.year_of_production,
-          ).substring(0, 19);
+      //     // Use size.value directly as it's now numeric
+      //     itemSku = generateSku(
+      //       brand.title,
+      //       category.title,
+      //       Number(createdProduct.reference_number),
+      //       mainColor.name,
+      //       size.value, // Pass the numeric size value
+      //       createdProduct.year_of_production,
+      //     ).substring(0, 19);
 
-          if (existingSkus.has(variantSku)) {
-            variantAttemptCount++;
-            continue;
-          }
+      //     if (existingSkus.has(itemSku)) {
+      //       itemAttemptCount++;
+      //       continue;
+      //     }
 
-          break;
-        } while (variantAttemptCount < MAX_VARIANT_ATTEMPTS);
+      //     break;
+      //   } while (itemAttemptCount < MAX_VARIANT_ATTEMPTS);
 
-        if (variantAttemptCount >= MAX_VARIANT_ATTEMPTS) {
-          console.warn(
-            `Could not create unique variant for product ${createdProduct.id} after ${MAX_VARIANT_ATTEMPTS} attempts. Skipping this variant.`,
-          );
-          continue;
-        }
+      //   if (itemAttemptCount >= MAX_VARIANT_ATTEMPTS) {
+      //     console.warn(
+      //       `Could not create unique item for product ${createdProduct.id} after ${MAX_VARIANT_ATTEMPTS} attempts. Skipping this item.`,
+      //     );
+      //     continue;
+      //   }
 
-        usedVariantCombos.add(
-          `${mainColor!.id}-${braceletColor!.id}-${dialColor!.id}-${size!.id}`,
-        );
-        existingSkus.add(variantSku!);
+      //   usedItemCombos.add(
+      //     `${mainColor!.id}-${braceletColor!.id}-${dialColor!.id}-${size!.id}`,
+      //   );
+      //   existingSkus.add(itemSku!);
 
-        let variantPrice = basePrice + getRandomInt(-100, 500);
-        if (
-          mainColor!.name.includes('Gold') ||
-          mainColor!.name.includes('Rose Gold')
-        ) {
-          variantPrice += getRandomInt(500, 5000);
-        } else if (mainColor!.name.includes('Bronze')) {
-          variantPrice += getRandomInt(100, 500);
-        }
+      //   let itemPrice = basePrice + getRandomInt(-100, 500);
+      //   if (
+      //     mainColor!.name.includes('Gold') ||
+      //     mainColor!.name.includes('Rose Gold')
+      //   ) {
+      //     itemPrice += getRandomInt(500, 5000);
+      //   } else if (mainColor!.name.includes('Bronze')) {
+      //     itemPrice += getRandomInt(100, 500);
+      //   }
 
-        let caseMaterial = 'Stainless Steel';
-        let braceletMaterial = 'Stainless Steel';
+      //   let caseMaterial = 'Stainless Steel';
+      //   let braceletMaterial = 'Stainless Steel';
 
-        if (mainColor!.name.includes('Gold')) {
-          caseMaterial = 'Gold';
-          braceletMaterial = 'Gold';
-        } else if (mainColor!.name.includes('Bronze')) {
-          caseMaterial = 'Bronze';
-        } else if (mainColor!.name.includes('Ceramic')) {
-          caseMaterial = 'Ceramic';
-          braceletMaterial = 'Ceramic';
-        } else if (mainColor!.name.includes('Titanium')) {
-          caseMaterial = 'Titanium';
-          braceletMaterial = 'Titanium';
-        }
+      //   if (mainColor!.name.includes('Gold')) {
+      //     caseMaterial = 'Gold';
+      //     braceletMaterial = 'Gold';
+      //   } else if (mainColor!.name.includes('Bronze')) {
+      //     caseMaterial = 'Bronze';
+      //   } else if (mainColor!.name.includes('Ceramic')) {
+      //     caseMaterial = 'Ceramic';
+      //     braceletMaterial = 'Ceramic';
+      //   } else if (mainColor!.name.includes('Titanium')) {
+      //     caseMaterial = 'Titanium';
+      //     braceletMaterial = 'Titanium';
+      //   }
 
-        if (getRandomInt(0, 100) < 30) {
-          if (getRandomInt(0, 1) === 0) {
-            braceletMaterial = 'Leather';
-            variantPrice -= getRandomInt(50, 200);
-          } else {
-            braceletMaterial = 'Rubber';
-            variantPrice -= getRandomInt(20, 100);
-          }
-        }
+      //   if (getRandomInt(0, 100) < 30) {
+      //     if (getRandomInt(0, 1) === 0) {
+      //       braceletMaterial = 'Leather';
+      //       itemPrice -= getRandomInt(50, 200);
+      //     } else {
+      //       braceletMaterial = 'Rubber';
+      //       itemPrice -= getRandomInt(20, 100);
+      //     }
+      //   }
 
-        if (variantPrice < 50) variantPrice = 50;
+      //   if (itemPrice < 50) itemPrice = 50;
 
-        const brandSlug = this.slugService.generateSlug(brand.title);
-        const categorySlug = this.slugService.generateSlug(category.title);
-        const mainColorSlug = this.slugService.generateSlug(mainColor!.name);
-        const sizeSlug = String(size!.value).replace('.', '-').toLowerCase(); // Use numeric size for slug
+      //   const brandSlug = this.slugService.generateSlug(brand.title);
+      //   const categorySlug = this.slugService.generateSlug(category.title);
+      //   const mainColorSlug = this.slugService.generateSlug(mainColor!.name);
+      //   const sizeSlug = String(size!.caseWidth)
+      //     .replace('.', '-')
+      //     .toLowerCase(); // Use numeric size for slug
 
-        const baseImageUrl = `https://images.watchstore.com/watches/${brandSlug}-${categorySlug}-${mainColorSlug}-${sizeSlug}.jpg`;
+      //   const baseImageUrl = `https://images.watchstore.com/watches/${brandSlug}-${categorySlug}-${mainColorSlug}-${sizeSlug}.jpg`;
 
-        try {
-          const createdProductVariant = await tx.product_variants.upsert({
-            where: { sku: variantSku! },
-            update: {
-              updated_by: creatorId,
-              quantity: getRandomInt(1, 20),
-              base_image_url: baseImageUrl,
-              sku: variantSku!,
-            },
-            create: {
-              product_id: createdProduct.id,
-              color_id: mainColor!.id,
-              bracelet_color_id: braceletColor!.id,
-              dial_color_id: dialColor!.id,
-              size_id: size!.id,
-              movement_id: movement!.id,
-              price: new Decimal(variantPrice),
-              discount: j % 3 == 0 ? 10 : 24,
-              cost_price: new Decimal(variantPrice * 0.7),
-              quantity: getRandomInt(1, 20),
-              original_box_and_paper: getRandomInt(0, 1) === 1,
-              original_box: getRandomInt(0, 1) === 1,
-              original_paper: getRandomInt(0, 1) === 1,
-              accessories: getRandomInt(0, 1) === 1,
-              case_material: caseMaterial,
-              bracelet_material: braceletMaterial,
-              currency_id: defaultCurrency.id,
-              tax_rule_id:
-                category.title.includes('Luxury') || basePrice > 5000
-                  ? luxuryTax.id
-                  : standardTax.id,
-              created_by: creatorId,
-              base_image_url: baseImageUrl,
-              sku: variantSku!,
-            },
-          });
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002' &&
-            error.meta?.target === 'sku'
-          ) {
-            console.warn(
-              `SKU ${variantSku} already exists in DB. Retrying this variant.`,
-            );
-            j--;
-            existingSkus.delete(variantSku!);
-            continue;
-          }
-          console.error(
-            `Error upserting product variant for product ${createdProduct.id} (Color: ${mainColor?.name}, Size: ${size?.value}mm):`,
-            error,
-          );
-          throw error;
-        }
-      }
+      //   try {
+      //     const createdProductItem = await tx.product_items.upsert({
+      //       where: { sku: itemSku! },
+      //       update: {
+      //         updated_by: creatorId,
+      //         quantity: getRandomInt(1, 20),
+      //         base_image_url: baseImageUrl,
+      //         sku: itemSku!,
+      //       },
+      //       create: {
+      //         product_id: createdProduct.id,
+      //         color_id: mainColor!.id,
+      //         bracelet_color_id: braceletColor!.id,
+      //         dial_color_id: dialColor!.id,
+      //         size_id: size!.id,
+      //         movement_id: movement!.id,
+      //         price: new Decimal(itemPrice),
+      //         discount: j % 3 == 0 ? 10 : 24,
+      //         cost_price: new Decimal(itemPrice * 0.7),
+      //         quantity: getRandomInt(1, 20),
+      //         original_box_and_paper: getRandomInt(0, 1) === 1,
+      //         original_box: getRandomInt(0, 1) === 1,
+      //         original_paper: getRandomInt(0, 1) === 1,
+      //         accessories: getRandomInt(0, 1) === 1,
+      //         case_material_id: caseMaterial,
+      //         bracelet_material_id: braceletMaterial,
+      //         currency_id: defaultCurrency.id,
+      //         tax_rule_id:
+      //           category.title.includes('Luxury') || basePrice > 5000
+      //             ? luxuryTax.id
+      //             : standardTax.id,
+      //         created_by: creatorId,
+      //         base_image_url: baseImageUrl,
+      //         sku: itemSku!,
+      //       },
+      //       include: {
+      //         case_material,
+      //       }
+      //     });
+      //   } catch (error) {
+      //     if (
+      //       error instanceof Prisma.PrismaClientKnownRequestError &&
+      //       error.code === 'P2002' &&
+      //       error.meta?.target === 'sku'
+      //     ) {
+      //       console.warn(
+      //         `SKU ${itemSku} already exists in DB. Retrying this item.`,
+      //       );
+      //       j--;
+      //       existingSkus.delete(itemSku!);
+      //       continue;
+      //     }
+      //     console.error(
+      //       `Error upserting product item for product ${createdProduct.id} (Color: ${mainColor?.name}, Size: ${size?.value}mm):`,
+      //       error,
+      //     );
+      //     throw error;
+      //   }
+      // }
     }
-    console.log(`Seeded ${productsCreated} new products and their variants.`);
+    console.log(`Seeded ${productsCreated} new products and their items.`);
   }
 
   // --- NEW SEEDING METHODS FOR THE MISSED MODELS ---
@@ -1259,44 +1264,44 @@ export default class SeedHelper {
   ): Promise<void> {
     console.log('Seeding ownership proofs...');
     const products = await tx.product.findMany({ select: { id: true } });
-    const productVariants = await tx.product_variants.findMany({
+    const productItems = await tx.product_items.findMany({
       select: { id: true, product_id: true },
     });
 
-    if (products.length === 0 || productVariants.length === 0) {
+    if (products.length === 0 || productItems.length === 0) {
       console.warn(
-        'No products or product variants found to attach ownership proofs. Skipping.',
+        'No products or product items found to attach ownership proofs. Skipping.',
       );
       return;
     }
 
-    const maxProofsPerVariant = 2; // Max number of proofs per product variant
-    const proofsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
+    const maxProofsPerItem = 2; // Max number of proofs per product item
+    const proofsCreated = new Set<string>(); // To track unique product_id, product_item_id combos
 
-    for (const variant of productVariants) {
-      // Check if we already created a proof for this variant based on your unique constraint
-      if (proofsCreated.has(`${variant.product_id}-${variant.id}`)) {
+    for (const item of productItems) {
+      // Check if we already created a proof for this item based on your unique constraint
+      if (proofsCreated.has(`${item.product_id}-${item.id}`)) {
         continue;
       }
 
-      const numProofs = getRandomInt(0, maxProofsPerVariant); // 0, 1, or 2 proofs
-      // Due to the unique constraint `@@unique([product_id, product_variant_id])`,
-      // we can only successfully `create` one entry per variant.
-      // If `numProofs` is > 1, subsequent attempts for the same variant will fail/warn.
-      // The loop will effectively create at most one proof per variant.
+      const numProofs = getRandomInt(0, maxProofsPerItem); // 0, 1, or 2 proofs
+      // Due to the unique constraint `@@unique([product_id, product_item_id])`,
+      // we can only successfully `create` one entry per item.
+      // If `numProofs` is > 1, subsequent attempts for the same item will fail/warn.
+      // The loop will effectively create at most one proof per item.
       for (let i = 0; i < numProofs; i++) {
         const imageUrl = `https://picsum.photos/id/${getRandomInt(
           100,
           200,
         )}/600/400`;
-        const altText = `Proof image for product variant ${variant.id}`;
+        const altText = `Proof image for product item ${item.id}`;
 
         try {
           await tx.ownership_proof.upsert({
             where: {
-              product_id_product_variant_id: {
-                product_id: variant.product_id,
-                product_variant_id: variant.id,
+              product_id_product_item_id: {
+                product_id: item.product_id,
+                product_item_id: item.id,
               },
             },
             update: {
@@ -1306,15 +1311,15 @@ export default class SeedHelper {
               updated_by: creatorId,
             },
             create: {
-              product_id: variant.product_id,
-              product_variant_id: variant.id,
+              product_id: item.product_id,
+              product_item_id: item.id,
               image_url: imageUrl,
               alt_text: altText,
               order: i + 1,
               created_by: creatorId,
             },
           });
-          proofsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
+          proofsCreated.add(`${item.product_id}-${item.id}`); // Mark combo as used
           // If upsert successful, and we only want one per unique constraint, break here
           break;
         } catch (error) {
@@ -1323,12 +1328,12 @@ export default class SeedHelper {
             error.code === 'P2002'
           ) {
             console.warn(
-              `Ownership proof for product variant ${variant.id} already exists (unique constraint). Skipping further proofs for this variant.`,
+              `Ownership proof for product item ${item.id} already exists (unique constraint). Skipping further proofs for this item.`,
             );
-            break; // Stop trying to add more for this variant if unique constraint hit
+            break; // Stop trying to add more for this item if unique constraint hit
           } else {
             console.error(
-              `Error seeding ownership proof for variant ${variant.id}:`,
+              `Error seeding ownership proof for item ${item.id}:`,
               error,
             );
             throw error;
@@ -1345,41 +1350,41 @@ export default class SeedHelper {
   ): Promise<void> {
     console.log('Seeding signs of wear...');
     const products = await tx.product.findMany({ select: { id: true } });
-    const productVariants = await tx.product_variants.findMany({
+    const productItems = await tx.product_items.findMany({
       select: { id: true, product_id: true },
     });
 
-    if (products.length === 0 || productVariants.length === 0) {
+    if (products.length === 0 || productItems.length === 0) {
       console.warn(
-        'No products or product variants found to attach signs of wear. Skipping.',
+        'No products or product items found to attach signs of wear. Skipping.',
       );
       return;
     }
 
-    const maxSignsPerVariant = 3; // Max number of signs of wear per product variant
-    const signsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
+    const maxSignsPerItem = 3; // Max number of signs of wear per product item
+    const signsCreated = new Set<string>(); // To track unique product_id, product_item_id combos
 
-    for (const variant of productVariants) {
-      // Check if we already created a sign of wear for this variant based on your unique constraint
-      if (signsCreated.has(`${variant.product_id}-${variant.id}`)) {
+    for (const item of productItems) {
+      // Check if we already created a sign of wear for this item based on your unique constraint
+      if (signsCreated.has(`${item.product_id}-${item.id}`)) {
         continue;
       }
 
-      const numSigns = getRandomInt(0, maxSignsPerVariant); // 0 to 3 signs
+      const numSigns = getRandomInt(0, maxSignsPerItem); // 0 to 3 signs
       // Similar to ownership proofs, due to the unique constraint, only one entry will be created.
       for (let i = 0; i < numSigns; i++) {
         const imageUrl = `https://picsum.photos/id/${getRandomInt(
           200,
           300,
         )}/600/400`;
-        const altText = `Sign of wear image for product variant ${variant.id}`;
+        const altText = `Sign of wear image for product item ${item.id}`;
 
         try {
           await tx.sign_of_wear.upsert({
             where: {
-              product_id_product_variant_id: {
-                product_id: variant.product_id,
-                product_variant_id: variant.id,
+              product_id_product_item_id: {
+                product_id: item.product_id,
+                product_item_id: item.id,
               },
             },
             update: {
@@ -1389,28 +1394,28 @@ export default class SeedHelper {
               updated_by: creatorId,
             },
             create: {
-              product_id: variant.product_id,
-              product_variant_id: variant.id,
+              product_id: item.product_id,
+              product_item_id: item.id,
               image_url: imageUrl,
               alt_text: altText,
               order: i + 1,
               created_by: creatorId,
             },
           });
-          signsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
-          break; // Stop trying to add more for this variant if unique constraint hit
+          signsCreated.add(`${item.product_id}-${item.id}`); // Mark combo as used
+          break; // Stop trying to add more for this item if unique constraint hit
         } catch (error) {
           if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === 'P2002'
           ) {
             console.warn(
-              `Sign of wear for product variant ${variant.id} already exists (unique constraint). Skipping further signs for this variant.`,
+              `Sign of wear for product item ${item.id} already exists (unique constraint). Skipping further signs for this item.`,
             );
             break;
           } else {
             console.error(
-              `Error seeding sign of wear for variant ${variant.id}:`,
+              `Error seeding sign of wear for item ${item.id}:`,
               error,
             );
             throw error;
@@ -1426,46 +1431,46 @@ export default class SeedHelper {
     tx: PrismaClient,
   ): Promise<void> {
     console.log('Seeding product images...');
-    const productVariants = await tx.product_variants.findMany({
+    const productItems = await tx.product_items.findMany({
       select: { id: true, color_id: true, size_id: true },
     });
 
-    if (productVariants.length === 0) {
-      console.warn('No product variants found to attach images. Skipping.');
+    if (productItems.length === 0) {
+      console.warn('No product items found to attach images. Skipping.');
       return;
     }
 
     let imagesCreatedCount = 0;
-    const maxImagesPerVariant = 5;
+    const maxImagesPerItem = 5;
 
-    for (const variant of productVariants) {
-      const numImages = getRandomInt(1, maxImagesPerVariant); // At least 1 image per variant
+    for (const item of productItems) {
+      const numImages = getRandomInt(1, maxImagesPerItem); // At least 1 image per item
 
       for (let i = 0; i < numImages; i++) {
         const imgUrl = `https://picsum.photos/id/${getRandomInt(
           1,
           100,
-        )}/800/600?random=${variant.id}-${i}`;
-        const altText = `Image ${i + 1} for variant ${variant.id}`;
+        )}/800/600?random=${item.id}-${i}`;
+        const altText = `Image ${i + 1} for item ${item.id}`;
 
         try {
-          // product_images doesn't have a unique constraint on product_variant_id + img_url,
-          // so we can add multiple images per variant.
+          // product_images doesn't have a unique constraint on product_item_id + img_url,
+          // so we can add multiple images per item.
           await tx.product_images.create({
             data: {
               img_url: imgUrl,
               alt_text: altText,
               order: i + 1,
-              color_id: variant.color_id, // Link to variant's color
-              size_id: variant.size_id, // Link to variant's size
-              product_variant_id: variant.id,
+              color_id: item.color_id, // Link to item's color
+              size_id: item.size_id, // Link to item's size
+              product_item_id: item.id,
               created_by: creatorId,
             },
           });
           imagesCreatedCount++;
         } catch (error) {
           console.error(
-            `Error seeding product image for variant ${variant.id}:`,
+            `Error seeding product image for item ${item.id}:`,
             error,
           );
           throw error;
@@ -1560,31 +1565,28 @@ export default class SeedHelper {
     console.log('Seeding favorites...');
     // For `user_id`, assuming `creatorId` can act as a user ID for seeding purposes.
     const products = await tx.product.findMany({ select: { id: true } });
-    const productVariants = await tx.product_variants.findMany({
+    const productItems = await tx.product_items.findMany({
       select: { id: true, product_id: true },
     });
 
-    if (products.length === 0 || productVariants.length === 0) {
+    if (products.length === 0 || productItems.length === 0) {
       console.warn(
-        'No products or product variants found for favorites. Skipping.',
+        'No products or product items found for favorites. Skipping.',
       );
       return;
     }
 
-    const favoritesAdded = new Set<string>(); // To track unique [user_id, product_id, product_variant_id]
+    const favoritesAdded = new Set<string>(); // To track unique [user_id, product_id, product_item_id]
     let favoritesCount = 0;
 
-    // Pick a random subset of product variants to mark as favorite
-    const variantsToFavorite = getRandomInt(
-      1,
-      Math.min(50, productVariants.length),
-    );
+    // Pick a random subset of product items to mark as favorite
+    const itemsToFavorite = getRandomInt(1, Math.min(50, productItems.length));
 
-    for (let i = 0; i < variantsToFavorite; i++) {
-      const variant = getRandomElement(productVariants);
-      if (!variant) continue;
+    for (let i = 0; i < itemsToFavorite; i++) {
+      const item = getRandomElement(productItems);
+      if (!item) continue;
 
-      const comboKey = `${creatorId}-${variant.product_id}-${variant.id}`;
+      const comboKey = `${creatorId}-${item.product_id}-${item.id}`;
       if (favoritesAdded.has(comboKey)) {
         i--; // Retry if this combo already exists
         continue;
@@ -1593,17 +1595,17 @@ export default class SeedHelper {
       try {
         await tx.favorite.upsert({
           where: {
-            user_id_product_id_product_variant_id: {
+            user_id_product_id_product_item_id: {
               user_id: creatorId,
-              product_id: variant.product_id,
-              product_variant_id: variant.id,
+              product_id: item.product_id,
+              product_item_id: item.id,
             },
           },
           update: { updated_by: creatorId },
           create: {
             user_id: creatorId,
-            product_id: variant.product_id,
-            product_variant_id: variant.id,
+            product_id: item.product_id,
+            product_item_id: item.id,
             created_by: creatorId,
           },
         });
@@ -1615,7 +1617,7 @@ export default class SeedHelper {
           error.code === 'P2002'
         ) {
           console.warn(
-            `Favorite for user ${creatorId}, product ${variant.product_id}, variant ${variant.id} already exists. Skipping duplicate.`,
+            `Favorite for user ${creatorId}, product ${item.product_id}, item ${item.id} already exists. Skipping duplicate.`,
           );
         } else {
           console.error(`Error seeding favorite:`, error);

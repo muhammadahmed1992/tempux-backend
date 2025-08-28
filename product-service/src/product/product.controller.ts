@@ -23,7 +23,7 @@ import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.ser
 import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
-import { ProductVariantService } from '@ProductVariant/product-variant.service';
+import { ProductItemService } from '@ProductItem/product-item.service';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
 
 @Controller()
@@ -32,7 +32,7 @@ export class ProductController {
     private readonly productService: ProductService,
     private readonly favoriteService: FavoriteService,
     private readonly productAnalyticsService: ProductAnalyticsService,
-    private readonly productVariantSerice: ProductVariantService,
+    private readonly productItemSerice: ProductItemService,
   ) {}
 
   /**
@@ -97,7 +97,7 @@ export class ProductController {
   /**
    *
    * @param productId This is the productId provided by the client-side.
-   * @param sku This is the variant specific information which needs to be provided by client-side
+   * @param sku This is the item specific information which needs to be provided by client-side
    * @returns Detailed Information of a product.
    */
   @Get(':id/details')
@@ -185,7 +185,7 @@ export class ProductController {
   @Post('/order-summary')
   @UseGuards(HeaderAuthGuard)
   async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
-    return this.productVariantSerice.getOrderSummary(summary);
+    return this.productItemSerice.getOrderSummary(summary);
   }
 
   /**

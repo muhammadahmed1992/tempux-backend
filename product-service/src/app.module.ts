@@ -18,6 +18,7 @@ import { HashidsModule } from '@HashIds/hash-ids.module';
 import { TagModule } from './tag/tag.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ProductListingsModule } from './product-listings/product-listings.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     HashidsModule,
     TagModule,
     EventEmitterModule.forRoot(),
+    ProductListingsModule,
   ],
   controllers: [AppController],
   providers: [
