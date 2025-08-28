@@ -18,9 +18,11 @@ import { HashidsModule } from '@HashIds/hash-ids.module';
 import { TagModule } from './tag/tag.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
+import { LoggingModule } from './common/logging/logging.module';
 
 @Module({
   imports: [
+    LoggingModule,
     ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
