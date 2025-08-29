@@ -3,15 +3,18 @@ export default class CookieHelper {
   public static setCookies(
     res: Response,
     key: string,
+    httpOnly: boolean,
     value: any,
     dns: string,
     expiry?: number,
   ) {
+    // TODO: Will uncomment
     res.cookie(key, value, {
-      httpOnly: true,
+      httpOnly,
       secure: true,
       sameSite: 'strict',
       domain: dns,
+      path: '/',
       maxAge: expiry || 15552000000, // 180 days
     });
   }
@@ -20,14 +23,17 @@ export default class CookieHelper {
     res: Response,
     key: string,
     sameSite: 'lax' | 'strict',
-    isProd: boolean,
-    frontendUrl?: string,
+    httpOnly: boolean,
+    dns?: string,
   ) {
+    const expiry = new Date(0);
     res.clearCookie(key, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite,
-      domain: this.getDomain(isProd, frontendUrl),
+      secure: true,
+      sameSite: sameSite,
+      path: '/',
+      httpOnly,
+      expires: expiry,
+      domain: dns,
     });
   }
 
@@ -36,43 +42,6 @@ export default class CookieHelper {
       return req.cookies[key];
     }
     return undefined;
-  }
-
-  public static clearAllCookies(
-    req: Request,
-    res: Response,
-    sameSite: 'lax' | 'strict',
-    isProd: boolean,
-    frontendUrl?: string,
-  ) {
-    if (!this.hasCookies(req)) return;
-
-    for (const key of Object.keys(req.cookies)) {
-      this.clearCookies(res, key, sameSite, isProd, frontendUrl);
-    }
-  }
-
-  private static getDomain(
-    isProd: boolean,
-    frontendUrl?: string,
-  ): string | undefined {
-    if (!isProd || !frontendUrl) return undefined; // Let browser handle for dev/local
-
-    try {
-      const urlObj = new URL(frontendUrl);
-      let cookieDomain = urlObj.hostname;
-
-      // Strip subdomain for cross-subdomain cookies
-      const parts = cookieDomain.split('.');
-      if (parts.length > 2) {
-        cookieDomain = '.' + parts.slice(-2).join('.');
-      }
-      console.log('in setting cookie');
-      console.log(cookieDomain);
-      return cookieDomain;
-    } catch {
-      return undefined;
-    }
   }
 
   private static hasCookies(

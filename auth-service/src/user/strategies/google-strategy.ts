@@ -3,6 +3,7 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { Injectable } from '@nestjs/common';
+import { AppLoggerService } from '../../common/logging/logger.service';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../services/user.service';
 import { Request } from 'express'; // Import Request from express
@@ -12,6 +13,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(
     private configService: ConfigService,
     private userService: UserService,
+    private readonly logger: AppLoggerService,
   ) {
     super({
       clientID: configService.get<string>('GOOGLE_CLIENT_ID')!,
@@ -39,12 +41,19 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: any, // Contains user profile data from Google
     done: VerifyCallback,
   ): Promise<any> {
-    console.log('--- GoogleStrategy.validate() called ---');
+    this.logger.debug({
+      message: 'GoogleStrategy.validate called',
+      context: { operation: 'oauth_validate', provider: 'google' },
+    });
     const { id, emails } = profile;
     const userEmail = emails && emails.length > 0 ? emails[0].value : null;
 
     if (!userEmail) {
-      console.error('Google profile missing email:', profile);
+      this.logger.error({
+        message: 'Google profile missing email',
+        context: { operation: 'oauth_validate', provider: 'google' },
+        error: new Error('Missing email'),
+      });
       return done(new Error('Google profile missing email.'), undefined);
     }
 
@@ -57,8 +66,12 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
 
       done(null, { user, provider: 'google', socialEmail: userEmail });
     } catch (err) {
-      console.error('Error during Google social user validation:', err);
-      done(err, false); // Pass the error to Passport, indicating authentication failure
+      this.logger.error({
+        message: 'Error during Google social user validation',
+        context: { operation: 'oauth_validate', provider: 'google' },
+        error: err as any,
+      });
+      done(err, false);
     }
   }
 }

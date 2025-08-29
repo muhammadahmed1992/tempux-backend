@@ -12,11 +12,13 @@ import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { CartDetailsResponseDTO } from '@DTO/cart-details-response.dto';
 import Constants from '@Helper/constants';
 import { ProductVariantService } from '@ProductVariant/product-variant.service';
+import { AppLoggerService } from '@Common/logging';
 @Injectable()
 export class CartService {
   constructor(
     private readonly repository: CartRepository,
     private readonly productVariantService: ProductVariantService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   /**
@@ -106,7 +108,7 @@ export class CartService {
           !item.product_variant.size
         ) {
           // Log a warning if data is inconsistent, or handle as per application's error policy
-          console.warn(
+          this.logger.warn(
             `Cart item ${item.id} has missing product, variant, color, or size data.`,
           );
           return null; // Return null for this item, which will be filtered out later
@@ -128,7 +130,10 @@ export class CartService {
         };
       })
       .filter((item) => item != null);
-    console.log(detailedCartItems);
+    this.logger.log({
+      message: 'Detailed cart Items',
+      context: { detailedCartItems },
+    });
     return ResponseHelper.CreateResponse(
       '',
       detailedCartItems,

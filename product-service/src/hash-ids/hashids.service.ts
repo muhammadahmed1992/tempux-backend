@@ -1,4 +1,5 @@
 // src/hashids/hashids.service.ts
+import { AppLoggerService } from '@Common/logging';
 import {
   Injectable,
   OnModuleInit,
@@ -13,20 +14,23 @@ export class HashidsService implements OnModuleInit {
   private hashids!: Hashids;
   private readonly minLength = 6;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: AppLoggerService,
+  ) {}
 
   onModuleInit() {
     const salt = this.configService.get<string>('HASHIDS_SALT');
 
     if (!salt) {
       // Check if salt is missing or default
-      console.error(
+      this.logger.error(
         'HASHIDS_SALT environment variable is not set. Please set it securely.',
       );
       throw new InternalServerErrorException('Something went wrong.');
     } else {
       this.hashids = new Hashids(salt, this.minLength);
-      console.log('Hashids initialized with salt from ConfigService.');
+      this.logger.log('Hashids initialized with salt from ConfigService.');
     }
   }
 
@@ -39,7 +43,10 @@ export class HashidsService implements OnModuleInit {
     try {
       return this.hashids.encode(id);
     } catch (error: any) {
-      console.error(`Failed to encode ID ${id}: ${error.message}`, error.stack);
+      this.logger.error(
+        `Failed to encode ID ${id}: ${error.message}`,
+        error.stack,
+      );
       throw new InternalServerErrorException('Failed to generate public ID.');
     }
   }
@@ -57,7 +64,7 @@ export class HashidsService implements OnModuleInit {
       }
       return typeof decoded[0] === 'bigint' ? decoded[0] : BigInt(decoded[0]);
     } catch (error: any) {
-      console.error(
+      this.logger.error(
         `Failed to decode hash "${hash}": ${error.message}`,
         error.stack,
       );

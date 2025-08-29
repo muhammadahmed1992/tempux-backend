@@ -11,6 +11,7 @@ import { ProductIdResolver } from '@Common/resolver/product-id.resolver';
 import { HashidsModule } from '../hash-ids/hash-ids.module';
 import { FavoriteModule } from '@Favorite/favorite.module';
 import { ProductCreatedListener } from './listener/product-created.listener';
+import { LoggingModule } from '@Common/logging';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ProductCreatedListener } from './listener/product-created.listener';
     FavoriteModule,
     ProductVariantModule,
     ProductAnalyticsModule,
+    LoggingModule
   ],
   controllers: [ProductController],
   providers: [

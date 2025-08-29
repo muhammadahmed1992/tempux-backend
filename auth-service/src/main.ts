@@ -1,3 +1,6 @@
+import { initializeTracing } from './tracing';
+initializeTracing(); // Initialize tracing before any other imports
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -6,20 +9,34 @@ import { AllExceptionsFilter } from './common/filters/global.exception.filter';
 import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import { BigIntInterceptor } from '@Common/interceptor/big.int.interceptor';
+import { AppLoggerService, correlationIdMiddleware } from './common/logging';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  // Get the logger service instance
+  const logger = app.get(AppLoggerService);
+
+  // Use custom logger
+  app.useLogger(logger);
+
   app.use(cookieParser());
 
-  // Enable the ValidationPipe globally
-  // Add this temporary middleware for debugging headers
+  // Add correlation ID middleware early in the pipeline
+  app.use(correlationIdMiddleware);
+
+  // Enhanced request logging middleware (replace the debug one)
   app.use((req: any, res: any, next: any) => {
-    console.log('Incoming Request Headers For Auth Service:');
-    for (const key in req.headers) {
-      if (req.headers.hasOwnProperty(key)) {
-        console.log(`  ${key}: ${req.headers[key]}`);
-      }
-    }
+    logger.debug({
+      message: 'Request headers received',
+      context: {
+        requestId: req.requestId,
+        headers: req.headers,
+        operation: 'request_headers',
+      },
+    });
     next();
   });
   app.useGlobalPipes(
@@ -35,9 +52,28 @@ async function bootstrap() {
   );
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalInterceptors(new BigIntInterceptor());
-  app.useGlobalFilters(new AllExceptionsFilter());
-  console.log(`running port of auth is : ${process.env.PORT}`);
+  app.useGlobalFilters(new AllExceptionsFilter(logger));
 
-  await app.listen(3001);
+
+  const port = process.env.PORT || 3001;
+
+  logger.log({
+    message: `Auth Service starting on port ${port}`,
+    context: {
+      port: port.toString(),
+      environment: process.env.NODE_ENV || 'development',
+      operation: 'startup',
+    },
+  });
+
+  await app.listen(port);
+
+  logger.log({
+    message: `Auth Service successfully started on port ${port}`,
+    context: {
+      port: port.toString(),
+      operation: 'startup_complete',
+    },
+  });
 }
 bootstrap();

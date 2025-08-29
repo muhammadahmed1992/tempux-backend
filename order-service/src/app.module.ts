@@ -8,9 +8,11 @@ import { HashidsModule } from '@HashIds/hash-ids.module';
 import { GlobalConfigurationModule } from '@GlobalConfiguration/global-configuration.module';
 import { ShippingModule } from './shipping/shipping.module';
 import { OrderModule } from './order/order.module';
+import { LoggingModule } from './common/logging/logging.module';
+
 
 @Module({
-  imports: [
+  imports: [LoggingModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),

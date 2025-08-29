@@ -4,6 +4,7 @@ import Mail from 'nodemailer/lib/mailer';
 import { ConfigService } from '@nestjs/config';
 import { EmailTemplateType } from './factory/email.template.type';
 import { EmailCreator } from './factory/email.creator';
+import { AppLoggerService } from '../common/logging/logger.service';
 import Constants from '@Helper/constants';
 import { OtpEmailCreator } from './factory/otp.email.creator';
 import { ResetPasswordEmailCreator } from './factory/reset.password.creator';
@@ -19,13 +20,18 @@ export class EmailService {
     private configService: ConfigService,
     private readonly otpEmailCreation: OtpEmailCreator,
     private readonly resetPasswordEmailCreator: ResetPasswordEmailCreator,
+    private readonly logger: AppLoggerService,
   ) {
-    console.log('email constructor');
+    this.logger.debug({
+      message: 'EmailService initialized',
+      context: { operation: 'email_service' },
+    });
     this.mailFrom = this.configService.get<string>('MAIL_FROM') || '';
     if (!this.mailFrom || !this.mailFrom.includes('@')) {
-      console.error(
-        'ERROR: MAIL_FROM environment variable is missing or invalid. Please set it in your .env file (e.g., MAIL_FROM="Your App Name <your_email@example.com>").',
-      );
+      this.logger.error({
+        message: 'MAIL_FROM is missing or invalid',
+        context: { operation: 'email_service' },
+      });
       throw new InternalServerErrorException(
         Constants.MAIL_FROM_MISSING_INVALID,
       );
@@ -46,9 +52,16 @@ export class EmailService {
     if (!this.isProduction) {
       this.transporter.verify((error, success) => {
         if (error) {
-          console.error('Nodemailer transporter verification failed:', error);
+          this.logger.error({
+            message: 'Nodemailer transporter verification failed',
+            context: { operation: 'email_service' },
+            error,
+          });
         } else {
-          console.log('Nodemailer transporter ready for messages.');
+          this.logger.debug({
+            message: 'Nodemailer transporter ready for messages',
+            context: { operation: 'email_service' },
+          });
         }
       });
     }
@@ -89,14 +102,22 @@ export class EmailService {
     };
 
     try {
-      console.log(`[Email-Service]`);
-      console.log(mailMessage.body);
-      console.log(`----------------------`);
+      this.logger.debug({
+        message: 'Email payload',
+        context: { operation: 'email_send', type, to: mailMessage.to },
+      });
       const info = await this.transporter.sendMail(mailOptions);
-      console.log(`Email of type '${type}' sent: %s`, info.messageId);
+      this.logger.log({
+        message: `Email sent`,
+        context: { operation: 'email_send', type, messageId: info.messageId },
+      });
       return info;
-    } catch (error) {
-      console.error(`Error sending email of type '${type}':`, error);
+    } catch (error: any) {
+      this.logger.error({
+        message: `Error sending email`,
+        context: { operation: 'email_send', type },
+        error,
+      });
       throw new InternalServerErrorException(
         `Failed to send email of type '${type}'.`,
       );

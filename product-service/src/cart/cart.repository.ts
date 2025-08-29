@@ -4,6 +4,8 @@ import { BaseRepository } from '@Common/db/base.repository';
 import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
 import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { PrismaService } from '@Prisma/prisma.service';
+import { AppLoggerService } from '@Common/logging';
+import { context } from '@opentelemetry/api';
 
 @Injectable()
 export class CartRepository extends BaseRepository<
@@ -16,7 +18,10 @@ export class CartRepository extends BaseRepository<
   Prisma.cartFindManyArgs,
   Prisma.cartFindFirstArgs
 > {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: AppLoggerService,
+  ) {
     super(prisma, prisma.cart);
   }
   /**
@@ -77,8 +82,12 @@ export class CartRepository extends BaseRepository<
       product_id: item.productId,
       product_variant_id: item.product_variant_Id,
     }));
-    console.log(`printing the orCondition for debugging`);
-    console.log(orConditions);
+    this.logger.debug({
+      message: 'printing the orCondition for debugging',
+      context: {
+        orConditions,
+      },
+    });
     return this.prisma.cart.deleteMany({
       where: {
         OR: orConditions,

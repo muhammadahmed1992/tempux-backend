@@ -151,7 +151,7 @@ model Address {
 model User {
   id           BigInt     @id @default(autoincrement())
   name         String     @db.VarChar(100)
-  email        String     @db.VarChar(150) @unique
+  email        String     @db.VarChar(254) @unique
   full_name    String?    @db.VarChar(100)
   password     String     @db.VarChar(150)
   telephone    String?    @db.VarChar(15)
@@ -162,9 +162,9 @@ model User {
   otp          String?    @db.Char(60)
   otp_expires_at DateTime?  @db.Timestamptz(6)
   otp_verified Boolean    @default(false)
-
-  googleId     String?    @db.VarChar(400)
-  facebookId   String?    @db.VarChar(400)
+  parent_Id    BigInt?
+  googleId     String?    @db.VarChar(254)
+  facebookId   String?    @db.VarChar(254)
   onboarded    Boolean    @default(false)
   is_seller_approved  Boolean   @default(false)
 

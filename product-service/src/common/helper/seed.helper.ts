@@ -4,6 +4,7 @@ import { HashidsService } from '../../hash-ids/hashids.service'; // Adjust path 
 import { SlugService } from '../../slug/slug.service'; // Adjust path if necessary
 import { ConfigService } from '@nestjs/config';
 import { GlobalConfigKeys } from '../../common/enums/global-config-keys';
+import { AppLoggerService } from '@Common/logging';
 
 function getRandomElement<T>(arr: T[]): T | undefined {
   if (arr.length === 0) return undefined;
@@ -123,8 +124,9 @@ export default class SeedHelper {
   async seedAllData(userId: string, numberOfProducts = 450): Promise<void> {
     const creatorId = BigInt(userId);
     const configService = new ConfigService();
+    const appLoggerService = new AppLoggerService();
 
-    const hashidsService = new HashidsService(configService);
+    const hashidsService = new HashidsService(configService, appLoggerService);
     hashidsService.onModuleInit();
     this.hashidsService = hashidsService;
     console.log('Starting extensive data seeding with upsert logic...');

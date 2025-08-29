@@ -6,11 +6,16 @@ import { ValidationPipe } from '@nestjs/common';
 import { BigIntInterceptor } from './common/interceptor/big.int.interceptor';
 import { HashidsInterceptor } from './common/interceptor/encode-decode-senstive-data.interceptor';
 import { HashidsService } from '@HashIds/hashids.service';
+import { initializeTracing } from './tracing';
+initializeTracing();
+import { AppLoggerService, correlationIdMiddleware } from './common/logging';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const hashidsService = app.get(HashidsService);
-
+  const logger = app.get(AppLoggerService);
+  app.useLogger(logger);
+  app.use(correlationIdMiddleware);
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

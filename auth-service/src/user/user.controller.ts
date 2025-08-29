@@ -38,6 +38,8 @@ import {
   UpdateAddressDto,
   ValidateAddressOwnershipDto,
 } from './dtos/address.dto';
+import { AppLoggerService } from '../common/logging/logger.service';
+import { LogoutCookieInterceptor } from './interceptor/logout.cookie.interceptor';
 @Controller('user')
 export class UserController {
   constructor(
@@ -45,6 +47,7 @@ export class UserController {
     private readonly addressService: AddressService,
     private readonly socialLoginService: SocialLoginService,
     private readonly configService: ConfigService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   @Post('register')
@@ -100,10 +103,16 @@ export class UserController {
   // Google Auth
   @Get('google')
   async googleAuth(@Req() req: Request, @Res() res: Response) {
-    console.log('--- AuthController.googleAuth() Initial Request ---');
+    this.logger.debug({
+      message: 'AuthController.googleAuth initial request',
+      context: { operation: 'oauth_redirect', provider: 'google' },
+    });
     const url = (req.headers['x-client-origin'] || '') as string;
     const redirectUrl = this.socialLoginService.getGoogleLoginUrl(url);
-    console.log('Generated Google Auth URL:', redirectUrl);
+    this.logger.debug({
+      message: 'Generated Google Auth URL',
+      context: { operation: 'oauth_redirect', provider: 'google', redirectUrl },
+    });
     return res.redirect(redirectUrl);
   }
 
@@ -111,7 +120,10 @@ export class UserController {
   @UseGuards(AuthGuard('google'))
   @UseInterceptors(SocialAuthRedirectInterceptor, AuthCookieInterceptor)
   async googleAuthRedirect() {
-    console.log('Google callback endpoint hit!');
+    this.logger.debug({
+      message: 'Google callback endpoint hit',
+      context: { operation: 'oauth_callback', provider: 'google' },
+    });
   }
 
   /**
@@ -121,10 +133,20 @@ export class UserController {
    */
   @Get('facebook')
   async facebookAuth(@Req() req: Request, @Res() res: Response) {
-    console.log('--- AuthController.facebookAuth() Initial Request ---');
+    this.logger.debug({
+      message: 'AuthController.facebookAuth initial request',
+      context: { operation: 'oauth_redirect', provider: 'facebook' },
+    });
     const url = (req.headers['x-client-origin'] || '') as string;
     const redirectUrl = this.socialLoginService.getFacebookLoginUrl(url);
-    console.log('Generated Facebook Auth URL:', redirectUrl);
+    this.logger.debug({
+      message: 'Generated Facebook Auth URL',
+      context: {
+        operation: 'oauth_redirect',
+        provider: 'facebook',
+        redirectUrl,
+      },
+    });
 
     return res.redirect(redirectUrl);
   }
@@ -138,7 +160,10 @@ export class UserController {
   @UseGuards(AuthGuard('facebook')) // Use AuthGuard for 'facebook' strategy
   @UseInterceptors(SocialAuthRedirectInterceptor, AuthCookieInterceptor)
   async facebookAuthRedirect() {
-    console.log('Facebook Callback endpoint hit!');
+    this.logger.debug({
+      message: 'Facebook callback endpoint hit',
+      context: { operation: 'oauth_callback', provider: 'facebook' },
+    });
   }
 
   @Post('details-by-ids')
@@ -147,8 +172,8 @@ export class UserController {
     return this.userService.findUsersByIds(userIds);
   }
 
-  @Post('account-existance')
-  async validateAssociatedAccount(
+  @Post('map')
+  async mapWithExistingAccount(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @Body('email') email: string,
@@ -157,25 +182,39 @@ export class UserController {
       req,
       'provider',
     ) as ProviderType;
-    const socialEmail = decodeURIComponent(
-      CookieHelper.getCookieValue(req, 'ue')!,
-    );
+    const socialEmail =
+      CookieHelper.getCookieValue(req, 'ue') &&
+      decodeURIComponent(CookieHelper.getCookieValue(req, 'ue')!);
 
     if (!provider || !socialEmail) {
-      this.clearCookies(req, res);
+      this.clearCookies(res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
     }
 
-    return this.userService.validateExistingAccount(
+    return this.userService.mapWithExistingAccount(
       email,
       socialEmail,
       provider,
     );
   }
 
-  @Post('/social-media')
+  @Post('register/predefined-user')
+  async predefinedUser(@Body() email: string): Promise<ApiResponse<boolean>> {
+    if (!email || !email.includes('@')) {
+      throw new BadRequestException('Invalid email address');
+    }
+
+    return this.userService.create({
+      email,
+      password: 'SOCIAL_LOGIN_PASSWORD_PLACEH',
+      username: 'SOCIAL',
+      fullName: 'SOCIAL_LOGIN_USERNAME',
+    });
+  }
+
+  @Post('social-media')
   async createUserBySocialMedia(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -187,9 +226,12 @@ export class UserController {
     const socialEmail = decodeURIComponent(
       CookieHelper.getCookieValue(req, 'ue')!,
     );
-    console.log(`social email: ${socialEmail}`);
+    this.logger.debug({
+      message: 'Social media user email decoded',
+      context: { operation: 'social_login', email: socialEmail },
+    });
     if (!provider || !socialEmail) {
-      this.clearCookies(req, res);
+      this.clearCookies(res);
       throw new UnauthorizedException(
         'Your session has been expired. Please re-login again',
       );
@@ -214,9 +256,9 @@ export class UserController {
   }
 
   @UseGuards(HeaderAuthGuard)
+  @UseInterceptors(LogoutCookieInterceptor)
   @Post('logout')
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    this.clearCookies(req, res);
     return ResponseHelper.CreateResponse<any>(
       'You have been successfully logout',
       null,
@@ -332,12 +374,13 @@ export class UserController {
   }
 
   // TODO: Will fix typings
-  private async clearCookies(req: any, res: any) {
-    const frontEndUrl = this.configService.get<string>('FRONTEND_URL')!;
-    const isProd =
-      (this.configService.get<string>('NODE_ENV') || '').toLowerCase() ===
-      'production';
-    CookieHelper.clearAllCookies(req, res, 'strict', isProd, frontEndUrl);
+  private async clearCookies(res: any) {
+    const dns = this.configService.get<string>('DNS')!;
+
+    // We need to clear cookies explicitly so that passing exact params which were used while during creation.
+    CookieHelper.clearCookies(res as any, 'access_token', 'strict', true, dns);
+    CookieHelper.clearCookies(res as any, 'ue', 'strict', false, dns);
+    CookieHelper.clearCookies(res as any, 'provider', 'strict', false, dns);
   }
 }
 

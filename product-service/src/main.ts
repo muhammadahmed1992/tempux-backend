@@ -1,5 +1,8 @@
+import { initializeTracing } from './tracing';
+initializeTracing();
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { AppLoggerService, correlationIdMiddleware } from './common/logging';
 import ResponseHandlerInterceptor from './common/interceptor/response-handler.interceptor';
 import { AllExceptionsFilter } from './common/filters/global.exception.filter';
 import { ValidationPipe } from '@nestjs/common';
@@ -9,7 +12,10 @@ import { HashidsService } from '@HashIds/hashids.service';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const logger = app.get(AppLoggerService);
+  app.useLogger(logger);
+  app.use(correlationIdMiddleware);
   const hashidsService = app.get(HashidsService);
   app.useGlobalPipes(
     new ValidationPipe({
@@ -27,7 +33,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalInterceptors(new BigIntInterceptor());
   app.useGlobalInterceptors(new HashidsInterceptor(hashidsService));
-  app.useGlobalFilters(new AllExceptionsFilter());
+  app.useGlobalFilters(new AllExceptionsFilter(logger));
   await app.listen(3003);
 }
 bootstrap();
