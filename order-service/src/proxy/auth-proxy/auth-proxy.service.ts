@@ -4,7 +4,10 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom, catchError } from 'rxjs';
 import { AxiosError } from 'axios';
 import { AxiosResponse } from 'axios';
-import { ShippingAddressDto } from '../../order/dtos/create-order.dto';
+import {
+  ShippingAddressDto,
+  BillingAddressDto,
+} from '../../order/dtos/create-order.dto';
 
 // Define interfaces for the address data
 export interface AddressResponse {
@@ -55,21 +58,22 @@ export class AuthProxyService {
   }
 
   /**
-   * Creates a new shipping address for a user
+   * Creates a new address for a user
    */
-  async createShippingAddress(
-    shippingAddress: ShippingAddressDto,
+  async createAddress(
+    address: ShippingAddressDto | BillingAddressDto,
     userId: bigint,
+    addressType: 'SHIPPING' | 'BILLING',
   ): Promise<bigint> {
     try {
       const createAddressDto = {
-        addressLine1: shippingAddress.addressLine1,
-        addressLine2: shippingAddress.addressLine2,
-        city: shippingAddress.city,
-        state: shippingAddress.state,
-        postalCode: shippingAddress.postalCode,
-        countryCode: shippingAddress.country,
-        addressType: 'SHIPPING',
+        addressLine1: address.addressLine1,
+        addressLine2: address.addressLine2,
+        city: address.city,
+        state: address.state,
+        postalCode: address.postalCode,
+        countryCode: address.country,
+        addressType: addressType,
         isDefault: false,
       };
 
@@ -96,7 +100,7 @@ export class AuthProxyService {
                   // TODO: Implement Logging..
                 }
                 throw new InternalServerErrorException(
-                  'Failed to create shipping address in Auth Service.',
+                  `Failed to create ${addressType.toLowerCase()} address in Auth Service.`,
                 );
               }),
             ),
@@ -104,9 +108,31 @@ export class AuthProxyService {
       return response.data.data.id;
     } catch (error: any) {
       throw new InternalServerErrorException(
-        `Failed to create shipping address: ${error.message}`,
+        `Failed to create ${addressType.toLowerCase()} address: ${
+          error.message
+        }`,
       );
     }
+  }
+
+  /**
+   * Creates a new shipping address for a user
+   */
+  async createShippingAddress(
+    shippingAddress: ShippingAddressDto,
+    userId: bigint,
+  ): Promise<bigint> {
+    return this.createAddress(shippingAddress, userId, 'SHIPPING');
+  }
+
+  /**
+   * Creates a new billing address for a user
+   */
+  async createBillingAddress(
+    billingAddress: BillingAddressDto,
+    userId: bigint,
+  ): Promise<bigint> {
+    return this.createAddress(billingAddress, userId, 'BILLING');
   }
 
   /**

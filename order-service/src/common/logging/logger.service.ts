@@ -35,17 +35,14 @@ export class AppLoggerService implements NestLoggerService {
           };
         },
       },
-      transport:
-        process.env.NODE_ENV !== 'production'
-          ? {
-              target: 'pino-pretty',
-              options: {
-                colorize: true,
-                translateTime: 'SYS:dd-mm-yyyy HH:MM:ss',
-                ignore: 'pid,hostname',
-              },
-            }
-          : undefined,
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:dd-mm-yyyy HH:MM:ss',
+          ignore: 'pid,hostname',
+        },
+      },
     });
   }
   error(d: string | LogMessage, c?: string) {
@@ -54,17 +51,8 @@ export class AppLoggerService implements NestLoggerService {
   warn(d: string | LogMessage, c?: string) {
     this.write('warn', d, c);
   }
-  log(d: string | LogMessage, c?: string) {
+  info(d: string | LogMessage, c?: string) {
     this.write('info', d, c);
-  }
-  debug(d: string | LogMessage, c?: string) {
-    this.write('debug', d, c);
-  }
-  verbose(d: string | LogMessage, c?: string) {
-    this.write('debug', d, c);
-  }
-  fatal(d: string | LogMessage, c?: string) {
-    this.write('fatal', d, c);
   }
   logRequest(
     method: string,
@@ -73,7 +61,7 @@ export class AppLoggerService implements NestLoggerService {
     duration: number,
     requestId: string,
   ) {
-    this.log({
+    this.info({
       message: `${method} ${url} - ${statusCode} completed in ${duration}ms`,
       context: {
         method,

@@ -70,11 +70,37 @@ export class ShippingAddressDto {
   phone!: string;
 }
 
-export class CreateOrderDto {
-  @IsNumber()
+export class BillingAddressDto {
+  @IsString()
   @IsNotEmpty()
-  buyerId!: number | bigint;
+  addressLine1!: string;
 
+  @IsOptional()
+  @IsString()
+  addressLine2?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  city!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  state!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  postalCode!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  country!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+}
+
+export class CreateOrderDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
@@ -93,6 +119,19 @@ export class CreateOrderDto {
   @Type(() => ShippingAddressDto)
   shippingAddress?: ShippingAddressDto;
 
+  @IsOptional()
+  @IsBoolean()
+  sameAsShippingAddress?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  billingAddressId?: number | bigint;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BillingAddressDto)
+  billingAddress?: BillingAddressDto;
+
   @IsNumber()
   @Min(0)
   totalDiscount!: number;
@@ -108,4 +147,8 @@ export class CreateOrderDto {
   @IsNumber()
   @Min(0)
   totalAmount!: number;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }
