@@ -12,12 +12,12 @@ export class TagCleanupJob {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleCron() {
-    this.logger.debug({
+    this.logger.info({
       message: 'Started new arrival tagging',
       context: { operation: 'tagging_new_arrival' },
     });
     await this.tagService.cleanupExpiredNewArrivalTags();
-    this.logger.debug({
+    this.logger.info({
       message: 'Completed new arrival tagging',
       context: { operation: 'tagging_new_arrival' },
     });
@@ -25,12 +25,12 @@ export class TagCleanupJob {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handlePopularProductsCron() {
-    this.logger.debug({
+    this.logger.info({
       message: 'Started Make Popular Tagging',
       context: { operation: 'tagging_popular' },
     });
     await this.tagService.markPopularProductsJob();
-    this.logger.debug({
+    this.logger.info({
       message: 'Completed Make Popular Tagging',
       context: { operation: 'tagging_popular' },
     });

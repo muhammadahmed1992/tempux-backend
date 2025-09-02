@@ -31,7 +31,31 @@ export class OrderResponseDto {
   shippingAddressId?: bigint;
   billingAddressId?: bigint;
   createdAt!: Date;
-  updatedAt?: Date;
+  updatedAt!: Date;
+  orderItems!: OrderItemResponseDto[];
+  status?: 'CREATED' | 'PARTIAL';
+  exceptions?: Array<{
+    productId: bigint;
+    message: string;
+  }>;
+  // Multi-seller support: When order contains items from multiple sellers
+  sellerOrders?: SellerOrderDto[];
+}
+
+export class SellerOrderDto {
+  id!: bigint;
+  sellerId!: bigint;
+  buyerId!: bigint;
+  totalDiscount!: number;
+  totalTax!: number;
+  totalShippingCost!: number;
+  totalAmount!: number;
+  orderDate!: Date;
+  orderStatus!: string;
+  paymentStatus!: string;
+  fulfillmentStatus!: string;
+  createdAt!: Date;
+  updatedAt!: Date;
   orderItems!: OrderItemResponseDto[];
 }
 

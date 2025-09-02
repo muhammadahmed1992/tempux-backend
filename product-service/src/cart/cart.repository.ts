@@ -82,7 +82,7 @@ export class CartRepository extends BaseRepository<
       product_id: item.productId,
       product_variant_id: item.product_variant_Id,
     }));
-    this.logger.debug({
+    this.logger.info({
       message: 'printing the orCondition for debugging',
       context: {
         orConditions,

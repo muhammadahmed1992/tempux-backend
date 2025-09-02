@@ -7,6 +7,7 @@ import { ProductProxyModule } from '../proxy/product-proxy/product-proxy.module'
 import { AuthProxyModule } from '../proxy/auth-proxy/auth-proxy.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { LoggingModule } from '../common/logging';
+import { FedExService } from 'src/shipping/fedex/fedex.service';
 
 @Module({
   imports: [
@@ -17,7 +18,7 @@ import { LoggingModule } from '../common/logging';
     LoggingModule,
   ],
   controllers: [OrderController],
-  providers: [OrderService, OrderRepository],
+  providers: [OrderService, OrderRepository, FedExService],
   exports: [OrderService, OrderRepository],
 })
 export class OrderModule {}

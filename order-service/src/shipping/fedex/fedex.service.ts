@@ -14,15 +14,18 @@ import {
   FedExTrackingRequestDto,
   FedExTrackingResponseDto,
 } from './dtos/fedex-tracking.dto';
+import { AppLoggerService } from '@Common/logging';
 
 @Injectable()
 export class FedExService {
-  private readonly logger = new Logger(FedExService.name);
   private readonly httpClient: AxiosInstance;
   private accessToken: string | null = null;
   private tokenExpiry: Date | null = null;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: AppLoggerService,
+  ) {
     this.httpClient = axios.create({
       baseURL: this.configService.get<string>('FEDEX_API_BASE_URL'),
       timeout: 30000,
@@ -43,10 +46,20 @@ export class FedExService {
 
     try {
       const oauthUrl = this.configService.get<string>('FEDEX_OAUTH_URL');
+      this.logger.info('Fetching new FedEx OAuth token from:', oauthUrl);
       if (!oauthUrl) throw new Error('FEDEX_OAUTH_URL is not configured');
       const clientId = this.configService.get<string>('FEDEX_CLIENT_ID') || '';
       const clientSecret =
         this.configService.get<string>('FEDEX_CLIENT_SECRET') || '';
+
+      this.logger.info({
+        message: 'Sending OAuth request with credentials',
+        context: {
+          url: oauthUrl,
+          clientId,
+          grantType: 'client_credentials',
+        },
+      });
 
       const response = await this.httpClient.post<FedExOAuthResponseDto>(
         oauthUrl,
@@ -69,11 +82,23 @@ export class FedExService {
         Date.now() + ((data.expires_in || 3600) - 300) * 1000,
       );
 
-      this.logger.log('FedEx OAuth token obtained successfully');
+      this.logger.info('FedEx OAuth token obtained successfully');
       return this.accessToken;
-    } catch (error) {
-      this.logger.error('Failed to obtain FedEx OAuth token', error);
-      throw new BadRequestException('Failed to authenticate with FedEx');
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to obtain FedEx OAuth token',
+        error,
+      });
+
+      if (error.response?.status === 401) {
+        throw new BadRequestException('Invalid FedEx credentials');
+      }
+
+      throw new BadRequestException(
+        `Failed to authenticate with FedEx: ${
+          error.response?.data?.errors?.[0]?.message || error.message
+        }`,
+      );
     }
   }
 
@@ -84,52 +109,53 @@ export class FedExService {
     const accessToken = await this.getAccessToken();
 
     try {
+      const request = {
+        accountNumber: {
+          value: this.configService.get<string>('FEDEX_ACCOUNT_NUMBER'),
+        },
+        rateRequestControlParameters: {
+          returnTransitTimes: true,
+          servicesRequested: ['FEDEX_STANDARD'],
+          variableOptions: 'FREIGHT_GUARANTEE',
+        },
+        requestedShipment: {
+          shipper: {
+            address: {
+              streetLines: [rateRequest.shipperAddress.addressLine1],
+              city: rateRequest.shipperAddress.city,
+              stateOrProvinceCode: rateRequest.shipperAddress.state,
+              postalCode: rateRequest.shipperAddress.postalCode,
+              countryCode: rateRequest.shipperAddress.countryCode,
+            },
+          },
+          recipient: {
+            address: {
+              streetLines: [rateRequest.recipientAddress.addressLine1],
+              city: rateRequest.recipientAddress.city,
+              stateOrProvinceCode: rateRequest.recipientAddress.state,
+              postalCode: rateRequest.recipientAddress.postalCode,
+              countryCode: rateRequest.recipientAddress.countryCode,
+            },
+          },
+          pickupType: 'DROPOFF_AT_FEDEX_LOCATION',
+          rateRequestType: ['LIST'],
+          requestedPackageLineItems: rateRequest.packages.map((pkg) => ({
+            weight: {
+              units: 'LB',
+              value: pkg.weight,
+            },
+            dimensions: {
+              length: pkg.length,
+              width: pkg.width,
+              height: pkg.height,
+              units: 'IN',
+            },
+          })),
+        },
+      };
       const response = await this.httpClient.post<FedExRateQuoteResponseDto>(
         '/rate/v1/rates/quotes',
-        {
-          accountNumber: {
-            value: this.configService.get<string>('FEDEX_ACCOUNT_NUMBER'),
-          },
-          rateRequestControlParameters: {
-            returnTransitTimes: true,
-            servicesRequested: ['FEDEX_STANDARD'],
-            variableOptions: 'FREIGHT_GUARANTEE',
-          },
-          requestedShipment: {
-            shipper: {
-              address: {
-                streetLines: [rateRequest.shipperAddress.addressLine1],
-                city: rateRequest.shipperAddress.city,
-                stateOrProvinceCode: rateRequest.shipperAddress.state,
-                postalCode: rateRequest.shipperAddress.postalCode,
-                countryCode: rateRequest.shipperAddress.countryCode,
-              },
-            },
-            recipient: {
-              address: {
-                streetLines: [rateRequest.recipientAddress.addressLine1],
-                city: rateRequest.recipientAddress.city,
-                stateOrProvinceCode: rateRequest.recipientAddress.state,
-                postalCode: rateRequest.recipientAddress.postalCode,
-                countryCode: rateRequest.recipientAddress.countryCode,
-              },
-            },
-            pickupType: 'DROPOFF_AT_FEDEX_LOCATION',
-            rateRequestType: ['LIST'],
-            requestedPackageLineItems: rateRequest.packages.map((pkg) => ({
-              weight: {
-                units: 'LB',
-                value: pkg.weight,
-              },
-              dimensions: {
-                length: pkg.length,
-                width: pkg.width,
-                height: pkg.height,
-                units: 'IN',
-              },
-            })),
-          },
-        },
+        request,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
@@ -138,17 +164,20 @@ export class FedExService {
         },
       );
 
-      this.logger.log('FedEx rate quote obtained successfully');
+      this.logger.info('FedEx rate quote obtained successfully');
       return response.data;
     } catch (error) {
-      this.logger.error('Failed to get FedEx rate quote', error);
+      this.logger.error({
+        message: 'Failed to get FedEx rate quote',
+        context: { error },
+      });
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as any;
         if (axiosError.response?.data) {
-          this.logger.error(
-            'FedEx API Error Details:',
-            axiosError.response.data,
-          );
+          this.logger.error({
+            message: 'FedEx API Error Details:',
+            context: { error: axiosError.response.data },
+          });
         }
       }
       throw new BadRequestException('Failed to get shipping rate quote');
@@ -246,17 +275,20 @@ export class FedExService {
         },
       );
 
-      this.logger.log('FedEx shipment created successfully');
+      this.logger.info('FedEx shipment created successfully');
       return response.data;
     } catch (error) {
-      this.logger.error('Failed to create FedEx shipment', error);
+      this.logger.error({
+        message: 'Failed to create FedEx shipment',
+        context: { error },
+      });
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as any;
         if (axiosError.response?.data) {
-          this.logger.error(
-            'FedEx API Error Details:',
-            axiosError.response.data,
-          );
+          this.logger.error({
+            message: 'FedEx API Error Details:',
+            context: { error: axiosError.response.data },
+          });
         }
       }
       throw new BadRequestException('Failed to create shipment');
@@ -290,10 +322,13 @@ export class FedExService {
         },
       );
 
-      this.logger.log('FedEx tracking information obtained successfully');
+      this.logger.info('FedEx tracking information obtained successfully');
       return response.data;
     } catch (error) {
-      this.logger.error('Failed to get FedEx tracking information', error);
+      this.logger.error({
+        message: 'Failed to get FedEx tracking information',
+        context: { error },
+      });
       throw new BadRequestException('Failed to get tracking information');
     }
   }

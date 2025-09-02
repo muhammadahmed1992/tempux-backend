@@ -47,7 +47,7 @@ export class LoggingInterceptor implements NestInterceptor {
       },
     });
 
-    this.logger.debug({
+    this.logger.info({
       message: `Incoming ${method} ${url}`,
       context: {
         requestId,

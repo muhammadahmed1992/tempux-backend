@@ -8,7 +8,6 @@ export interface LogContext {
   spanId?: string;
   [key: string]: any;
 }
-
 export interface LogMessage {
   message: string;
   context?: LogContext;
@@ -18,8 +17,7 @@ export interface LogMessage {
 @Injectable()
 export class AppLoggerService implements NestLoggerService {
   private readonly logger: pino.Logger;
-  private readonly serviceName = process.env.SERVICE_NAME || 'product-service';
-
+  private readonly serviceName = process.env.SERVICE_NAME || 'api-gateway';
   constructor() {
     this.logger = pino({
       level: process.env.LOG_LEVEL || 'info',
@@ -37,36 +35,31 @@ export class AppLoggerService implements NestLoggerService {
           };
         },
       },
-      transport:
-        process.env.NODE_ENV !== 'production'
-          ? {
-              target: 'pino-pretty',
-              options: {
-                colorize: true,
-                translateTime: 'SYS:dd-mm-yyyy HH:MM:ss',
-                ignore: 'pid,hostname',
-              },
-            }
-          : undefined,
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'SYS:dd-mm-yyyy HH:MM:ss',
+          ignore: 'pid,hostname',
+        },
+      },
     });
   }
-
-  error(data: string | LogMessage, context?: string) {
-    this.write('error', data, context);
+  error(d: string | LogMessage, c?: string) {
+    this.write('error', d, c);
   }
-  warn(data: string | LogMessage, context?: string) {
-    this.write('warn', data, context);
+  warn(d: string | LogMessage, c?: string) {
+    this.write('warn', d, c);
   }
-  log(data: string | LogMessage, context?: string) {
-    this.write('info', data, context);
+  info(d: string | LogMessage, c?: string) {
+    this.write('info', d, c);
   }
-  info(data: string | LogMessage, context?: string) {
-    this.write('info', data, context);
+  log(data: string | LogMessage, c?: string) {
+    this.write('info', data, c);
   }
-  fatal(data: string | LogMessage, context?: string) {
-    this.write('fatal', data, context);
+  fatal(data: string | LogMessage, c?: string) {
+    this.write('fatal', data, c);
   }
-
   logRequest(
     method: string,
     url: string,
@@ -74,7 +67,7 @@ export class AppLoggerService implements NestLoggerService {
     duration: number,
     requestId: string,
   ) {
-    this.log({
+    this.info({
       message: `${method} ${url} - ${statusCode} completed in ${duration}ms`,
       context: {
         method,
@@ -86,7 +79,6 @@ export class AppLoggerService implements NestLoggerService {
       },
     });
   }
-
   private write(
     level: 'error' | 'warn' | 'info' | 'debug' | 'fatal',
     data: string | LogMessage,

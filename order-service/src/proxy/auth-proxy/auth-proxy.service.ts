@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom, catchError } from 'rxjs';
@@ -48,6 +52,7 @@ export class AuthProxyService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly logger: Logger,
   ) {
     this.authSvcUrl = this.configService.getOrThrow<string>('AUTH_SERVICE_URL');
     if (!this.authSvcUrl) {
@@ -190,8 +195,8 @@ export class AuthProxyService {
   ): Promise<boolean> {
     try {
       const validateDto = {
-        addressId: addressId.toString(),
-        userId: userId.toString(),
+        addressId: Number(addressId),
+        userId: Number(userId),
         expectedType,
       };
 
@@ -297,6 +302,13 @@ export class AuthProxyService {
 
       return response.data.data;
     } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get user addresses by context',
+        context: {
+          operation: 'get_user_addresses_by_context',
+          error: error.message,
+        },
+      });
       throw new InternalServerErrorException(
         `Failed to get user addresses by context: ${error.message}`,
       );

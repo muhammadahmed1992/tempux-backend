@@ -121,7 +121,7 @@ export class CreateOrderDto {
 
   @IsOptional()
   @IsBoolean()
-  sameAsShippingAddress?: boolean;
+  sameAsBillingAddress?: boolean;
 
   @IsOptional()
   @IsNumber()

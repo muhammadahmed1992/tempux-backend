@@ -117,7 +117,7 @@ export class ShippingService {
       // Group order items by seller for shipment creation
       const itemsBySeller = this.groupItemsBySeller(orderItems);
 
-      for (const [sellerId, items] of itemsBySeller) {
+      for (const [sellerId, items] of Array.from(itemsBySeller.entries())) {
         await this.createShipmentForSeller(
           orderId,
           sellerId,

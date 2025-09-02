@@ -12,6 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { SocialLoginService } from './services/social-login.service';
 import { UserCookieHandlerService } from './services/user-cookie.handler.service';
+import { AppLoggerService } from '../common/logging/logger.service';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { UserCookieHandlerService } from './services/user-cookie.handler.service
     EncryptionHelper,
     SocialLoginService,
     UserCookieHandlerService,
+    AppLoggerService,
   ],
 })
 export class UserModule {}

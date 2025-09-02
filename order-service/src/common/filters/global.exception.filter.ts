@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 // Import Request and Response from express
 import { Request, Response } from "express";
+import { AppLoggerService } from "../logging/logger.service";
 
 /**
  * A global exception filter that catches all unhandled exceptions
@@ -16,6 +17,7 @@ import { Request, Response } from "express";
  */
 @Catch() // @Catch() without arguments catches all exceptions
 export class AllExceptionsFilter implements ExceptionFilter {
+  constructor(private readonly logger: AppLoggerService) {}
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -48,12 +50,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     // Log the full exception for debugging purposes (in development)
-    console.error("--- Product Service Global Exception Caught ---");
-    console.error("Path:", request.url);
-    console.error("Status:", status);
-    console.error("Exception Type:", (exception as any).name || "Unknown");
-    console.error("Exception Details:", exception);
-    console.error("-----------------------------");
+    this.logger.error({
+      message: "Order Service Global Exception Caught",
+      context: {
+        path: request.url,
+        status,
+        exceptionType: (exception as any).name || "Unknown",
+        exceptionDetails: exception,
+      },
+    });
 
     // Construct the consistent error response payload
 

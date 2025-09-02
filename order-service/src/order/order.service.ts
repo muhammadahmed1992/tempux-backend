@@ -9,7 +9,11 @@ import {
   CreateOrderItemDto,
   ShippingAddressDto,
 } from './dtos/create-order.dto';
-import { OrderResponseDto, OrderListingDto } from './dtos/order-response.dto';
+import {
+  OrderResponseDto,
+  OrderListingDto,
+  SellerOrderDto,
+} from './dtos/order-response.dto';
 import {
   ShippingEstimateDto,
   ShippingEstimateResponse,
@@ -17,6 +21,10 @@ import {
 } from './dtos/shipping-estimate.dto';
 import { AppLoggerService } from '../common/logging';
 
+interface ProductVariantInventory {
+  id: bigint;
+  quantity: number;
+}
 @Injectable()
 export class OrderService {
   constructor(
@@ -45,320 +53,223 @@ export class OrderService {
     });
 
     try {
-      // Validate products and inventory
-      await this.validateOrderItems(createOrderDto.orderItems);
+      // Prisma transaction with pessimistic locking
+      return await this.orderRepository.getPrisma().$transaction(
+        async (tx) => {
+          // Get all unique product variant IDs that need to be locked
+          const uniqueProductVariantIds = [
+            ...new Set(
+              createOrderDto.orderItems.map((item) => item.productVariantId),
+            ),
+          ].sort((a, b) => Number(a) - Number(b));
 
-      // Extract Seller Id - assuming all items are from the same seller
-      const sellerId = BigInt(createOrderDto.orderItems[0].sellerId);
-
-      this.logger.info({
-        message: 'Processing shipping address',
-        context: {
-          operation: 'shipping_address_processing',
-          userId: userId.toString(),
-          useSavedAddress: createOrderDto.useSavedShippingAddress,
-          savedAddressId: createOrderDto.savedShippingAddressId?.toString(),
-        },
-      });
-
-      // Handle shipping address
-      let shippingAddressId: bigint | undefined;
-      if (
-        createOrderDto.useSavedShippingAddress &&
-        createOrderDto.savedShippingAddressId
-      ) {
-        // Validate that the saved address belongs to the user
-        this.logger.info({
-          message: 'Validating saved shipping address ownership',
-          context: {
-            operation: 'validate_address_ownership',
-            userId: userId.toString(),
-            addressId: createOrderDto.savedShippingAddressId.toString(),
-          },
-        });
-
-        const isValidAddress =
-          await this.authProxyService.validateAddressOwnership(
-            BigInt(createOrderDto.savedShippingAddressId),
-            userId,
-            'SHIPPING',
-          );
-        if (!isValidAddress) {
-          this.logger.warn({
-            message: 'Invalid shipping address provided',
+          this.logger.info({
+            message: 'Acquiring pessimistic locks for inventory rows',
             context: {
-              operation: 'validate_address_ownership',
+              operation: 'pessimistic_locking',
               userId: userId.toString(),
-              addressId: createOrderDto.savedShippingAddressId.toString(),
+              productVariantIds: uniqueProductVariantIds.map((id) =>
+                id.toString(),
+              ),
             },
           });
-          throw new BadRequestException('Invalid shipping address');
-        }
-        shippingAddressId = BigInt(createOrderDto.savedShippingAddressId);
 
-        this.logger.info({
-          message: 'Shipping address ownership validated',
-          context: {
-            operation: 'validate_address_ownership',
-            userId: userId.toString(),
-            addressId: createOrderDto.savedShippingAddressId.toString(),
-          },
-        });
-      } else if (createOrderDto.shippingAddress) {
-        // For new addresses, we'll create them in the database
-        this.logger.info({
-          message: 'Creating new shipping address',
-          context: {
-            operation: 'create_shipping_address',
-            userId: userId.toString(),
-            city: createOrderDto.shippingAddress.city,
-            country: createOrderDto.shippingAddress.country,
-          },
-        });
+          // Lock only the specific product variants we need
+          for (const productVariantId of uniqueProductVariantIds) {
+            await tx.$executeRaw`SELECT * FROM products.product_variants WHERE id = ${productVariantId} FOR UPDATE`;
+          }
 
-        const newAddressId = await this.authProxyService.createShippingAddress(
-          createOrderDto.shippingAddress,
-          userId,
-        );
-        shippingAddressId = newAddressId;
-
-        this.logger.info({
-          message: 'New shipping address created',
-          context: {
-            operation: 'create_shipping_address',
-            userId: userId.toString(),
-            addressId: newAddressId.toString(),
-          },
-        });
-      } else {
-        this.logger.warn({
-          message: 'No shipping address provided',
-          context: {
-            operation: 'create_order_service',
-            userId: userId.toString(),
-          },
-        });
-        throw new BadRequestException('Shipping address is required');
-      }
-
-      // Handle billing address
-      let billingAddressId: bigint | undefined;
-      if (createOrderDto.sameAsShippingAddress === true) {
-        // Set billing address same as shipping address
-        billingAddressId = shippingAddressId;
-        this.logger.info({
-          message: 'Billing address set same as shipping address',
-          context: {
-            operation: 'billing_address_processing',
-            userId: userId.toString(),
-            billingAddressId: billingAddressId.toString(),
-          },
-        });
-      } else if (createOrderDto.billingAddressId) {
-        // Validate that the saved billing address belongs to the user
-        this.logger.info({
-          message: 'Validating saved billing address ownership',
-          context: {
-            operation: 'validate_billing_address_ownership',
-            userId: userId.toString(),
-            addressId: createOrderDto.billingAddressId.toString(),
-          },
-        });
-
-        const isValidBillingAddress =
-          await this.authProxyService.validateAddressOwnership(
-            BigInt(createOrderDto.billingAddressId),
-            userId,
-            'BILLING',
-          );
-        if (!isValidBillingAddress) {
-          this.logger.warn({
-            message: 'Invalid billing address provided',
+          this.logger.info({
+            message: 'Pessimistic locks acquired successfully',
             context: {
-              operation: 'validate_billing_address_ownership',
+              operation: 'pessimistic_locking',
               userId: userId.toString(),
-              addressId: createOrderDto.billingAddressId.toString(),
+              productVariantIds: uniqueProductVariantIds.map((id) =>
+                id.toString(),
+              ),
             },
           });
-          throw new BadRequestException('Invalid billing address');
-        }
-        billingAddressId = BigInt(createOrderDto.billingAddressId);
-
-        this.logger.info({
-          message: 'Billing address ownership validated',
-          context: {
-            operation: 'validate_billing_address_ownership',
-            userId: userId.toString(),
-            addressId: createOrderDto.billingAddressId.toString(),
-          },
-        });
-      } else if (createOrderDto.billingAddress) {
-        // For new billing addresses, create them in the database
-        this.logger.info({
-          message: 'Creating new billing address',
-          context: {
-            operation: 'create_billing_address',
-            userId: userId.toString(),
-            city: createOrderDto.billingAddress.city,
-            country: createOrderDto.billingAddress.country,
-          },
-        });
-
-        const newBillingAddressId =
-          await this.authProxyService.createBillingAddress(
-            createOrderDto.billingAddress,
-            userId,
+          // Validate products and inventory within the locked transaction
+          const validationResult = await this.validateOrderItemsWithExceptions(
+            createOrderDto.orderItems,
+            tx,
           );
-        billingAddressId = newBillingAddressId;
 
-        this.logger.info({
-          message: 'New billing address created',
-          context: {
-            operation: 'create_billing_address',
-            userId: userId.toString(),
-            addressId: newBillingAddressId.toString(),
-          },
-        });
-      } else {
-        // If no billing address specified and not same as shipping, use shipping as default
-        billingAddressId = shippingAddressId;
-        this.logger.info({
-          message:
-            'No billing address specified, using shipping address as default',
-          context: {
-            operation: 'billing_address_processing',
-            userId: userId.toString(),
-            billingAddressId: billingAddressId.toString(),
-          },
-        });
-      }
+          // If all items failed validation, throwing error
+          if (
+            validationResult.exceptions.length ===
+            createOrderDto.orderItems.length
+          ) {
+            this.logger.warn({
+              message: 'All order items failed validation',
+              context: {
+                operation: 'create_order_service',
+                userId: userId.toString(),
+                exceptionCount: validationResult.exceptions.length,
+              },
+            });
+            throw new BadRequestException('All order items failed validation');
+          }
 
-      // Get shipping rate quote
-      this.logger.info({
-        message: 'Getting shipping rate quote',
-        context: {
-          operation: 'get_shipping_rate',
-          userId: userId.toString(),
-          shippingAddressId: shippingAddressId.toString(),
-          sellerId: sellerId.toString(),
+          // Filter out items that failed validation
+          const validItems = createOrderDto.orderItems.filter(
+            (item) =>
+              !validationResult.exceptions.some(
+                (ex) => ex.productId === item.productId,
+              ),
+          );
+
+          this.logger.info({
+            message: 'Processing valid order items',
+            context: {
+              operation: 'create_order_service',
+              userId: userId.toString(),
+              validItemCount: validItems.length,
+              failedItemCount: validationResult.exceptions.length,
+            },
+          });
+
+          // Group valid items by seller for multi-seller order creation
+          const itemsBySeller = this.groupItemsBySeller(validItems);
+
+          this.logger.log({
+            message: 'Debugging grouped items by seller',
+            context: {
+              operation: 'group_items_by_seller',
+              itemCount: Array.from(itemsBySeller.entries()).map(
+                ([sellerId, items]) => ({
+                  sellerId: sellerId.toString(),
+                  itemCount: items.length,
+                }),
+              ),
+            },
+          });
+
+          this.logger.info({
+            message: 'Processing shipping address',
+            context: {
+              operation: 'shipping_address_processing',
+              userId: userId.toString(),
+              useSavedAddress: createOrderDto.useSavedShippingAddress,
+              savedAddressId: createOrderDto.savedShippingAddressId?.toString(),
+            },
+          });
+
+          // Handle shipping and billing addresses (reused for all seller orders)
+          const { shippingAddressId, billingAddressId } =
+            await this.processAddresses(createOrderDto, userId);
+
+          // Create orders for each seller
+          const sellerOrdersData = await this.prepareSellerOrdersData(
+            itemsBySeller,
+            shippingAddressId,
+            userId,
+            validationResult.exceptions.length > 0,
+          );
+
+          this.logger.info({
+            message: 'Creating multi-seller orders in repository',
+            context: {
+              operation: 'create_multi_seller_orders',
+              userId: userId.toString(),
+              sellerCount: sellerOrdersData.length,
+              totalItems: validItems.length,
+            },
+          });
+
+          // Create all seller orders within the transaction
+          const sellerOrderResults =
+            await this.orderRepository.createMultiSellerOrdersInTransaction(
+              sellerOrdersData,
+              tx,
+            );
+
+          this.logger.info({
+            message: 'Multi-seller orders created in repository',
+            context: {
+              operation: 'create_multi_seller_orders',
+              userId: userId.toString(),
+              createdOrders: sellerOrderResults.map((result) => ({
+                orderId: result.order.id.toString(),
+                itemCount: result.orderItems.length,
+              })),
+            },
+          });
+
+          // Update inventory quantities within the transaction
+          for (const item of validItems) {
+            await tx.$executeRaw`
+            UPDATE products.product_variants
+            SET quantity = quantity - ${item.quantity}
+            WHERE id = ${item.productVariantId}
+          `;
+          }
+
+          this.logger.info({
+            message: 'Inventory quantities updated successfully',
+            context: {
+              operation: 'inventory_update',
+              userId: userId.toString(),
+              updatedVariants: validItems.map((item) => ({
+                variantId: item.productVariantId.toString(),
+                quantityReduced: item.quantity,
+              })),
+            },
+          });
+
+          // Create shipments for each seller order
+          for (const { order, orderItems } of sellerOrderResults) {
+            this.logger.info({
+              message: 'Creating shipments for seller order',
+              context: {
+                operation: 'create_shipments',
+                userId: userId.toString(),
+                orderId: order.id.toString(),
+                orderItemCount: orderItems.length,
+              },
+            });
+
+            await this.shippingService.createShipmentsForOrder(
+              order.id,
+              orderItems,
+              userId,
+              shippingAddressId,
+            );
+
+            this.logger.info({
+              message: 'Shipments created successfully for seller order',
+              context: {
+                operation: 'create_shipments',
+                userId: userId.toString(),
+                orderId: order.id.toString(),
+              },
+            });
+          }
+
+          // Build the aggregate response
+          const result = this.buildMultiSellerOrderResponse(
+            sellerOrderResults,
+            validationResult.exceptions,
+          );
+
+          this.logger.info({
+            message: 'Multi-seller order creation completed successfully',
+            context: {
+              operation: 'create_order_service',
+              userId: userId.toString(),
+              sellerOrderCount: sellerOrderResults.length,
+              totalAmount: result.totalAmount.toString(),
+              exceptionCount: validationResult.exceptions.length,
+            },
+          });
+
+          return result;
         },
-      });
-
-      const shippingRate = await this.shippingService.getRateQuote({
-        shippingAddressId: shippingAddressId!,
-        orderItems: createOrderDto.orderItems,
-        userId,
-        sellerId,
-      });
-
-      this.logger.info({
-        message: 'Shipping rate quote received',
-        context: {
-          operation: 'get_shipping_rate',
-          userId: userId.toString(),
-          totalCost: shippingRate.totalCost.toString(),
-          shippingAddressId: shippingAddressId.toString(),
+        {
+          timeout: 30000, // 30 seconds
+          maxWait: 60000, // Optional, 60 seconds to wait for connection
         },
-      });
-
-      // Prepare order data
-      const orderData: Prisma.ordersCreateInput = {
-        buyer_id: userId, // Use userId from auth context instead of body
-        product_Id: BigInt(createOrderDto.orderItems[0].productId),
-        total_discount: createOrderDto.totalDiscount,
-        total_tax: createOrderDto.totalTax,
-        total_shipping_cost: shippingRate.totalCost,
-        total_amount: createOrderDto.totalAmount,
-        order_status: 'PENDING',
-        created_by: userId,
-      };
-
-      // Prepare order items data
-      const orderItemsData: Omit<
-        Prisma.order_itemUncheckedCreateInput,
-        'order_id'
-      >[] = createOrderDto.orderItems.map((item: CreateOrderItemDto) => ({
-        seller_id: BigInt(item.sellerId),
-        product_Id: BigInt(item.productId),
-        product_variant_id: BigInt(item.productVariantId),
-        quantity: item.quantity,
-        price: item.price,
-        discount: item.discount,
-        tax_amount: item.taxAmount,
-        total_price:
-          item.price * item.quantity - item.discount + item.taxAmount,
-        order_status: 'PENDING',
-        payout_status: 'PENDING',
-        escrow_status: 'HELD',
-        created_by: userId,
-      }));
-
-      this.logger.info({
-        message: 'Creating order with items in repository',
-        context: {
-          operation: 'create_order_repository',
-          userId: userId.toString(),
-          orderItemCount: orderItemsData.length,
-        },
-      });
-
-      // Create order with items
-      const { order, orderItems } =
-        await this.orderRepository.createOrderWithItems(
-          orderData,
-          orderItemsData,
-        );
-
-      this.logger.info({
-        message: 'Order and items created in repository',
-        context: {
-          operation: 'create_order_repository',
-          userId: userId.toString(),
-          orderId: order.id.toString(),
-          orderItemCount: orderItems.length,
-        },
-      });
-
-      // Create shipments for order items
-      this.logger.info({
-        message: 'Creating shipments for order items',
-        context: {
-          operation: 'create_shipments',
-          userId: userId.toString(),
-          orderId: order.id.toString(),
-          orderItemCount: orderItems.length,
-        },
-      });
-
-      await this.shippingService.createShipmentsForOrder(
-        order.id,
-        orderItems,
-        userId,
-        shippingAddressId,
       );
-
-      this.logger.info({
-        message: 'Shipments created successfully',
-        context: {
-          operation: 'create_shipments',
-          userId: userId.toString(),
-          orderId: order.id.toString(),
-        },
-      });
-
-      const result = this.mapToOrderResponse(order, orderItems);
-
-      this.logger.info({
-        message: 'Order creation completed successfully',
-        context: {
-          operation: 'create_order_service',
-          userId: userId.toString(),
-          orderId: order.id.toString(),
-          totalAmount: result.totalAmount.toString(),
-        },
-      });
-
-      return result;
     } catch (error: any) {
       this.logger.error({
         message: 'Order creation failed',
@@ -580,6 +491,185 @@ export class OrderService {
     });
   }
 
+  private async validateOrderItemsWithTransaction(
+    orderItems: CreateOrderItemDto[],
+    tx: any, // Prisma transaction object
+  ): Promise<void> {
+    this.logger.info({
+      message: 'Validating order items within transaction',
+      context: {
+        operation: 'validate_order_items_transaction',
+        itemCount: orderItems.length,
+        productIds: orderItems.map((item) => item.productId.toString()),
+      },
+    });
+
+    for (const item of orderItems) {
+      this.logger.info({
+        message: 'Validating individual order item within transaction',
+        context: {
+          operation: 'validate_order_item_transaction',
+          productId: item.productId.toString(),
+          productVariantId: item.productVariantId.toString(),
+          quantity: item.quantity,
+        },
+      });
+
+      // Validate product exists and has sufficient inventory within the transaction
+      const productVariant = await tx.product_variant.findUnique({
+        where: {
+          id: BigInt(item.productVariantId),
+        },
+      });
+
+      if (!productVariant) {
+        this.logger.warn({
+          message: 'Product variant not found within transaction',
+          context: {
+            operation: 'validate_order_item_transaction',
+            productVariantId: item.productVariantId.toString(),
+          },
+        });
+        throw new BadRequestException(
+          `Product variant ${item.productVariantId} not found`,
+        );
+      }
+
+      if (productVariant.quantity < item.quantity) {
+        this.logger.warn({
+          message:
+            'Insufficient inventory for product variant within transaction',
+          context: {
+            operation: 'validate_order_item_transaction',
+            productVariantId: item.productVariantId.toString(),
+            requestedQuantity: item.quantity,
+            availableQuantity: productVariant.quantity,
+          },
+        });
+        throw new BadRequestException(
+          `Insufficient inventory for product variant ${item.productVariantId}`,
+        );
+      }
+
+      this.logger.info({
+        message: 'Order item validation passed within transaction',
+        context: {
+          operation: 'validate_order_item_transaction',
+          productVariantId: item.productVariantId.toString(),
+          quantity: item.quantity,
+          availableQuantity: productVariant.quantity,
+        },
+      });
+    }
+
+    this.logger.info({
+      message: 'All order items validated successfully within transaction',
+      context: {
+        operation: 'validate_order_items_transaction',
+        itemCount: orderItems.length,
+      },
+    });
+  }
+
+  private async validateOrderItemsWithExceptions(
+    orderItems: CreateOrderItemDto[],
+    tx: any, // Prisma transaction object
+  ): Promise<{ exceptions: { productId: bigint; message: string }[] }> {
+    const exceptions: { productId: bigint; message: string }[] = [];
+
+    for (const item of orderItems) {
+      try {
+        this.logger.info({
+          message: 'Validating individual order item with exceptions',
+          context: {
+            operation: 'validate_order_item_with_exceptions',
+            productId: item.productId.toString(),
+            productVariantId: item.productVariantId.toString(),
+            quantity: item.quantity,
+          },
+        });
+
+        // Validate product exists and has sufficient inventory within the transaction.
+        // Using raw query because product_variant isn't accessible in order service and we can't use the findUnique method, also if we use proxy then it will create a new transaction which will not be able to access the transaction object
+        // Todo: we might need to replace query
+        const productVariant: ProductVariantInventory[] = await tx.$queryRaw`
+        SELECT id, quantity
+        FROM products.product_variants
+        WHERE id = ${BigInt(item.productVariantId)}
+      `;
+
+        if (!productVariant || productVariant.length === 0) {
+          this.logger.warn({
+            message: 'Product variant not found within transaction',
+            context: {
+              operation: 'validate_order_item_with_exceptions',
+              productVariantId: item.productVariantId.toString(),
+            },
+          });
+          exceptions.push({
+            productId: BigInt(item.productId),
+            message: `Product variant ${item.productVariantId} not found`,
+          });
+          continue;
+        }
+        // Get the first and only product variant
+        const variant = productVariant[0];
+
+        if (variant.quantity < item.quantity) {
+          this.logger.warn({
+            message:
+              'Insufficient inventory for product variant within transaction',
+            context: {
+              operation: 'validate_order_item_with_exceptions',
+              productVariantId: item.productVariantId.toString(),
+              requestedQuantity: item.quantity,
+              availableQuantity: variant.quantity,
+            },
+          });
+          exceptions.push({
+            productId: BigInt(item.productId),
+            message: `Insufficient inventory for product variant ${item.productVariantId}`,
+          });
+          continue;
+        }
+
+        this.logger.info({
+          message: 'Order item validation passed within transaction',
+          context: {
+            operation: 'validate_order_item_with_exceptions',
+            productVariantId: item.productVariantId.toString(),
+            quantity: item.quantity,
+            availableQuantity: variant.quantity,
+          },
+        });
+      } catch (error: any) {
+        this.logger.warn({
+          message: 'Failed to validate individual order item with exceptions',
+          context: {
+            operation: 'validate_order_item_with_exceptions',
+            productId: item.productId.toString(),
+            error: error.message,
+          },
+        });
+        exceptions.push({
+          productId: BigInt(item.productId),
+          message: error.message,
+        });
+      }
+    }
+
+    this.logger.info({
+      message: 'All order items validated successfully with exceptions',
+      context: {
+        operation: 'validate_order_items_with_exceptions',
+        itemCount: orderItems.length,
+        exceptionCount: exceptions.length,
+      },
+    });
+
+    return { exceptions };
+  }
+
   private mapToOrderResponse(order: any, orderItems: any[]): OrderResponseDto {
     return {
       id: order.id,
@@ -615,6 +705,412 @@ export class OrderService {
         updatedAt: item.updated_at,
       })),
     };
+  }
+
+  private groupItemsBySeller(
+    items: CreateOrderItemDto[],
+  ): Map<bigint, CreateOrderItemDto[]> {
+    const itemsBySeller = new Map<bigint, CreateOrderItemDto[]>();
+
+    this.logger.log({
+      message: 'Debugging items by seller',
+      context: {
+        operation: 'group_items_by_seller',
+        itemCount: items.map((item) => ({
+          sellerId: item.sellerId,
+          productId: item.productId,
+          productVariantId: item.productVariantId,
+          quantity: item.quantity,
+        })),
+      },
+    });
+
+    for (const item of items) {
+      const sellerId = BigInt(item.sellerId);
+      const sellerItems = itemsBySeller.get(sellerId) || [];
+      sellerItems.push(item);
+      itemsBySeller.set(sellerId, sellerItems);
+    }
+
+    return itemsBySeller;
+  }
+
+  private async processAddresses(
+    createOrderDto: CreateOrderDto,
+    userId: bigint,
+  ): Promise<{ shippingAddressId: bigint; billingAddressId: bigint }> {
+    // Handle billing address first
+    let billingAddressId: bigint | undefined;
+    if (createOrderDto.billingAddressId) {
+      // Validate that the saved billing address belongs to the user
+      this.logger.info({
+        message: 'Validating saved billing address ownership',
+        context: {
+          operation: 'validate_billing_address_ownership',
+          userId: userId.toString(),
+          addressId: createOrderDto.billingAddressId.toString(),
+        },
+      });
+
+      const isValidAddress =
+        await this.authProxyService.validateAddressOwnership(
+          BigInt(createOrderDto.billingAddressId),
+          userId,
+          'BILLING',
+        );
+      if (!isValidAddress) {
+        this.logger.warn({
+          message: 'Invalid billing address provided',
+          context: {
+            operation: 'validate_billing_address_ownership',
+            userId: userId.toString(),
+            addressId: createOrderDto.billingAddressId.toString(),
+          },
+        });
+        throw new BadRequestException('Invalid billing address');
+      }
+      billingAddressId = BigInt(createOrderDto.billingAddressId);
+
+      this.logger.info({
+        message: 'Billing address ownership validated',
+        context: {
+          operation: 'validate_billing_address_ownership',
+          userId: userId.toString(),
+          addressId: createOrderDto.billingAddressId.toString(),
+        },
+      });
+    } else if (createOrderDto.billingAddress) {
+      // For new billing addresses, create them in the database
+      this.logger.info({
+        message: 'Creating new billing address',
+        context: {
+          operation: 'create_billing_address',
+          userId: userId.toString(),
+          city: createOrderDto.billingAddress.city,
+          country: createOrderDto.billingAddress.country,
+        },
+      });
+
+      const newBillingAddressId =
+        await this.authProxyService.createBillingAddress(
+          createOrderDto.billingAddress,
+          userId,
+        );
+      billingAddressId = newBillingAddressId;
+
+      this.logger.info({
+        message: 'New billing address created',
+        context: {
+          operation: 'create_billing_address',
+          userId: userId.toString(),
+          addressId: newBillingAddressId.toString(),
+        },
+      });
+    } else {
+      this.logger.warn({
+        message: 'No billing address provided',
+        context: {
+          operation: 'create_order_service',
+          userId: userId.toString(),
+        },
+      });
+      throw new BadRequestException('Billing address is required');
+    }
+
+    // Handle shipping address
+    let shippingAddressId: bigint | undefined;
+    if (createOrderDto.sameAsBillingAddress === true) {
+      // Set shipping address same as billing address
+      shippingAddressId = billingAddressId;
+      this.logger.info({
+        message: 'Shipping address set same as billing address',
+        context: {
+          operation: 'shipping_address_processing',
+          userId: userId.toString(),
+          shippingAddressId: shippingAddressId.toString(),
+        },
+      });
+    } else if (
+      createOrderDto.useSavedShippingAddress &&
+      createOrderDto.savedShippingAddressId
+    ) {
+      // Validate that the saved address belongs to the user
+      this.logger.info({
+        message: 'Validating saved shipping address ownership',
+        context: {
+          operation: 'validate_address_ownership',
+          userId: userId.toString(),
+          addressId: createOrderDto.savedShippingAddressId.toString(),
+        },
+      });
+
+      const isValidAddress =
+        await this.authProxyService.validateAddressOwnership(
+          BigInt(createOrderDto.savedShippingAddressId),
+          userId,
+          'SHIPPING',
+        );
+      if (!isValidAddress) {
+        this.logger.warn({
+          message: 'Invalid shipping address provided',
+          context: {
+            operation: 'validate_address_ownership',
+            userId: userId.toString(),
+            addressId: createOrderDto.savedShippingAddressId.toString(),
+          },
+        });
+        throw new BadRequestException('Invalid shipping address');
+      }
+      shippingAddressId = BigInt(createOrderDto.savedShippingAddressId);
+
+      this.logger.info({
+        message: 'Shipping address ownership validated',
+        context: {
+          operation: 'validate_address_ownership',
+          userId: userId.toString(),
+          addressId: createOrderDto.savedShippingAddressId.toString(),
+        },
+      });
+    } else if (createOrderDto.shippingAddress) {
+      // For new addresses, we'll create them in the database
+      // Todo: will add a flag to save new shipping address and will create in database when only flag is true
+      this.logger.info({
+        message: 'Creating new shipping address',
+        context: {
+          operation: 'create_shipping_address',
+          userId: userId.toString(),
+          city: createOrderDto.shippingAddress.city,
+          country: createOrderDto.shippingAddress.country,
+        },
+      });
+
+      const newAddressId = await this.authProxyService.createShippingAddress(
+        createOrderDto.shippingAddress,
+        userId,
+      );
+      shippingAddressId = newAddressId;
+
+      this.logger.info({
+        message: 'New shipping address created',
+        context: {
+          operation: 'create_shipping_address',
+          userId: userId.toString(),
+          addressId: newAddressId.toString(),
+        },
+      });
+    } else {
+      // If no shipping address specified and not same as billing, use billing as default
+      shippingAddressId = billingAddressId;
+      this.logger.info({
+        message:
+          'No shipping address specified, using billing address as default',
+        context: {
+          operation: 'shipping_address_processing',
+          userId: userId.toString(),
+          shippingAddressId: shippingAddressId.toString(),
+        },
+      });
+    }
+
+    return { shippingAddressId, billingAddressId };
+  }
+
+  private async prepareSellerOrdersData(
+    itemsBySeller: Map<bigint, CreateOrderItemDto[]>,
+    shippingAddressId: bigint,
+    userId: bigint,
+    hasExceptions: boolean,
+  ): Promise<
+    Array<{
+      orderData: Prisma.ordersCreateInput;
+      orderItemsData: Omit<Prisma.order_itemUncheckedCreateInput, 'order_id'>[];
+    }>
+  > {
+    const sellerOrdersData = [];
+
+    for (const [sellerId, sellerItems] of Array.from(itemsBySeller.entries())) {
+      this.logger.info({
+        message: 'Getting shipping rate quote for seller',
+        context: {
+          operation: 'get_shipping_rate',
+          userId: userId.toString(),
+          shippingAddressId: shippingAddressId.toString(),
+          sellerId: sellerId.toString(),
+          itemCount: sellerItems.length,
+        },
+      });
+
+      const shippingRate = await this.shippingService.getRateQuote({
+        shippingAddressId,
+        orderItems: sellerItems,
+        userId,
+        sellerId,
+      });
+
+      this.logger.info({
+        message: 'Shipping rate quote received for seller',
+        context: {
+          operation: 'get_shipping_rate',
+          userId: userId.toString(),
+          sellerId: sellerId.toString(),
+          totalCost: shippingRate.totalCost.toString(),
+        },
+      });
+
+      // Calculate totals for this seller's items
+      const sellerItemsTotal = sellerItems.reduce(
+        (sum, item) =>
+          sum + (item.price * item.quantity - item.discount + item.taxAmount),
+        0,
+      );
+
+      // Prepare order data for this seller
+      const orderData: Prisma.ordersCreateInput = {
+        buyer_id: userId,
+        product_Id: BigInt(sellerItems[0].productId), // First product as reference
+        total_discount: sellerItems.reduce(
+          (sum, item) => sum + item.discount,
+          0,
+        ),
+        total_tax: sellerItems.reduce((sum, item) => sum + item.taxAmount, 0),
+        total_shipping_cost: shippingRate.totalCost,
+        total_amount: sellerItemsTotal + shippingRate.totalCost,
+        order_status: hasExceptions ? 'PARTIAL' : 'CREATED',
+        created_by: userId,
+      };
+
+      // Prepare order items data for this seller
+      const orderItemsData: Omit<
+        Prisma.order_itemUncheckedCreateInput,
+        'order_id'
+      >[] = sellerItems.map((item: CreateOrderItemDto) => ({
+        seller_id: BigInt(item.sellerId),
+        product_Id: BigInt(item.productId),
+        product_variant_id: BigInt(item.productVariantId),
+        quantity: item.quantity,
+        price: item.price,
+        discount: item.discount,
+        tax_amount: item.taxAmount,
+        total_price:
+          item.price * item.quantity - item.discount + item.taxAmount,
+        order_status: 'CREATED',
+        payout_status: 'PENDING',
+        escrow_status: 'HELD',
+        created_by: userId,
+      }));
+
+      sellerOrdersData.push({ orderData, orderItemsData });
+    }
+
+    return sellerOrdersData;
+  }
+
+  private buildMultiSellerOrderResponse(
+    sellerOrderResults: Array<{ order: any; orderItems: any[] }>,
+    exceptions: Array<{ productId: bigint; message: string }>,
+  ): OrderResponseDto {
+    // Calculate aggregate totals
+    const aggregateTotalDiscount = sellerOrderResults.reduce(
+      (sum, result) => sum + Number(result.order.total_discount),
+      0,
+    );
+    const aggregateTotalTax = sellerOrderResults.reduce(
+      (sum, result) => sum + Number(result.order.total_tax),
+      0,
+    );
+    const aggregateTotalShippingCost = sellerOrderResults.reduce(
+      (sum, result) => sum + Number(result.order.total_shipping_cost),
+      0,
+    );
+    const aggregateTotalAmount = sellerOrderResults.reduce(
+      (sum, result) => sum + Number(result.order.total_amount),
+      0,
+    );
+
+    // Get all order items for the main response
+    const allOrderItems = sellerOrderResults.flatMap(
+      (result) => result.orderItems,
+    );
+
+    // Use the first order as the primary order for response structure
+    const primaryOrder = sellerOrderResults[0].order;
+
+    // Build seller orders array
+    const sellerOrders = sellerOrderResults.map(({ order, orderItems }) => ({
+      id: order.id,
+      sellerId: orderItems[0]?.seller_id || BigInt(0),
+      buyerId: order.buyer_id,
+      totalDiscount: Number(order.total_discount),
+      totalTax: Number(order.total_tax),
+      totalShippingCost: Number(order.total_shipping_cost),
+      totalAmount: Number(order.total_amount),
+      orderDate: order.order_date,
+      orderStatus: order.order_status,
+      paymentStatus: 'PENDING',
+      fulfillmentStatus: 'PENDING',
+      createdAt: order.created_at,
+      updatedAt: order.updated_at,
+      orderItems: orderItems.map((item) => ({
+        id: item.id,
+        orderId: item.order_id,
+        sellerId: item.seller_id,
+        productId: item.product_Id,
+        productVariantId: item.product_variant_id,
+        quantity: item.quantity,
+        price: Number(item.price),
+        discount: Number(item.discount),
+        taxAmount: Number(item.tax_amount),
+        totalPrice: Number(item.total_price),
+        orderStatus: item.order_status,
+        payoutStatus: item.payout_status,
+        escrowStatus: item.escrow_status,
+        orderItemDate: item.order_item_date,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      })),
+    }));
+
+    const result: OrderResponseDto = {
+      id: primaryOrder.id,
+      buyerId: primaryOrder.buyer_id,
+      totalDiscount: aggregateTotalDiscount,
+      totalTax: aggregateTotalTax,
+      totalShippingCost: aggregateTotalShippingCost,
+      totalAmount: aggregateTotalAmount,
+      orderDate: primaryOrder.order_date,
+      orderStatus: primaryOrder.order_status,
+      paymentStatus: 'PENDING',
+      fulfillmentStatus: 'PENDING',
+      createdAt: primaryOrder.created_at,
+      updatedAt: primaryOrder.updated_at,
+      orderItems: allOrderItems.map((item) => ({
+        id: item.id,
+        orderId: item.order_id,
+        sellerId: item.seller_id,
+        productId: item.product_Id,
+        productVariantId: item.product_variant_id,
+        quantity: item.quantity,
+        price: Number(item.price),
+        discount: Number(item.discount),
+        taxAmount: Number(item.tax_amount),
+        totalPrice: Number(item.total_price),
+        orderStatus: item.order_status,
+        payoutStatus: item.payout_status,
+        escrowStatus: item.escrow_status,
+        orderItemDate: item.order_item_date,
+        createdAt: item.created_at,
+        updatedAt: item.updated_at,
+      })),
+      sellerOrders, // Include the individual seller orders
+    };
+
+    // Add exceptions to the response if any
+    if (exceptions.length > 0) {
+      result.exceptions = exceptions;
+      result.status = 'PARTIAL';
+    }
+
+    return result;
   }
 
   async getShippingEstimate(
@@ -695,7 +1191,7 @@ export class OrderService {
 
       // Check seller addresses
       const sellerAddressChecks = [];
-      for (const sellerId of sellers) {
+      for (const sellerId of Array.from(sellers)) {
         try {
           const sellerAddress = await this.authProxyService.findAddressById(
             sellerId,

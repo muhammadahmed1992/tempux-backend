@@ -54,7 +54,7 @@ export class ProductController {
     const pType = ProductType.Accessory === productType;
     const { page, pageSize, orderBy, where, select, customCategoryExpression } =
       query;
-    this.logger.debug({
+    this.logger.info({
       message: 'getAll listing',
       context: { operation: 'product_list', userId },
     });

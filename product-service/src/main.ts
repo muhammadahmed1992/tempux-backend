@@ -11,7 +11,7 @@ import { HashidsInterceptor } from './common/interceptor/encode-decode-senstive-
 import { HashidsService } from '@HashIds/hashids.service';
 import { ParseQueryPipe } from '@Common/pipes/parse-query.pipe';
 
-async function bootstrap() {
+async function bootstrap() { 
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   const logger = app.get(AppLoggerService);
   app.useLogger(logger);

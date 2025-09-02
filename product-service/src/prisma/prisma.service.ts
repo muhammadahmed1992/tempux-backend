@@ -16,7 +16,7 @@ export class PrismaService
     //TODO: Need to fix
     this.$on('query' as never, (e: Prisma.QueryEvent) => {
       if (process.env.NODE_ENV === 'development') {
-        this.logger.debug({
+        this.logger.info({
           message: 'Prisma query',
           context: {
             operation: 'db_query',
@@ -33,7 +33,7 @@ export class PrismaService
       const result = await next(params);
       const after = Date.now();
       if (process.env.NODE_ENV === 'development') {
-        this.logger.debug({
+        this.logger.info({
           message: 'Prisma middleware',
           context: {
             operation: 'db_middleware',

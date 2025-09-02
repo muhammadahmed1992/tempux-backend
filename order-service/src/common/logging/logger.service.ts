@@ -54,6 +54,9 @@ export class AppLoggerService implements NestLoggerService {
   info(d: string | LogMessage, c?: string) {
     this.write('info', d, c);
   }
+  log(d: string | LogMessage, c?: string) {
+    this.write('info', d, c);
+  }
   logRequest(
     method: string,
     url: string,

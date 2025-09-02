@@ -13,10 +13,11 @@ import {
 } from '../dtos/address.dto';
 import { Prisma } from '@prisma/client';
 import AddressMapperHelper from '../helper/address-mapper.helper';
+import { AppLoggerService } from '../../common/logging/logger.service';
 
 @Injectable()
 export class AddressService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly logger: AppLoggerService) {}
 
   /**
    * Creates a new address for a user
@@ -26,7 +27,6 @@ export class AddressService {
     createAddressDto: CreateAddressDto,
   ): Promise<AddressResponseDto> {
     try {
-
       // Get address type ID
       const addressType = await this.prisma.addressType.findFirst({
         where: { name: createAddressDto.addressType, is_deleted: false },
@@ -37,7 +37,6 @@ export class AddressService {
           `Address type ${createAddressDto.addressType} not found`,
         );
       }
-
 
       // If this is set as default, unset other defaults of the same type
       if (createAddressDto.isDefault) {
@@ -116,7 +115,10 @@ export class AddressService {
 
       return AddressMapperHelper.toAddressResponseDto(address);
     } catch (error: any) {
-      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException
+      ) {
         throw error;
       }
       throw new InternalServerErrorException(
@@ -152,7 +154,10 @@ export class AddressService {
         };
       } else {
         // For sellers: find warehouse addresses
-        const warehouseAddresses = await this.getAddressesByType(userId, 'WAREHOUSE');
+        const warehouseAddresses = await this.getAddressesByType(
+          userId,
+          'WAREHOUSE',
+        );
         return {
           warehouseAddresses,
           defaultWarehouseAddress:
@@ -276,6 +281,15 @@ export class AddressService {
     expectedType?: string,
   ): Promise<boolean> {
     try {
+      this.logger.log({
+        message: 'Validating address ownership',
+        context: {
+          operation: 'validate_address_ownership',
+          addressId: addressId.toString(),
+          userId: userId.toString(),
+          expectedType: expectedType,
+        },
+      });
       const whereCondition: Prisma.AddressWhereInput = {
         id: addressId,
         user_id: userId,
@@ -296,8 +310,23 @@ export class AddressService {
         where: whereCondition,
       });
 
+      this.logger.log({
+        message: 'Address found',
+        context: {
+          operation: 'validate_address_ownership',
+          addressId: addressId.toString(),
+        },
+      });
+
       return !!address;
     } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to validate address ownership',
+        context: {
+          operation: 'validate_address_ownership',
+          error: error.message,
+        },
+      });
       return false;
     }
   }
@@ -314,7 +343,9 @@ export class AddressService {
     });
 
     if (!addressTypeRecord) {
-      throw new NotFoundException(`No ${addressType} address type record found `);
+      throw new NotFoundException(
+        `No ${addressType} address type record found `,
+      );
     }
 
     const addresses = await this.prisma.address.findMany({
@@ -330,11 +361,12 @@ export class AddressService {
       orderBy: [{ is_default: 'desc' }, { created_at: 'desc' }],
     });
 
-    if(addresses.length === 0) {
-      throw new NotFoundException(`No address record found for user `)
+    if (addresses.length === 0) {
+      throw new NotFoundException(`No address record found for user `);
     }
 
-    return addresses.map((address) => AddressMapperHelper.toAddressResponseDto(address));
+    return addresses.map((address) =>
+      AddressMapperHelper.toAddressResponseDto(address),
+    );
   }
-
 }

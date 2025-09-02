@@ -24,7 +24,7 @@ export class TagController {
 
   @Post('tagging-best-seller')
   async taggingBestSeller(@Body() payload: { productIds: number[] }) {
-    this.logger.debug({
+    this.logger.info({
       message: 'In tag controller taggingBestSeller',
       context: { operation: 'tagging_best_seller', payload },
     });
