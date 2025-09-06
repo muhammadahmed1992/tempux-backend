@@ -24,7 +24,6 @@ model color {
   productItemsColor           product_items[] @relation("itemColor")
   productItemsBraceletColor   product_items[] @relation("BraceletitemColor")
   productItemsDialColor       product_items[] @relation("DialitemColor")
-
 }
 
 model size {
@@ -140,7 +139,6 @@ model tax_rule {
   productItems product_items[] @relation("itemTax")
 }
 
-
 model ProductAttributeCategories {
   id          Int       @id @default(autoincrement())
   name        String    @unique @db.VarChar(50) // e.g., "Watch", "Case", "Strap", "Bezel"
@@ -227,6 +225,24 @@ model ProductAttributeValueMapping {
 
   @@unique([attribute_category_mapping_id, product_id])
   @@map("product_attribute_value_mapping")
+}
+
+model ProductCondition {
+  id          Int       @id @default(autoincrement())
+  condition   String    @unique @db.VarChar(100)
+  description String    @unique @db.VarChar(200)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
+
+  // Reverse relation
+  products    product[] @relation("ProductCondition")
+
+  @@map("product_condition")
 }
 
 model reviews_ratings {
@@ -340,6 +356,9 @@ model product {
   model_id                           Int?
   gender_id                           Int?
   is_accessory                       Boolean             @default(false)
+  accessory_image                    String?             @db.VarChar(500)
+  condition_id                       Int?
+  is_used                            Boolean             @default(false)
   created_at                         DateTime            @default(now()) @db.Timestamptz(6)
   updated_at                         DateTime?           @db.Timestamptz(6)
   deleted_at                         DateTime?           @db.Timestamptz(6)
@@ -361,6 +380,7 @@ model product {
   productReviews                     reviews_ratings[]   @relation("ProductReviews")
   productSignOfWear                  sign_of_wear[]      @relation("ProductSignOfWear")
   productAttributeValues             ProductAttributeValueMapping[] @relation("ProductAttributeValues")
+  productCondition                   ProductCondition?   @relation("ProductCondition", fields: [condition_id], references: [id])
 }
 
 model product_images {
