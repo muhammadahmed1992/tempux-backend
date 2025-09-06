@@ -19,9 +19,12 @@ model color {
   updated_by           BigInt?
   deleted_by           BigInt?
   is_deleted           Boolean            @default(false)
-  itemBraceletColor product_items[] @relation("BraceletitemColor")
-  itemColor         product_items[] @relation("itemColor")
-  itemDialColor     product_items[] @relation("DialitemColor")
+
+  // Relations - Add these missing reverse relation fields
+  productItemsColor           product_items[] @relation("itemColor")
+  productItemsBraceletColor   product_items[] @relation("BraceletitemColor")
+  productItemsDialColor       product_items[] @relation("DialitemColor")
+
 }
 
 model size {
@@ -135,6 +138,95 @@ model tax_rule {
   deleted_by      BigInt?
   is_deleted      Boolean            @default(false)
   productItems product_items[] @relation("itemTax")
+}
+
+
+model ProductAttributeCategories {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(50) // e.g., "Watch", "Case", "Strap", "Bezel"
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
+
+  // Relations
+  attributeMappings AttributeCategoryMapping[]
+
+  @@map("product_attribute_categories")
+}
+
+model Attributes {
+  id            Int       @id @default(autoincrement())
+  name          String    @unique @db.VarChar(50) // e.g., "Movement", "CaseDiameter", "Size"
+  display_name  String    @db.VarChar(100) // User-friendly display name
+  description   String?   @db.VarChar(200)
+  column_name   Int
+  unit          String?   @db.VarChar(10) // e.g., "mm", "hours", "g" for numeric attributes
+  is_active     Boolean   @default(true)
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @db.Timestamptz(6)
+  deleted_at    DateTime? @db.Timestamptz(6)
+  created_by    BigInt
+  updated_by    BigInt?
+  deleted_by    BigInt?
+  is_deleted    Boolean   @default(false)
+
+  // Relations
+  categoryMappings AttributeCategoryMapping[]
+
+  @@map("attributes")
+}
+
+model AttributeCategoryMapping {
+  id                     Int       @id @default(autoincrement())
+  attribute_category_id  Int
+  attribute_id           Int
+  data_type              String    @db.VarChar(20)
+  is_mandatory           Boolean   @default(false)
+  is_active              Boolean   @default(true)
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime? @db.Timestamptz(6)
+  deleted_at             DateTime? @db.Timestamptz(6)
+  created_by             BigInt
+  updated_by             BigInt?
+  deleted_by             BigInt?
+  is_deleted             Boolean   @default(false)
+
+  // Relations
+  attributeCategory      ProductAttributeCategories @relation(fields: [attribute_category_id], references: [id])
+  attribute              Attributes                 @relation(fields: [attribute_id], references: [id])
+  productAttributeValues ProductAttributeValueMapping[]
+
+  @@unique([attribute_category_id, attribute_id])
+  @@map("attribute_category_mapping")
+}
+
+model ProductAttributeValueMapping {
+  id                            BigInt    @id @default(autoincrement())
+  attribute_category_mapping_id Int
+  product_id                    BigInt
+  string_value                  String?   @db.VarChar(500)
+  number_value                  Decimal?  @db.Decimal(15, 4)
+  boolean_value                 Boolean?
+  date_value                    DateTime? @db.Timestamptz(6)
+  created_at                    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime? @db.Timestamptz(6)
+  deleted_at                    DateTime? @db.Timestamptz(6)
+  created_by                    BigInt
+  updated_by                    BigInt?
+  deleted_by                    BigInt?
+  is_deleted                    Boolean   @default(false)
+
+  // Relations
+  attributeCategoryMapping      AttributeCategoryMapping @relation(fields: [attribute_category_mapping_id], references: [id])
+  product                       product                  @relation("ProductAttributeValues", fields: [product_id], references: [id])
+
+  @@unique([attribute_category_mapping_id, product_id])
+  @@map("product_attribute_value_mapping")
 }
 
 model reviews_ratings {
@@ -268,6 +360,7 @@ model product {
   productItems                       product_items[]  @relation("Productitems")
   productReviews                     reviews_ratings[]   @relation("ProductReviews")
   productSignOfWear                  sign_of_wear[]      @relation("ProductSignOfWear")
+  productAttributeValues             ProductAttributeValueMapping[] @relation("ProductAttributeValues")
 }
 
 model product_images {
@@ -540,5 +633,3 @@ model product_listings {
   warrantyYears      Int
   countryOfOrigin    String
 }
-
-
