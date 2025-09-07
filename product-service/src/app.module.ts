@@ -19,6 +19,7 @@ import { TagModule } from './tag/tag.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ProductListingsModule } from './product-listings/product-listings.module';
+import { ProductAttributesModule } from './product-attributes/product-attributes.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ProductListingsModule } from './product-listings/product-listings.modul
     TagModule,
     EventEmitterModule.forRoot(),
     ProductListingsModule,
+    ProductAttributesModule,
   ],
   controllers: [AppController],
   providers: [
