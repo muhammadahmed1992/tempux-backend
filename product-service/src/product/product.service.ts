@@ -1,5 +1,6 @@
 /* eslint-disable no-case-declarations */
 import {
+  BadRequestException,
   HttpStatus,
   Injectable,
   InternalServerErrorException,
@@ -16,6 +17,9 @@ import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.ser
 import { CustomFilter } from '@Common/enums/custom-filter.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProductCreatedEvent } from './event/product-created.event';
+import { CreateProductDto } from '@DTO/create-product.dto';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 // Mapping from CustomFilter enum to tag names in the DB
 const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
@@ -38,17 +42,118 @@ export class ProductService {
     private readonly productItemService: ProductItemService,
     private readonly productAnalytics: ProductAnalyticsService,
     private eventEmitter: EventEmitter2,
+    private prisma: PrismaService,
   ) {}
+  async createProduct(dto: CreateProductDto, userId: bigint) {
+    try {
+      return this.prisma.$transaction(async (tx) => {
+        // 1. Create product
+        const newProduct = await tx.product.create({
+          data: {
+            title: dto.product.title,
+            description: dto.product.description,
+            name: dto.product.title, // Using title as name
+            product_slug: dto.product.slug,
+            // year_of_production: dto.product.year_of_production,
+            // referenceNumber: dto.product.referenceNumber,
+            // category_id: dto.categoryId,
+            created_by: userId,
+          },
+        });
 
-  async createProduct(userId: bigint) {
-    //TODO: will implement later
-    // fire event without slowing API down
-    // Hardcoding for now.
-    this.eventEmitter.emit(
-      'product.created',
-      new ProductCreatedEvent(userId, 10n),
-    );
+        // 2. Fetch all mappings for this category
+        const mappings = await tx.attributeCategoryMapping.findMany({
+          where: { attribute_category_id: dto.categoryId, is_active: true },
+        });
+
+        if (!mappings.length) {
+          throw new BadRequestException(
+            'No attribute mappings found for this category',
+          );
+        }
+
+        // 3. Check mandatory attributes
+        const mandatoryMappings = mappings.filter((m) => m.is_mandatory);
+        for (const mm of mandatoryMappings) {
+          const exists = dto.attributeValues.some(
+            (av) => av.attributeId === mm.attribute_id,
+          );
+          if (!exists) {
+            throw new BadRequestException(
+              `Mandatory attribute ${mm.attribute_id} is missing for category ${dto.categoryId}`,
+            );
+          }
+        }
+
+        // 4. Process each attribute value
+        for (const attr of dto.attributeValues) {
+          const mapping = mappings.find(
+            (m) => m.attribute_id === attr.attributeId,
+          );
+          if (!mapping) {
+            throw new BadRequestException(
+              `Attribute ${attr.attributeId} is not valid for category ${dto.categoryId}`,
+            );
+          }
+
+          let stringVal: string | null = null;
+          let numberVal: Prisma.Decimal | null = null;
+          let boolVal: boolean | null = null;
+          let dateVal: Date | null = null;
+
+          switch (attr.dataType) {
+            case 'string':
+              stringVal = String(attr.value);
+              break;
+            case 'number':
+              numberVal = new Prisma.Decimal(attr.value);
+              break;
+            case 'boolean':
+              boolVal = Boolean(attr.value);
+              break;
+            case 'date':
+              dateVal = new Date(attr.value);
+              break;
+            default:
+              throw new BadRequestException(
+                `Unsupported data type: ${attr.dataType}`,
+              );
+          }
+
+          await tx.productAttributeValueMapping.create({
+            data: {
+              attribute_category_mapping_id: mapping.id,
+              product_id: newProduct.id,
+              string_value: stringVal,
+              number_value: numberVal,
+              boolean_value: boolVal,
+              date_value: dateVal,
+              created_by: userId,
+            },
+          });
+        }
+        //TODO: will  event without slowing API down
+        // Hardcoding for now.
+        this.eventEmitter.emit(
+          'product.created',
+          new ProductCreatedEvent(userId, 10n),
+        );
+        return ResponseHelper.CreateResponse(
+          'Product created successfully',
+          newProduct,
+          HttpStatus.CREATED,
+        );
+      });
+    } catch (error) {
+      console.error('Error creating product with attributes:', error);
+      return ResponseHelper.CreateResponse(
+        'Failed to create product',
+        null,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
+
   /**
    * Retrieves a summary of product information including name, title, average rating,
    * formatted price, all associated color options from its items, and images.

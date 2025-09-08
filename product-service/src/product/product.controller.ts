@@ -9,6 +9,7 @@ import {
   Param,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ProductService } from '@Product/product.service';
@@ -25,6 +26,7 @@ import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import { ProductItemService } from '@ProductItem/product-item.service';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
+import { CreateProductDto } from '@DTO/create-product.dto';
 
 @Controller()
 export class ProductController {
@@ -150,10 +152,14 @@ export class ProductController {
     );
   }
 
-  @Post()
+  @Post('create')
   @UseGuards(HeaderAuthGuard)
-  async product(@UserId() userId: bigint) {
-    await this.productService.createProduct(userId);
+  async create(
+    @Body() dto: CreateProductDto,
+    @Req() req: any,
+    @UserId() userId: bigint,
+  ) {
+    return this.productService.createProduct(dto, userId);
   }
 
   @Post('favorite/:id/:itemId')
