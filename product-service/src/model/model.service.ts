@@ -34,17 +34,30 @@ export class ModelService {
     );
   }
 
-  async getAlphabeticalData(): Promise<ApiResponse<Record<string, string[]>>> {
-    // fetch all items (soft-delete handled in repo)
-    const data = await this.repository.findMany({ select: { title: true } });
+  async getAlphabeticalData(): Promise<
+    ApiResponse<Record<string, ItemSummary[]>>
+  > {
+    // Update select to include both id and title
+    const data = await this.repository.findMany({
+      select: {
+        id: true, // Add id to the select
+        title: true,
+      },
+    });
+
     if (!data || data?.length === 0) {
       throw new NotFoundException(Constants.NO_DATA_FOUND);
     }
 
-    // group alphabetically by title
-    const grouped = Utils.groupAlphabetically(data, (item) => item.title);
-    // return wrapped response
-    return ResponseHelper.CreateResponse<Record<string, string[]>>(
+    // Update the groupAlphabetically call to include idSelector
+    const grouped = Utils.groupAlphabetically(
+      data,
+      (item) => item.title, // keySelector
+      (item) => item.id, // idSelector
+    );
+
+    // Update the return type
+    return ResponseHelper.CreateResponse<Record<string, ItemSummary[]>>(
       Constants.DATA_SUCCESS,
       grouped,
       HttpStatus.OK,
