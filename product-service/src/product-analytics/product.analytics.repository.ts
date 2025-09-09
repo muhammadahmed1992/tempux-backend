@@ -69,7 +69,21 @@ export class ProductAnalyticsRepository extends BaseRepository<
     }));
   }
 
-  async getUserRecommendations(userId: bigint, limit = 5) {
+  async getUserRecommendations(userId?: bigint, limit = 5) {
+    // If no userId provided, directly return top products
+    if (!userId) {
+      const topProducts = await this.prisma.product.findMany({
+        where: { is_deleted: false },
+        orderBy: { created_at: 'desc' },
+        take: limit,
+        include: {
+          brand: true,
+          category: true,
+        },
+      });
+      return topProducts.map(this.mapProductToRecommendation);
+    }
+
     const cutoffTime = new Date();
     cutoffTime.setHours(
       cutoffTime.getHours() - StaticConfiguration.viewershipWindowHours,

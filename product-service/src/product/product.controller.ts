@@ -189,15 +189,15 @@ export class ProductController {
   }
 
   /**
-   * @returns Get recommended watches for user based on the viewed
+   * @returns Get recommended watches based on:
    * 1.Brand (1/3rd of the total)
    * 2.Category (half of the remaining limit)
    * 3.Price (20% < pricerange > 20%)
    * 4.Limit 5 watches to display
+   * For logged-in users, recommendations are personalized based on their viewing history
    */
   @Get('/recommendations')
-  @UseGuards(HeaderAuthGuard)
-  async getUserRecommendations(@UserId() userId: bigint) {
+  async getUserRecommendations(@OptionalUser() userId?: bigint) {
     return this.productAnalyticsService.getUserRecommendedWatches(userId);
   }
 }
