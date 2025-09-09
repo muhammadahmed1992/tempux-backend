@@ -19,7 +19,7 @@ export class CreateProductDto {
   categoryId!: number;
 
   @IsNotEmpty()
-  product: any;
+  product!: any; // TODO: replace 'any' with actual product type
 
   @IsArray()
   attributeValues: AttributeValueDto[] = [];

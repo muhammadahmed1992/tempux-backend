@@ -18,8 +18,9 @@ import { CustomFilter } from '@Common/enums/custom-filter.enum';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ProductCreatedEvent } from './event/product-created.event';
 import { CreateProductDto } from '@DTO/create-product.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SlugService } from 'src/slug/slug.service';
 
 // Mapping from CustomFilter enum to tag names in the DB
 const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
@@ -41,6 +42,7 @@ export class ProductService {
     private readonly repository: ProductRepository,
     private readonly productItemService: ProductItemService,
     private readonly productAnalytics: ProductAnalyticsService,
+    private readonly slugService: SlugService,
     private eventEmitter: EventEmitter2,
     private prisma: PrismaService,
   ) {}
@@ -48,14 +50,27 @@ export class ProductService {
     try {
       return this.prisma.$transaction(async (tx) => {
         // 1. Create product
+        const productInfo = dto.product;
+        const productGender = productInfo.is_accessory
+          ? 'unisex'
+          : productInfo.gender;
+        const slugContent =
+          productInfo.name +
+          ' ' +
+          (productInfo.is_accessory ? 'accessory' : 'watch') +
+          ' ' +
+          productGender;
+        const generatedSlug = this.slugService.generateSlug(slugContent);
         const newProduct = await tx.product.create({
           data: {
-            title: dto.product.title,
-            description: dto.product.description,
-            name: dto.product.title, // Using title as name
-            product_slug: dto.product.slug,
-            // year_of_production: dto.product.year_of_production,
-            // referenceNumber: dto.product.referenceNumber,
+            title: productInfo.title,
+            description: productInfo.description,
+            name: productInfo.title, // Using title as name
+            product_slug: generatedSlug,
+            is_accessory: productInfo.is_accessory,
+            brand_id: Number(productInfo.brand_id),
+            // year_of_production: productInfo.year_of_production,
+            // referenceNumber: productInfo.referenceNumber,
             // category_id: dto.categoryId,
             created_by: userId,
           },
@@ -100,6 +115,11 @@ export class ProductService {
           let numberVal: Prisma.Decimal | null = null;
           let boolVal: boolean | null = null;
           let dateVal: Date | null = null;
+          let lookupId: number | null = null;
+          let lookupName: string | null = null;
+
+          const allowedLookups = [{ attributeName: 'condition', lookupTableName: 'Condition' }, { attributeName: 'sign-of-wears', lookupTableName: 'signOfWears' }];
+
 
           switch (attr.dataType) {
             case 'string':
@@ -114,19 +134,53 @@ export class ProductService {
             case 'date':
               dateVal = new Date(attr.value);
               break;
+            case 'lookup':
+              lookupId = Number(attr.value);
+              let foundLookupName = await this.prisma.attributes.findUnique({
+                where: { id: lookupId },
+                select: { name: true },
+              });
+              if (!foundLookupName) {
+                throw new BadRequestException(
+                  `Lookup attribute with ID ${lookupId} not found`,
+                );
+              }
+
+              const isValidLookup = allowedLookups.some(lookup => lookup.attributeName === foundLookupName.name);
+              if (!isValidLookup) {
+                throw new BadRequestException(
+                  `Attribute ${foundLookupName.name} is not allowed for lookup type`,
+                );
+              }
+
+              const lookupRecord = await this.prisma[allowedLookups.find(lookup => lookup.attributeName === foundLookupName.name)?.lookupTableName as keyof PrismaClient].findUnique({
+                where: { id: lookupId },
+              });
+              if (!lookupRecord) {
+                throw new BadRequestException(
+                  `Lookup record with ID ${lookupId} not found in table ${foundLookupName.name}`,
+                );
+              }
+              lookupName = foundLookupName.name;
+
+              break;
             default:
               throw new BadRequestException(
                 `Unsupported data type: ${attr.dataType}`,
               );
           }
 
-          await tx.productAttributeValueMapping.create({
+
+
+          await tx.attributeValueMapping.create({
             data: {
               attribute_category_mapping_id: mapping.id,
               product_id: newProduct.id,
               string_value: stringVal,
               number_value: numberVal,
               boolean_value: boolVal,
+              lookup_name: lookupName,
+              lookup_id: lookupId,
               date_value: dateVal,
               created_by: userId,
             },
