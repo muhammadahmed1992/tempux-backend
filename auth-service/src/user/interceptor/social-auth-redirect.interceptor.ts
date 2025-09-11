@@ -52,12 +52,13 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       origin = (req.headers['x-client-origin'] || '') as string;
     }
 
-    console.log(`Logging origin: ${origin}`);
+    console.log(`[Social Auth] Origin from state/header: ${origin}`);
 
     const frontendUrl =
       origin || this.configService.get<string>('FRONTEND_URL')!;
 
-    console.log(`Logging frontend url social-auth-redirect: ${frontendUrl}`);
+    console.log(`[Social Auth] Resolved frontend URL: ${frontendUrl}`);
+    console.log(`[Social Auth] Headers:`, req.headers);
 
     const dns = this.configService.get<string>('DNS')!;
 
@@ -67,6 +68,7 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
     if (!frontendUrl) {
       throw new BadRequestException('FRONTEND_URL is not configured');
     }
+    console.log(`[Social Auth] DNS value: ${dns}`);
 
     const safeRedirect = (url: string) => {
       if (!res.headersSent) {
@@ -106,8 +108,10 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
               result.data.accessToken,
               dns,
             );
+            // Redirect to home page after successful login
+            safeRedirect(`${frontendUrl}/`);
+            return of(null);
           }
-          res.redirect(frontendUrl);
         } catch (err) {
           console.error('Login error:', err);
           safeRedirect(`${frontendUrl}/server-error`);
