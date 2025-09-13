@@ -80,7 +80,11 @@ export class ProductAnalyticsRepository extends BaseRepository<
           category: true,
           brand: true,
           model: true,
-          productVariants: { include: { currency: true } },
+          productVariants: {
+            include: {
+              currency: true,
+            },
+          },
         },
       });
       return topProducts.map(this.mapProductToRecommendation);
@@ -178,7 +182,10 @@ export class ProductAnalyticsRepository extends BaseRepository<
         },
         take,
         include: {
-          productVariants: { include: { currency: true } },
+          productVariants: {
+            include: { currency: true },
+            select: { product_id: true },
+          },
           brand: true,
           category: true,
           model: true,
@@ -269,7 +276,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
     // Already a number or Decimal
     return Number(priceObj) || null;
   }
-  
+
   private mapProductToRecommendation = (product: any) => {
     // pick cheapest variant
     const variant = product.productVariants?.reduce(
@@ -282,15 +289,16 @@ export class ProductAnalyticsRepository extends BaseRepository<
     );
 
     return {
+      id: product.id,
       productId: product.product_public_id,
+      brand_id: product.brand_id,
+      model_id: product.model_id,
+      category_id: product.category_id,
       slug: product.product_slug,
       title: product.title,
       symb: variant?.currency?.curr,
       image_url: variant?.base_image_url || null,
       price: this.getNumericPrice(variant?.price)?.toFixed(2),
-      brand_id: product.brand_id,
-      model_id: product.model_id,
-      category_id: product.category_id,
       tags: [
         product.brand?.title,
         product.category?.title,
