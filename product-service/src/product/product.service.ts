@@ -98,31 +98,26 @@ export class ProductService {
 
   async createProduct(dto: CreateProductDto, userId: bigint) {
     try {
-      const productInfo = dto.product
-
+      const productInfo = dto.product;
 
       return this.prisma.$transaction(async (tx) => {
-        // First validate the product and its attributes
+        // Batch validate all at once -  optimized batch operations internally
         await this.productValidationService.validateForPublish(
           tx,
           productInfo,
-          [
-            ...dto.attributes.map((av) => ({
-              attribute_id: av.attribute_id,
-              value: av.value,
-              dataType: av.dataType, // Make sure dataType comes from DTO
-              is_mandatory: av.is_mandatory,
-            })),
-          ],
+          dto.attributes.map((av) => ({
+            attribute_id: av.attribute_id,
+            value: av.value,
+            dataType: av.dataType,
+            is_mandatory: av.is_mandatory,
+          })),
           userId,
         );
 
-        // Set Unisex in case of accessory
+        // Generate slug and other product info
         const productGender = productInfo.is_accessory
           ? 3
           : productInfo.gender_id;
-
-        // Generate slug
         const slugContent =
           productInfo.title +
           ' ' +
@@ -131,30 +126,32 @@ export class ProductService {
           productGender;
         const generatedSlug = this.slugService.generateSlug(slugContent);
 
+        // Batch calculate commission and payout in parallel
+        const [commissionFee, payoutPrice] = await Promise.all([
+          this.calculateEstimatedPayoutAndCommission(
+            productInfo.sales_price,
+            'commission',
+          ),
+          this.calculateEstimatedPayoutAndCommission(
+            productInfo.sales_price,
+            'payout',
+          ),
+        ]);
+
         // Create the product
         const newProduct = await tx.product.create({
           data: {
             title: productInfo.title,
             description: productInfo.description || '',
-            name: productInfo.title || '', // Using title as name
+            name: productInfo.title || '',
             product_slug: generatedSlug,
             is_accessory: productInfo.is_accessory,
             brand_id: Number(productInfo.brand_id),
             seller_id: BigInt(userId),
             sales_price: new Prisma.Decimal(productInfo.sales_price),
-            currency_id: Number(productInfo.currency_id) || 1, // Default to USD
-            commission_fee: new Prisma.Decimal(
-              await this.calculateEstimatedPayoutAndCommission(
-                productInfo.sales_price,
-                'commission',
-              ),
-            ),
-            payout_price: new Prisma.Decimal(
-              await this.calculateEstimatedPayoutAndCommission(
-                productInfo.sales_price,
-                'payout',
-              ),
-            ),
+            currency_id: Number(productInfo.currency_id) || 1,
+            commission_fee: new Prisma.Decimal(commissionFee),
+            payout_price: new Prisma.Decimal(payoutPrice),
             model_id: Number(productInfo.model_id) || null,
             year_of_production: productInfo.year_of_production,
             category_id: productInfo.category_id,
@@ -162,7 +159,7 @@ export class ProductService {
           },
         });
 
-        // Use the updateProductAttributes method to handle attribute Updates
+        // Batch attribute update
         const updatedAttributes =
           await this.productAttributeService.updateProductAttributes(
             tx,
@@ -173,15 +170,20 @@ export class ProductService {
 
         console.log('Updated attributes:', updatedAttributes);
 
-        // Emit product created event
-        this.eventEmitter.emit(
-          'product.created',
-          new ProductCreatedEvent(userId, newProduct.id),
-        );
+        // Emit product created event (non-blocking)
+        setImmediate(() => {
+          this.eventEmitter.emit(
+            'product.created',
+            new ProductCreatedEvent(userId, newProduct.id),
+          );
+        });
 
         return ResponseHelper.CreateResponse(
           'Product created successfully',
-          newProduct,
+          {
+            product: newProduct,
+            attributesSummary: updatedAttributes,
+          },
           HttpStatus.CREATED,
         );
       });

@@ -13,6 +13,13 @@ import { ProductValidationService } from '@Product/product-validation.service';
 import { Prisma } from '@prisma/client';
 import { ValidationError } from 'class-validator';
 import { AttributeDto } from '@DTO/product.dto';
+
+interface BatchAttributeResult {
+  attributeId: number;
+  success: boolean;
+  error?: string;
+  mapping?: any;
+}
 @Injectable()
 export class ProductAttributesService {
   constructor(
@@ -87,7 +94,7 @@ export class ProductAttributesService {
     userId: bigint,
   ) {
     try {
-      // Get product category for validation
+      // Single query to get product with category
       const product = await tx.product.findUnique({
         where: { id: productId },
         select: { category_id: true },
@@ -101,123 +108,120 @@ export class ProductAttributesService {
         throw new BadRequestException('Product category is required');
       }
 
-      // Arrays to collect exceptions and successful updates
-      const missingAttributeExceptions: string[] = [];
-      const validationErrors: string[] = [];
-      const successfulUpdates: any[] = [];
+      // Batch fetch all required mappings in one query
+      const attributeIds = attributeUpdates.map((attr) => attr.attribute_id);
+      const mappings = await tx.attribute_category_mapping.findMany({
+        where: {
+          attribute_id: { in: attributeIds },
+          attribute_category_id: product.category_id,
+          is_active: true,
+          is_deleted: false,
+        },
+      });
 
-      // Process each attribute update
-      for (const attr of attributeUpdates) {
-        try {
-          // Check if attribute is valid for this category
-          const mapping = await tx.attribute_category_mapping.findFirst({
-            where: {
-              attribute_id: attr.attribute_id,
-              attribute_category_id: product.category_id,
-              is_active: true,
-              is_deleted: false,
-            },
+      // Create a mapping lookup for O(1) access
+      const mappingLookup = new Map(mappings.map((m) => [m.attribute_id, m]));
+
+      // Batch validate all attributes
+      const validationResults =
+        await this.productValidationService.batchValidateAndProcessAttributes(
+          tx,
+          attributeUpdates,
+          mappings,
+        );
+
+      // Prepare batch operations
+      const batchResults: BatchAttributeResult[] = [];
+      const upsertOperations: Array<{
+        mapping: any;
+        processedValue: any;
+        attributeId: number;
+      }> = [];
+
+      // Process validation results
+      for (const result of validationResults) {
+        if (result.error) {
+          batchResults.push({
+            attributeId: result.attributeId,
+            success: false,
+            error: result.error,
           });
-
-          if (!mapping) {
-            missingAttributeExceptions.push(
-              `Attribute ${attr.attribute_id} is not valid for this product category`,
-            );
-            continue; // Skip this attribute and continue with the next one
-          }
-
-          // Validate and process attribute value
-          const processedValue =
-            await this.productValidationService.validateAndProcessAttributeValue(
-              tx,
-              {
-                attribute_id: attr.attribute_id,
-                dataType: mapping.data_type,
-                value: attr.value,
-                is_mandatory: attr.is_mandatory
-              },
-            );
-
-          // Update or create the attribute value mapping
-          const updatedMapping = await tx.attribute_value_mapping.upsert({
-            where: {
-              attribute_category_mapping_id_product_id: {
-                attribute_category_mapping_id: Number(mapping.id),
-                product_id: Number(productId),
-              },
-            },
-            update: {
-              string_value: processedValue.stringVal,
-              number_value: processedValue.numberVal,
-              boolean_value: processedValue.boolVal,
-              lookup_name: processedValue.lookupName,
-              lookup_id: processedValue.lookupId,
-              date_value: processedValue.dateVal,
-              updated_by: userId,
-              updated_at: new Date(),
-            },
-            create: {
-              attribute_category_mapping_id: mapping.id,
-              product_id: productId,
-              string_value: processedValue.stringVal,
-              number_value: processedValue.numberVal,
-              boolean_value: processedValue.boolVal,
-              lookup_name: processedValue.lookupName,
-              lookup_id: processedValue.lookupId,
-              date_value: processedValue.dateVal,
-              created_by: userId,
-            },
-          });
-
-          successfulUpdates.push({
-            attribute_id: attr.attribute_id,
-            mapping: updatedMapping,
-          });
-
-          console.log('Updated mapping:', updatedMapping);
-        } catch (validationError: any) {
-          // Catch validation errors for individual attributes
-          validationErrors.push(
-            `Attribute ${attr.attribute_id}: ${
-              validationError.message || validationError
-            }`,
-          );
-          continue; // Continue processing other attributes
+          continue;
         }
+
+        const mapping = mappingLookup.get(result.attributeId);
+        if (!mapping) {
+          batchResults.push({
+            attributeId: result.attributeId,
+            success: false,
+            error: `Attribute ${result.attributeId} is not valid for this product category`,
+          });
+          continue;
+        }
+
+        upsertOperations.push({
+          mapping,
+          processedValue: result.processedValue!,
+          attributeId: result.attributeId,
+        });
       }
 
-      // Log successful updates
-      if (successfulUpdates.length > 0) {
+      // Execute batch upsert operations
+      if (upsertOperations.length > 0) {
+        const batchUpsertResults = await this.executeBatchUpserts(
+          tx,
+          productId,
+          upsertOperations,
+          userId,
+        );
+
+        // Merge successful operations into results
+        batchUpsertResults.forEach((result) => {
+          batchResults.push(result);
+        });
+      }
+
+      // Calculate summary
+      const successfulUpdates = batchResults.filter((r) => r.success).length;
+      const errors = batchResults.filter((r) => !r.success);
+
+      // Log results
+      if (successfulUpdates > 0) {
+        console.log(`Successfully updated ${successfulUpdates} attributes`);
+      }
+
+      if (errors.length > 0) {
         console.log(
-          `Successfully updated ${successfulUpdates.length} attributes`,
+          `Failed to update ${errors.length} attributes:`,
+          errors.map((e) => `${e.attributeId}: ${e.error}`),
         );
       }
 
-      // Throw accumulated exceptions if any exist
-      const allErrors = [...missingAttributeExceptions, ...validationErrors];
-      if (allErrors.length > 0) {
-        const errorMessage = allErrors.join('; ');
-
-        // You can choose the appropriate exception type based on your needs
-        if (
-          missingAttributeExceptions.length > 0 &&
-          validationErrors.length === 0
-        ) {
-          throw new BadRequestException(`Invalid attributes: ${errorMessage}`);
-        } else if (
-          validationErrors.length > 0 &&
-          missingAttributeExceptions.length === 0
-        ) {
-          throw new BadRequestException(`Validation errors: ${errorMessage}`);
-        } else {
-          throw new BadRequestException(`Attribute errors: ${errorMessage}`);
-        }
+      // Throw accumulated errors if all operations failed
+      if (errors.length > 0 && successfulUpdates === 0) {
+        const errorMessage = errors
+          .map((e) => `Attribute ${e.attributeId}: ${e.error}`)
+          .join('; ');
+        throw new BadRequestException(
+          `All attribute updates failed: ${errorMessage}`,
+        );
       }
 
-      return {
-        successfulUpdates: successfulUpdates.length,
+      // Return results with partial success information
+      const result = {
+        successfulUpdates,
         totalProcessed: attributeUpdates.length,
+        errors: errors.length > 0 ? errors : undefined,
       };
+
+      // If there were some errors but also some successes, log warning but don't throw
+      if (errors.length > 0 && successfulUpdates > 0) {
+        console.warn(
+          `Partial success: ${successfulUpdates}/${attributeUpdates.length} attributes updated`,
+        );
+      }
+
+      return result;
     } catch (error) {
       // Only re-throw if it's one of our custom exceptions
       if (
@@ -230,6 +234,231 @@ export class ProductAttributesService {
       console.error('Error updating product attributes:', error);
       throw new Error('Failed to update product attributes');
     }
+  }
+
+  /**
+   * Execute batch upsert operations using Promise.allSettled for better error handling
+   */
+  private async executeBatchUpserts(
+    tx: Prisma.TransactionClient,
+    productId: bigint,
+    operations: Array<{
+      mapping: any;
+      processedValue: any;
+      attributeId: number;
+    }>,
+    userId: bigint,
+  ): Promise<BatchAttributeResult[]> {
+    // Execute all upserts in parallel with error isolation
+    const upsertPromises = operations.map(async (op) => {
+      try {
+        const updatedMapping = await tx.attribute_value_mapping.upsert({
+          where: {
+            attribute_category_mapping_id_product_id: {
+              attribute_category_mapping_id: Number(op.mapping.id),
+              product_id: Number(productId),
+            },
+          },
+          update: {
+            string_value: op.processedValue.stringVal,
+            number_value: op.processedValue.numberVal,
+            boolean_value: op.processedValue.boolVal,
+            lookup_name: op.processedValue.lookupName,
+            lookup_id: op.processedValue.lookupId,
+            date_value: op.processedValue.dateVal,
+            updated_by: userId,
+            updated_at: new Date(),
+          },
+          create: {
+            attribute_category_mapping_id: op.mapping.id,
+            product_id: productId,
+            string_value: op.processedValue.stringVal,
+            number_value: op.processedValue.numberVal,
+            boolean_value: op.processedValue.boolVal,
+            lookup_name: op.processedValue.lookupName,
+            lookup_id: op.processedValue.lookupId,
+            date_value: op.processedValue.dateVal,
+            created_by: userId,
+          },
+        });
+
+        return {
+          attributeId: op.attributeId,
+          success: true,
+          mapping: updatedMapping,
+        };
+      } catch (error: any) {
+        return {
+          attributeId: op.attributeId,
+          success: false,
+          error: error.message || 'Failed to upsert attribute value',
+        };
+      }
+    });
+
+    // Wait for all operations to complete
+    const results = await Promise.allSettled(upsertPromises);
+
+    // Extract results from Promise.allSettled
+    return results.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        return {
+          attributeId: operations[index].attributeId,
+          success: false,
+          error: result.reason?.message || 'Promise rejected',
+        };
+      }
+    });
+  }
+
+  /**
+   * Batch fetch product attributes with all related data
+   */
+  async batchFetchProductAttributes(
+    tx: Prisma.TransactionClient,
+    productIds: bigint[],
+  ): Promise<Map<string, any[]>> {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    // Single query to fetch all attribute data for multiple products
+    const attributeMappings = await tx.attribute_value_mapping.findMany({
+      where: {
+        product_id: { in: productIds },
+      },
+      include: {
+        attributeCategoryMapping: {
+          include: {
+            attribute: true,
+            attributeCategory: true,
+          },
+        },
+      },
+    });
+
+    // Group by product ID
+    const result = new Map<string, any[]>();
+
+    for (const mapping of attributeMappings) {
+      const productKey = mapping.product_id.toString();
+
+      if (!result.has(productKey)) {
+        result.set(productKey, []);
+      }
+
+      result.get(productKey)!.push({
+        id: mapping.id,
+        attributeId: mapping.attributeCategoryMapping.attribute_id,
+        attributeName: mapping.attributeCategoryMapping.attribute.name,
+        dataType: mapping.attributeCategoryMapping.data_type,
+        value: this.extractAttributeValue(mapping),
+        isMandatory: mapping.attributeCategoryMapping.is_mandatory,
+        category: mapping.attributeCategoryMapping.attributeCategory,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Helper method to extract the appropriate value from a stored attribute value mapping
+   */
+  private extractAttributeValue(mapping: any): any {
+    return (
+      mapping.string_value ??
+      mapping.number_value ??
+      mapping.boolean_value ??
+      mapping.date_value ??
+      mapping.lookup_id ??
+      null
+    );
+  }
+
+  /**
+   * Optimized method to check if all mandatory attributes are present
+   */
+  async validateMandatoryAttributesBatch(
+    tx: Prisma.TransactionClient,
+    productIds: bigint[],
+    categoryId: number,
+  ): Promise<Map<string, { isValid: boolean; missingAttributes: number[] }>> {
+    if (productIds.length === 0) {
+      return new Map();
+    }
+
+    // Get all mandatory attributes for the category
+    const mandatoryMappings = await tx.attribute_category_mapping.findMany({
+      where: {
+        attribute_category_id: categoryId,
+        is_mandatory: true,
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        attribute_id: true,
+      },
+    });
+
+    const mandatoryAttributeIds = new Set(
+      mandatoryMappings.map((m) => m.attribute_id),
+    );
+
+    // Get all existing attribute mappings for these products
+    const existingMappings = await tx.attribute_value_mapping.findMany({
+      where: {
+        product_id: { in: productIds },
+      },
+      include: {
+        attributeCategoryMapping: {
+          select: {
+            attribute_id: true,
+          },
+        },
+      },
+    });
+
+    // Group by product and check completeness
+    const productAttributeMap = new Map<string, Set<number>>();
+
+    for (const mapping of existingMappings) {
+      const productKey = mapping.product_id.toString();
+      const attributeId = mapping.attributeCategoryMapping.attribute_id;
+
+      if (!productAttributeMap.has(productKey)) {
+        productAttributeMap.set(productKey, new Set());
+      }
+
+      productAttributeMap.get(productKey)!.add(attributeId);
+    }
+
+    // Check each product for missing mandatory attributes
+    const result = new Map<
+      string,
+      { isValid: boolean; missingAttributes: number[] }
+    >();
+
+    for (const productId of productIds) {
+      const productKey = productId.toString();
+      const existingAttributes =
+        productAttributeMap.get(productKey) || new Set();
+
+      const missingAttributes: number[] = [];
+      for (const requiredId of mandatoryAttributeIds) {
+        if (!existingAttributes.has(requiredId)) {
+          missingAttributes.push(requiredId);
+        }
+      }
+
+      result.set(productKey, {
+        isValid: missingAttributes.length === 0,
+        missingAttributes,
+      });
+    }
+
+    return result;
   }
 
   // Create attribute-category mapping

@@ -1,4 +1,4 @@
-// product-validation.service.ts
+// product-validation.service.ts - Optimized with Batch Operations
 import {
   BadRequestException,
   ForbiddenException,
@@ -26,6 +26,13 @@ interface LookupConfig {
   lookupTableName: string;
 }
 
+interface BatchLookupResult {
+  [attributeId: number]: {
+    lookupRecord: any;
+    lookupConfig: LookupConfig;
+  };
+}
+
 @Injectable()
 export class ProductValidationService {
   private readonly allowedLookups: LookupConfig[] = [
@@ -45,7 +52,6 @@ export class ProductValidationService {
     private readonly slugService: SlugService,
   ) {}
 
-  // TODO: Separate validate, db and business logic
   async validateForPublish(
     tx: Prisma.TransactionClient,
     productInfo: any,
@@ -71,8 +77,6 @@ export class ProductValidationService {
 
     productInfo.generatedSlug = this.slugService.generateSlug(slugContent);
 
-    console.log('where', productInfo.category_id);
-
     // 3. Validate category mappings
     const mappings = await tx.attribute_category_mapping.findMany({
       where: {
@@ -86,41 +90,37 @@ export class ProductValidationService {
         `No attribute mappings found for category ${productInfo.category_id}`,
       );
     }
-    console.log('Attributes DTO:', attributesDto);
 
     // 4. Validate mandatory attributes
     const mandatoryMappings = mappings.filter((m) => m.is_mandatory);
-    // console.log('Mandatory Mappings:', mandatoryMappings);
+    const providedAttributeIds = new Set(
+      attributesDto.map((attr) => attr.attribute_id),
+    );
+
     for (const mm of mandatoryMappings) {
-      const exists = attributesDto?.some(
-        (av: any) => av.attribute_id === mm.attribute_id,
-      );
-      if (!exists) {
+      if (!providedAttributeIds.has(mm.attribute_id)) {
         missingMandatoryAttributes.add(mm.attribute_id);
       }
     }
 
-    // 5. Validate attribute values - collect all errors instead of throwing immediately
-    for (const attr of attributesDto) {
-      try {
-        const mapping = mappings.find(
-          (m) => m.attribute_id === attr.attribute_id,
-        );
+    // 5. Batch validate attribute values
+    const batchValidationResults = await this.batchValidateAndProcessAttributes(
+      tx,
+      attributesDto,
+      mappings,
+    );
 
-        if (!mapping) {
-          invalidAttributes.add(attr.attribute_id);
-          continue; // Skip validation for this attribute and continue with next
+    // Process results
+    for (const result of batchValidationResults) {
+      if (result.error) {
+        if (result.error.includes('not valid for this product category')) {
+          invalidAttributes.add(result.attributeId);
+        } else {
+          attributeValidationErrors.push({
+            attributeId: result.attributeId,
+            error: result.error,
+          });
         }
-
-        // Use the new unified method that both validates and processes
-        await this.validateAndProcessAttributeValue(tx, attr);
-      } catch (validationError: any) {
-        // Collect individual attribute validation errors
-        attributeValidationErrors.push({
-          attributeId: attr.attribute_id,
-          error: validationError.message || validationError.toString(),
-        });
-        continue; // Continue processing other attributes
       }
     }
 
@@ -174,55 +174,213 @@ export class ProductValidationService {
 
       const errorMessage = messageParts.join('. ');
 
-      // Create a custom exception with structured data
-      if (errorDetails) {
-        const error = new BadRequestException(errorMessage);
-        (error as any).validationDetails = JSON.stringify(errorDetails);
-        throw error;
-      }
+      const error = new BadRequestException(errorMessage);
+      (error as any).validationDetails = JSON.stringify(errorDetails);
+      throw error;
     }
   }
 
   /**
-   * Validates attributes for draft products being published
-   * handles existing attribute value mappings
+   * Batch validate and process multiple attributes
    */
-  // async validateDraftForPublish(
-  //   tx: Prisma.TransactionClient,
-  //   draftProduct: any,
-  //   userId: bigint,
-  // ): Promise<void> {
-  //   const dto = {
-  //     attributeValues: draftProduct.attributeValues.map((av: any) => ({
-  //       attribute_id: av.attributeCategoryMapping.attribute_id,
-  //       dataType: av.attributeCategoryMapping.data_type,
-  //       value: this.extractStoredAttributeValue(av),
-  //     })),
-  //   };
-
-  //   await this.validateForPublish(tx, draftProduct, dto, userId);
-  // }
-
-  /**
-   * Helper method to extract the appropriate value from a stored attribute value mapping
-   */
-  private extractStoredAttributeValue(av: any): any {
-    return (
-      av.string_value ??
-      av.number_value ??
-      av.boolean_value ??
-      av.date_value ??
-      av.lookup_id ??
-      null
+  async batchValidateAndProcessAttributes(
+    tx: Prisma.TransactionClient,
+    attributesDto: AttributeDto[],
+    mappings: any[],
+  ): Promise<
+    Array<{
+      attributeId: number;
+      processedValue?: ProcessedAttributeValue;
+      error?: string;
+    }>
+  > {
+    // Group attributes by data type for batch processing
+    const attributesByType = this.groupAttributesByType(
+      attributesDto,
+      mappings,
     );
+
+    // Batch fetch lookup data
+    const batchLookupResults = await this.batchFetchLookupData(
+      tx,
+      attributesByType.lookup || [],
+    );
+
+    const results: Array<{
+      attributeId: number;
+      processedValue?: ProcessedAttributeValue;
+      error?: string;
+    }> = [];
+
+    // Process each attribute
+    for (const attr of attributesDto) {
+      try {
+        const mapping = mappings.find(
+          (m) => m.attribute_id === attr.attribute_id,
+        );
+
+        if (!mapping) {
+          results.push({
+            attributeId: attr.attribute_id,
+            error: `Attribute ${attr.attribute_id} is not valid for this product category`,
+          });
+          continue;
+        }
+
+        const processedValue = await this.processAttributeValueWithBatchData(
+          attr,
+          mapping,
+          batchLookupResults,
+        );
+
+        results.push({
+          attributeId: attr.attribute_id,
+          processedValue,
+        });
+      } catch (error: any) {
+        results.push({
+          attributeId: attr.attribute_id,
+          error: error.message || error.toString(),
+        });
+      }
+    }
+
+    return results;
   }
 
   /**
-   * Validates and processes an attribute value, returning the processed data
+   * Group attributes by their data types for batch processing
    */
-  async validateAndProcessAttributeValue(
+  private groupAttributesByType(
+    attributesDto: AttributeDto[],
+    mappings: any[],
+  ): Record<string, Array<{ attr: AttributeDto; mapping: any }>> {
+    const grouped: Record<
+      string,
+      Array<{ attr: AttributeDto; mapping: any }>
+    > = {};
+
+    for (const attr of attributesDto) {
+      const mapping = mappings.find(
+        (m) => m.attribute_id === attr.attribute_id,
+      );
+      if (!mapping) continue;
+
+      const dataType = attr.dataType || mapping.data_type;
+      if (!grouped[dataType]) {
+        grouped[dataType] = [];
+      }
+
+      grouped[dataType].push({ attr, mapping });
+    }
+
+    return grouped;
+  }
+
+  /**
+   * Batch fetch all lookup data needed for validation
+   */
+  async batchFetchLookupData(
     tx: Prisma.TransactionClient,
+    lookupAttributes: Array<{ attr: AttributeDto; mapping: any }>,
+  ): Promise<BatchLookupResult> {
+    if (lookupAttributes.length === 0) {
+      return {};
+    }
+
+    const result: BatchLookupResult = {};
+
+    // Extract unique attribute IDs for lookup attributes
+    const attributeIds = [
+      ...new Set(lookupAttributes.map((la) => la.attr.attribute_id)),
+    ];
+
+    // Batch fetch attribute names
+    const attributeNames = await tx.attributes.findMany({
+      where: { id: { in: attributeIds } },
+      select: { id: true, name: true },
+    });
+
+    // Group by lookup table for batch queries
+    const lookupsByTable: Record<
+      string,
+      Array<{
+        attributeId: number;
+        lookupId: number;
+        lookupConfig: LookupConfig;
+      }>
+    > = {};
+
+    for (const { attr } of lookupAttributes) {
+      const attributeName = attributeNames.find(
+        (an) => an.id === attr.attribute_id,
+      );
+      if (!attributeName) continue;
+
+      const lookupConfig = this.allowedLookups.find(
+        (lookup) => lookup.attributeName === attributeName.name,
+      );
+      if (!lookupConfig) continue;
+
+      const lookupId = Number(attr.value);
+      if (isNaN(lookupId)) continue;
+
+      const tableName = lookupConfig.lookupTableName;
+      if (!lookupsByTable[tableName]) {
+        lookupsByTable[tableName] = [];
+      }
+
+      lookupsByTable[tableName].push({
+        attributeId: attr.attribute_id,
+        lookupId,
+        lookupConfig,
+      });
+    }
+
+    // Batch fetch from each lookup table
+    const fetchPromises = Object.entries(lookupsByTable).map(
+      async ([tableName, items]) => {
+        const lookupIds = [...new Set(items.map((item) => item.lookupId))];
+
+        try {
+          const lookupRecords = await (
+            tx[tableName as keyof typeof tx] as any
+          ).findMany({
+            where: { id: { in: lookupIds } },
+          });
+
+          // Map results back to attribute IDs
+          const recordMap = new Map(
+            lookupRecords.map((record: any) => [record.id, record]),
+          );
+
+          for (const item of items) {
+            const lookupRecord = recordMap.get(item.lookupId);
+            if (lookupRecord) {
+              result[item.attributeId] = {
+                lookupRecord,
+                lookupConfig: item.lookupConfig,
+              };
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching from ${tableName}:`, error);
+          // Continue processing other tables
+        }
+      },
+    );
+
+    await Promise.all(fetchPromises);
+    return result;
+  }
+
+  /**
+   * Process attribute value using pre-fetched batch data
+   */
+  async processAttributeValueWithBatchData(
     attr: AttributeDto,
+    mapping: any,
+    batchLookupResults: BatchLookupResult,
   ): Promise<ProcessedAttributeValue> {
     const result: ProcessedAttributeValue = {
       stringVal: null,
@@ -233,7 +391,9 @@ export class ProductValidationService {
       lookupName: null,
     };
 
-    switch (attr.dataType) {
+    const dataType = attr.dataType || mapping.data_type;
+
+    switch (dataType) {
       case 'string':
         result.stringVal = String(attr.value);
         break;
@@ -267,50 +427,51 @@ export class ProductValidationService {
 
       case 'lookup':
         const lookupId = Number(attr.value);
-        const foundLookupName = await this.prisma.attributes.findUnique({
-          where: { id: attr.attribute_id },
-          select: { name: true },
-        });
+        const batchResult = batchLookupResults[attr.attribute_id];
 
-        if (!foundLookupName) {
+        if (!batchResult) {
           throw new BadRequestException(
-            `Lookup attribute with ID ${attr.attribute_id} not found`,
+            `Lookup validation failed for attribute ${attr.attribute_id}`,
           );
         }
 
-        const selectedLookup = this.allowedLookups.find(
-          (lookup) => lookup.attributeName === foundLookupName.name,
-        );
-
-        if (!selectedLookup) {
+        if (!batchResult.lookupRecord) {
           throw new BadRequestException(
-            `Attribute ${foundLookupName.name} is not allowed for lookup type`,
-          );
-        }
-
-        const lookupRecord = await (
-          this.prisma[
-            selectedLookup.lookupTableName as keyof typeof this.prisma
-          ] as any
-        ).findUnique({ where: { id: lookupId } });
-
-        if (!lookupRecord) {
-          throw new BadRequestException(
-            `Lookup record with ID ${lookupId} not found in ${selectedLookup.lookupTableName}`,
+            `Lookup record with ID ${lookupId} not found in ${batchResult.lookupConfig.lookupTableName}`,
           );
         }
 
         result.lookupId = lookupId;
-        result.lookupName = foundLookupName.name;
+        result.lookupName = batchResult.lookupConfig.attributeName;
         break;
 
       default:
-        throw new BadRequestException(
-          `Unsupported data type: ${attr.dataType}`,
-        );
+        throw new BadRequestException(`Unsupported data type: ${dataType}`);
     }
 
     return result;
+  }
+
+  /**
+   * Legacy method for backward compatibility - now uses batch processing internally
+   */
+  async validateAndProcessAttributeValue(
+    tx: Prisma.TransactionClient,
+    attr: AttributeDto,
+  ): Promise<ProcessedAttributeValue> {
+    // For single attribute, still use batch processing for consistency
+    const batchResults = await this.batchValidateAndProcessAttributes(
+      tx,
+      [attr],
+      [], // Will need to fetch mappings if used standalone
+    );
+
+    const result = batchResults[0];
+    if (result.error) {
+      throw new BadRequestException(result.error);
+    }
+
+    return result.processedValue!;
   }
 
   validateDraftProduct(product: any): void {
