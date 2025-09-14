@@ -1,4 +1,36 @@
 -- CreateTable
+CREATE TABLE "products"."movement_type" (
+    "id" SERIAL NOT NULL,
+    "name" VARCHAR(50) NOT NULL,
+    "description" VARCHAR(200) NOT NULL,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6),
+    "deleted_at" TIMESTAMPTZ(6),
+    "created_by" BIGINT NOT NULL,
+    "updated_by" BIGINT,
+    "deleted_by" BIGINT,
+    "is_deleted" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "movement_type_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "products"."product_inclusion" (
+    "id" SERIAL NOT NULL,
+    "name" VARCHAR(100) NOT NULL,
+    "description" VARCHAR(200) NOT NULL,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6),
+    "deleted_at" TIMESTAMPTZ(6),
+    "created_by" BIGINT NOT NULL,
+    "updated_by" BIGINT,
+    "deleted_by" BIGINT,
+    "is_deleted" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "product_inclusion_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "products"."color" (
     "id" SERIAL NOT NULL,
     "name" VARCHAR(15) NOT NULL,
@@ -213,6 +245,21 @@ CREATE TABLE "products"."attribute_value_mapping" (
 );
 
 -- CreateTable
+CREATE TABLE "products"."watch_inclusions" (
+    "id" SERIAL NOT NULL,
+    "title" VARCHAR(100) NOT NULL,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6),
+    "deleted_at" TIMESTAMPTZ(6),
+    "created_by" BIGINT NOT NULL,
+    "updated_by" BIGINT,
+    "deleted_by" BIGINT,
+    "is_deleted" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "watch_inclusions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "products"."condition" (
     "id" SERIAL NOT NULL,
     "condition" VARCHAR(100) NOT NULL,
@@ -346,8 +393,11 @@ CREATE TABLE "products"."product" (
     "is_used" BOOLEAN NOT NULL DEFAULT false,
     "product_slug" VARCHAR(255) NOT NULL,
     "year_of_production" INTEGER NOT NULL,
-    "referenceNumber" VARCHAR(100) NOT NULL,
-    "serialNumber" VARCHAR(100) NOT NULL,
+    "seller_id" BIGINT NOT NULL,
+    "currency_id" INTEGER NOT NULL DEFAULT 1,
+    "sales_price" DECIMAL(10,2) NOT NULL,
+    "commission_fee" DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    "payout_price" DECIMAL(10,2) NOT NULL,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(6),
     "deleted_at" TIMESTAMPTZ(6),
@@ -363,10 +413,10 @@ CREATE TABLE "products"."product" (
 CREATE TABLE "products"."product_images" (
     "id" SERIAL NOT NULL,
     "img_url" VARCHAR(2000) NOT NULL,
-    "alt_text" VARCHAR(500) NOT NULL,
-    "order" INTEGER NOT NULL,
-    "color_id" INTEGER NOT NULL,
-    "size_id" INTEGER NOT NULL,
+    "alt_text" VARCHAR(500),
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "type" VARCHAR(50) NOT NULL,
+    "product_id" BIGINT,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(6),
     "deleted_at" TIMESTAMPTZ(6),
@@ -374,7 +424,6 @@ CREATE TABLE "products"."product_images" (
     "updated_by" BIGINT,
     "deleted_by" BIGINT,
     "is_deleted" BOOLEAN NOT NULL DEFAULT false,
-    "product_item_id" BIGINT,
 
     CONSTRAINT "product_images_pkey" PRIMARY KEY ("id")
 );
@@ -388,7 +437,9 @@ CREATE TABLE "products"."product_items" (
     "bracelet_color_id" INTEGER NOT NULL,
     "dial_color_id" INTEGER NOT NULL,
     "size_id" INTEGER NOT NULL,
-    "movement_id" BIGINT NOT NULL,
+    "movement_id" BIGINT,
+    "movement_type_id" INTEGER,
+    "inclusion_id" INTEGER,
     "price" DECIMAL(10,2) NOT NULL,
     "cost_price" DECIMAL(10,2) NOT NULL,
     "quantity" INTEGER NOT NULL DEFAULT 0,
@@ -400,10 +451,10 @@ CREATE TABLE "products"."product_items" (
     "approximation" BOOLEAN NOT NULL DEFAULT false,
     "buyer_confidence_boost_description" VARCHAR(5000),
     "unknown" BOOLEAN NOT NULL DEFAULT false,
-    "original_box_and_paper" BOOLEAN NOT NULL,
-    "original_box" BOOLEAN NOT NULL,
-    "original_paper" BOOLEAN NOT NULL,
-    "accessories" BOOLEAN NOT NULL,
+    "has_original_box_and_papers" BOOLEAN NOT NULL DEFAULT false,
+    "has_original_box" BOOLEAN NOT NULL DEFAULT false,
+    "has_original_papers" BOOLEAN NOT NULL DEFAULT false,
+    "has_additional_accessories" BOOLEAN NOT NULL DEFAULT false,
     "crystal_id" INTEGER,
     "case_material_id" INTEGER,
     "bracelet_material_id" INTEGER,
@@ -651,6 +702,20 @@ CREATE TABLE "products"."product_listings" (
     CONSTRAINT "product_listings_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "products"."_itemImages" (
+    "A" INTEGER NOT NULL,
+    "B" BIGINT NOT NULL,
+
+    CONSTRAINT "_itemImages_AB_pkey" PRIMARY KEY ("A","B")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "movement_type_name_key" ON "products"."movement_type"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "product_inclusion_name_key" ON "products"."product_inclusion"("name");
+
 -- CreateIndex
 CREATE UNIQUE INDEX "color_name_key" ON "products"."color"("name");
 
@@ -686,6 +751,9 @@ CREATE UNIQUE INDEX "attribute_category_mapping_attribute_category_id_attribute_
 
 -- CreateIndex
 CREATE UNIQUE INDEX "attribute_value_mapping_attribute_category_mapping_id_produ_key" ON "products"."attribute_value_mapping"("attribute_category_mapping_id", "product_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "watch_inclusions_title_key" ON "products"."watch_inclusions"("title");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "condition_condition_key" ON "products"."condition"("condition");
@@ -738,6 +806,9 @@ CREATE INDEX "product_analytics_user_id_product_id_viewed_at_idx" ON "products".
 -- CreateIndex
 CREATE UNIQUE INDEX "product_analytics_user_id_product_id_viewed_at_key" ON "products"."product_analytics"("user_id", "product_id", "viewed_at");
 
+-- CreateIndex
+CREATE INDEX "_itemImages_B_index" ON "products"."_itemImages"("B");
+
 -- AddForeignKey
 ALTER TABLE "products"."model" ADD CONSTRAINT "model_brand_id_fkey" FOREIGN KEY ("brand_id") REFERENCES "products"."brand"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
@@ -787,7 +858,10 @@ ALTER TABLE "products"."product" ADD CONSTRAINT "product_model_id_fkey" FOREIGN 
 ALTER TABLE "products"."product" ADD CONSTRAINT "product_gender_id_fkey" FOREIGN KEY ("gender_id") REFERENCES "products"."gender"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "products"."product_images" ADD CONSTRAINT "product_images_product_item_id_fkey" FOREIGN KEY ("product_item_id") REFERENCES "products"."product_items"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "products"."product" ADD CONSTRAINT "product_currency_id_fkey" FOREIGN KEY ("currency_id") REFERENCES "products"."currency_exchange"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "products"."product_images" ADD CONSTRAINT "product_images_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"."product"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_case_material_id_fkey" FOREIGN KEY ("case_material_id") REFERENCES "products"."material"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -808,7 +882,7 @@ ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_currency_id
 ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_dial_color_id_fkey" FOREIGN KEY ("dial_color_id") REFERENCES "products"."color"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_movement_id_fkey" FOREIGN KEY ("movement_id") REFERENCES "products"."movement"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_movement_id_fkey" FOREIGN KEY ("movement_id") REFERENCES "products"."movement"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"."product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -835,6 +909,12 @@ ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_country_id_
 ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_complication_id_fkey" FOREIGN KEY ("complication_id") REFERENCES "products"."complications"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_movement_type_id_fkey" FOREIGN KEY ("movement_type_id") REFERENCES "products"."movement_type"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "products"."product_items" ADD CONSTRAINT "product_items_inclusion_id_fkey" FOREIGN KEY ("inclusion_id") REFERENCES "products"."product_inclusion"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "products"."ownership_proof" ADD CONSTRAINT "ownership_proof_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "products"."product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -857,3 +937,9 @@ ALTER TABLE "products"."product_analytics" ADD CONSTRAINT "product_analytics_pro
 
 -- AddForeignKey
 ALTER TABLE "products"."product_analytics" ADD CONSTRAINT "product_analytics_product_item_id_fkey" FOREIGN KEY ("product_item_id") REFERENCES "products"."product_items"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "products"."_itemImages" ADD CONSTRAINT "_itemImages_A_fkey" FOREIGN KEY ("A") REFERENCES "products"."product_images"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "products"."_itemImages" ADD CONSTRAINT "_itemImages_B_fkey" FOREIGN KEY ("B") REFERENCES "products"."product_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;

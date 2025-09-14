@@ -45,7 +45,7 @@ export class FavoriteRepository extends BaseRepository<
             id: productId,
           },
         },
-        product_items: {
+        product_item: {
           connect: {
             id: itemId,
           },
@@ -60,7 +60,7 @@ export class FavoriteRepository extends BaseRepository<
             id: productId,
           },
         },
-        product_items: {
+        product_item: {
           connect: {
             id: itemId,
           },

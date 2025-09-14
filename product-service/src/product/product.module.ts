@@ -12,6 +12,8 @@ import { HashidsModule } from '../hash-ids/hash-ids.module';
 import { FavoriteModule } from '@Favorite/favorite.module';
 import { ProductCreatedListener } from './listener/product-created.listener';
 import { SlugModule } from 'src/slug/slug.module';
+import { ProductValidationService } from './product-validation.service';
+import { ProductAttributesService } from 'src/product-attributes/product-attributes.service';
 
 @Module({
   imports: [
@@ -19,14 +21,16 @@ import { SlugModule } from 'src/slug/slug.module';
     FavoriteModule,
     ProductItemModule,
     ProductAnalyticsModule,
-    SlugModule
+    SlugModule,
   ],
   controllers: [ProductController],
   providers: [
     ProductService,
+    ProductValidationService,
     ProductRepository,
     ProductIdResolver,
     ProductCreatedListener,
+    ProductAttributesService,
   ],
 })
 export class ProductModule {}

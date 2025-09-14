@@ -46,7 +46,7 @@ export class CartRepository extends BaseRepository<
             id: create.productId,
           },
         },
-        product_items: {
+        product_item: {
           connect: {
             id: create.itemId,
           },

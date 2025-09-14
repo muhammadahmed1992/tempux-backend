@@ -86,10 +86,11 @@ export class ProductAnalyticsRepository extends BaseRepository<
           include: {
             brand: true,
             category: true,
-            productItems: { include: { currency: true } },
+            currency: true,
+            productImages: true,
           },
         },
-        productItem: true,
+        product_item: true,
       },
     });
 
@@ -123,7 +124,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
         categoryCount[v.product.category_id] =
           (categoryCount[v.product.category_id] || 0) + 1;
       }
-      const price = this.getNumericPrice(v.productItem?.price);
+      const price = this.getNumericPrice(v.product_item?.price);
       if (price) pricePoints.push(price);
     });
 

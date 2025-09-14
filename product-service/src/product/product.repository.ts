@@ -72,8 +72,6 @@ export class ProductRepository extends BaseRepository<
                 img_url: true,
                 alt_text: true,
                 order: true,
-                color_id: true,
-                size_id: true,
               },
               where: {
                 is_deleted: false,

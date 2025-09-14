@@ -26,7 +26,7 @@ import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import { ProductItemService } from '@ProductItem/product-item.service';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
-import { CreateProductDto } from '@DTO/create-product.dto';
+import { CreateProductDto } from '@DTO/product.dto';
 
 @Controller()
 export class ProductController {

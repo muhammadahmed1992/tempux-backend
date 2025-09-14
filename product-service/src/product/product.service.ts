@@ -1,4 +1,7 @@
-/* eslint-disable no-case-declarations */
+import ApiResponse from '@Helper/api-response';
+import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ProductCreatedEvent } from './event/product-created.event';
 import {
   BadRequestException,
   HttpStatus,
@@ -6,21 +9,45 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import ApiResponse from '@Helper/api-response';
-import ResponseHelper from '@Helper/response-helper';
-import Constants from '@Helper/constants';
-import { ProductRepository } from './product.repository';
-import { ProductItemService } from '@ProductItem/product-item.service';
-import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
-import { ProductImageOutput } from '@DTO/product-images-info.dto';
-import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.service';
-import { CustomFilter } from '@Common/enums/custom-filter.enum';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { ProductCreatedEvent } from './event/product-created.event';
-import { CreateProductDto } from '@DTO/create-product.dto';
-import { Prisma, PrismaClient } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { CreateProductDto } from '@DTO/product.dto';
+import { Prisma, product, PrismaClient } from '@prisma/client';
 import { SlugService } from 'src/slug/slug.service';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { CustomFilter } from '@Common/enums/custom-filter.enum';
+import Constants from '@Helper/constants';
+import ResponseHelper from '@Helper/response-helper';
+import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
+import { ProductRepository } from './product.repository';
+import { ProductValidationService } from './product-validation.service';
+import { ProductAttributesService } from 'src/product-attributes/product-attributes.service';
+
+interface ProductSummaryResult {
+  id: bigint;
+  title: string;
+  name: string;
+  description: string;
+  avgRating: number;
+  sales_price: Prisma.Decimal;
+  currency_id: number;
+  deleted: boolean;
+  model: any;
+  productReviews: Array<{
+    id: bigint;
+    rating: number;
+  }>;
+  productImages: Array<{
+    id: number;
+    img_url: string;
+    alt_text?: string;
+    order: number;
+  }>;
+  currency: {
+    id: number;
+    symbol: string;
+  };
+}
+
+type ViewershipCountResult = number;
 
 // Mapping from CustomFilter enum to tag names in the DB
 const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
@@ -33,165 +60,125 @@ const CUSTOM_FILTER_TO_TAG: Record<CustomFilter, string> = {
 /**
  * Define types used only in this service
  */
-type ProductSummaryResult = any;
-type ViewershipCountResult = number;
+interface ProductWithRelations
+  extends Prisma.productGetPayload<{
+    include: {
+      productImages: true;
+      productOwnership: true;
+    };
+  }> {}
+
+interface ProductInfo {
+  title?: string;
+  description?: string;
+  name?: string;
+  brand_id?: number;
+  category_id?: number;
+  model_id?: number;
+  gender_id?: number;
+  is_accessory?: boolean;
+  accessory_image?: string;
+  seller_id?: bigint;
+  sales_price?: number;
+  currency_id?: number;
+  year_of_production?: number;
+}
 
 @Injectable()
 export class ProductService {
   constructor(
-    private readonly repository: ProductRepository,
-    private readonly productItemService: ProductItemService,
-    private readonly productAnalytics: ProductAnalyticsService,
+    private readonly productRepository: ProductRepository,
+    private readonly productAnalyticsService: ProductAnalyticsService,
+    private readonly eventEmitter: EventEmitter2,
     private readonly slugService: SlugService,
-    private eventEmitter: EventEmitter2,
-    private prisma: PrismaService,
+    private readonly prisma: PrismaService,
+    private readonly productValidationService: ProductValidationService,
+    private readonly productAttributeService: ProductAttributesService,
   ) {}
+
   async createProduct(dto: CreateProductDto, userId: bigint) {
     try {
+      const productInfo = dto.product
+
+
       return this.prisma.$transaction(async (tx) => {
-        // 1. Create product
-        const productInfo = dto.product;
+        // First validate the product and its attributes
+        await this.productValidationService.validateForPublish(
+          tx,
+          productInfo,
+          [
+            ...dto.attributes.map((av) => ({
+              attribute_id: av.attribute_id,
+              value: av.value,
+              dataType: av.dataType, // Make sure dataType comes from DTO
+              is_mandatory: av.is_mandatory,
+            })),
+          ],
+          userId,
+        );
+
+        // Set Unisex in case of accessory
         const productGender = productInfo.is_accessory
-          ? 'unisex'
-          : productInfo.gender;
+          ? 3
+          : productInfo.gender_id;
+
+        // Generate slug
         const slugContent =
-          productInfo.name +
+          productInfo.title +
           ' ' +
           (productInfo.is_accessory ? 'accessory' : 'watch') +
           ' ' +
           productGender;
         const generatedSlug = this.slugService.generateSlug(slugContent);
+
+        // Create the product
         const newProduct = await tx.product.create({
           data: {
             title: productInfo.title,
-            description: productInfo.description,
-            name: productInfo.title, // Using title as name
+            description: productInfo.description || '',
+            name: productInfo.title || '', // Using title as name
             product_slug: generatedSlug,
             is_accessory: productInfo.is_accessory,
             brand_id: Number(productInfo.brand_id),
-            // year_of_production: productInfo.year_of_production,
-            // referenceNumber: productInfo.referenceNumber,
-            // category_id: dto.categoryId,
+            seller_id: BigInt(userId),
+            sales_price: new Prisma.Decimal(productInfo.sales_price),
+            currency_id: Number(productInfo.currency_id) || 1, // Default to USD
+            commission_fee: new Prisma.Decimal(
+              await this.calculateEstimatedPayoutAndCommission(
+                productInfo.sales_price,
+                'commission',
+              ),
+            ),
+            payout_price: new Prisma.Decimal(
+              await this.calculateEstimatedPayoutAndCommission(
+                productInfo.sales_price,
+                'payout',
+              ),
+            ),
+            model_id: Number(productInfo.model_id) || null,
+            year_of_production: productInfo.year_of_production,
+            category_id: productInfo.category_id,
             created_by: userId,
           },
         });
 
-        // 2. Fetch all mappings for this category
-        const mappings = await tx.attributeCategoryMapping.findMany({
-          where: { attribute_category_id: dto.categoryId, is_active: true },
-        });
-
-        if (!mappings.length) {
-          throw new BadRequestException(
-            'No attribute mappings found for this category',
+        // Use the updateProductAttributes method to handle attribute Updates
+        const updatedAttributes =
+          await this.productAttributeService.updateProductAttributes(
+            tx,
+            newProduct.id,
+            dto.attributes,
+            userId,
           );
-        }
 
-        // 3. Check mandatory attributes
-        const mandatoryMappings = mappings.filter((m) => m.is_mandatory);
-        for (const mm of mandatoryMappings) {
-          const exists = dto.attributeValues.some(
-            (av) => av.attributeId === mm.attribute_id,
-          );
-          if (!exists) {
-            throw new BadRequestException(
-              `Mandatory attribute ${mm.attribute_id} is missing for category ${dto.categoryId}`,
-            );
-          }
-        }
+        console.log('Updated attributes:', updatedAttributes);
 
-        // 4. Process each attribute value
-        for (const attr of dto.attributeValues) {
-          const mapping = mappings.find(
-            (m) => m.attribute_id === attr.attributeId,
-          );
-          if (!mapping) {
-            throw new BadRequestException(
-              `Attribute ${attr.attributeId} is not valid for category ${dto.categoryId}`,
-            );
-          }
-
-          let stringVal: string | null = null;
-          let numberVal: Prisma.Decimal | null = null;
-          let boolVal: boolean | null = null;
-          let dateVal: Date | null = null;
-          let lookupId: number | null = null;
-          let lookupName: string | null = null;
-
-          const allowedLookups = [{ attributeName: 'condition', lookupTableName: 'Condition' }, { attributeName: 'sign-of-wears', lookupTableName: 'signOfWears' }];
-
-
-          switch (attr.dataType) {
-            case 'string':
-              stringVal = String(attr.value);
-              break;
-            case 'number':
-              numberVal = new Prisma.Decimal(attr.value);
-              break;
-            case 'boolean':
-              boolVal = Boolean(attr.value);
-              break;
-            case 'date':
-              dateVal = new Date(attr.value);
-              break;
-            case 'lookup':
-              lookupId = Number(attr.value);
-              let foundLookupName = await this.prisma.attributes.findUnique({
-                where: { id: lookupId },
-                select: { name: true },
-              });
-              if (!foundLookupName) {
-                throw new BadRequestException(
-                  `Lookup attribute with ID ${lookupId} not found`,
-                );
-              }
-
-              const isValidLookup = allowedLookups.some(lookup => lookup.attributeName === foundLookupName.name);
-              if (!isValidLookup) {
-                throw new BadRequestException(
-                  `Attribute ${foundLookupName.name} is not allowed for lookup type`,
-                );
-              }
-
-              const lookupRecord = await this.prisma[allowedLookups.find(lookup => lookup.attributeName === foundLookupName.name)?.lookupTableName as keyof PrismaClient].findUnique({
-                where: { id: lookupId },
-              });
-              if (!lookupRecord) {
-                throw new BadRequestException(
-                  `Lookup record with ID ${lookupId} not found in table ${foundLookupName.name}`,
-                );
-              }
-              lookupName = foundLookupName.name;
-
-              break;
-            default:
-              throw new BadRequestException(
-                `Unsupported data type: ${attr.dataType}`,
-              );
-          }
-
-
-
-          await tx.attributeValueMapping.create({
-            data: {
-              attribute_category_mapping_id: mapping.id,
-              product_id: newProduct.id,
-              string_value: stringVal,
-              number_value: numberVal,
-              boolean_value: boolVal,
-              lookup_name: lookupName,
-              lookup_id: lookupId,
-              date_value: dateVal,
-              created_by: userId,
-            },
-          });
-        }
-        //TODO: will  event without slowing API down
-        // Hardcoding for now.
+        // Emit product created event
         this.eventEmitter.emit(
           'product.created',
-          new ProductCreatedEvent(userId, 10n),
+          new ProductCreatedEvent(userId, newProduct.id),
         );
+
         return ResponseHelper.CreateResponse(
           'Product created successfully',
           newProduct,
@@ -200,6 +187,34 @@ export class ProductService {
       });
     } catch (error) {
       console.error('Error creating product with attributes:', error);
+
+      // Handle validation errors with structured response
+      if (
+        error instanceof BadRequestException &&
+        (error as any).validationDetails
+      ) {
+        const validationDetails = (error as any).validationDetails;
+
+        return ResponseHelper.CreateResponse(
+          error.message,
+          {
+            validationErrors: validationDetails,
+            timestamp: new Date().toISOString(),
+          },
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Handle other BadRequestExceptions
+      if (error instanceof BadRequestException) {
+        return ResponseHelper.CreateResponse(
+          error.message,
+          null,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Handle general errors
       return ResponseHelper.CreateResponse(
         'Failed to create product',
         null,
@@ -219,140 +234,92 @@ export class ProductService {
     userId: bigint | null,
     productId: bigint,
   ): Promise<ApiResponse<ProductSummaryOutputDTO>> {
-    // Initialize default values
-    let productData: ProductSummaryResult | null = null;
-    let viewershipCount: ViewershipCountResult = 0;
-
-    const [productResult, viewerShipCountResult] = await Promise.allSettled([
-      this.repository.getProductSummary(userId, productId),
-      this.productAnalytics.getProductUniqueViewershipCount(productId),
-    ]);
-
-    // Handle product data result
-    if (productResult.status === 'fulfilled') {
-      productData = productResult.value;
-      if (!productData) {
-        console.warn(`Product with ID ${productId} not found.`);
-        throw new NotFoundException(`Product with ID ${productId} not found.`);
-      }
-    } else {
-      // Product data fetching failed
-      // TODO: This can be improved later on
-      console.error(
-        `Error fetching product summary for ID ${productId}:`,
-        productResult.reason,
-      );
-      // TODO: This can be improved later on
-      console.error(productResult.reason);
-      throw new InternalServerErrorException(
-        `There is an error while making a request`,
-      );
-    }
-
-    // Failure should not block the main product processing...
-    if (viewerShipCountResult.status === 'fulfilled') {
-      viewershipCount = viewerShipCountResult?.value?.data;
-    } else {
-      console.warn(
-        `Could not fetch viewership count for product ID ${productId}:`,
-        viewerShipCountResult.reason,
-      );
-    }
-
-    // 1. Calculate Average Rating
-    const totalRatings = productData.productReviews.reduce(
-      (sum: number, review: any) => sum + review.ratings,
-      0,
-    );
-
-    const averageRating =
-      productData.productReviews.length > 0
-        ? parseFloat(
-            (totalRatings / productData.productReviews.length).toFixed(1),
-          )
-        : 0;
-
-    // 2. Determine Price with Currency Symbol
-    const firstActiveItem = productData.productItems.find(
-      (item: any) => !item.is_deleted,
-    );
-    const price = firstActiveItem.price.toFixed(2);
-
-    // 3. Extract Unique Color Information
-    const uniqueColorsMap = new Map<
-      number,
-      {
-        id: number;
-        itemId: number;
-        name: string;
-        hexCode?: string;
-        price: number;
-        discount: number;
-        inStock: boolean;
-        isFavorite: boolean | null;
-      }
-    >();
-
-    productData.productItems.forEach((item: any, idx: number) => {
-      if (item.color) {
-        uniqueColorsMap.set(item.id, {
-          itemId: item.id,
-          id: item.color.id,
-          name: item.color.name,
-          hexCode: item.color.hex_code || '#000000',
-          price: item.price.toFixed(2),
-          discount: item.discount ? item.discount.toFixed(2) : 0,
-          inStock: item.quantity > 0,
-          isFavorite: item.productItemFavorite
-            ? !!item.productItemFavorite[idx]?.id
-            : null,
-        });
-      }
-    });
-
-    const colors = Array.from(uniqueColorsMap.values());
-
-    // 4. Extract Image Information
-    const uniqueImagesMap = new Map<string, ProductImageOutput>(); // Use img_url as key for uniqueness
-    productData.productItems.forEach((item: any) => {
-      item.image.forEach((img: any) => {
-        if (!uniqueImagesMap.has(img.img_url)) {
-          // Add only if URL is not already present
-          uniqueImagesMap.set(img.img_url, {
-            url: img.img_url,
-            altText: img.alt_text,
-            order: img.order,
-          });
-        }
+    try {
+      const product = await this.prisma.product.findFirst({
+        where: {
+          id: productId,
+          is_deleted: false,
+        },
+        include: {
+          model: true,
+          productImages: true,
+          currency: true,
+          productReviews: true,
+        },
       });
-    });
 
-    const images = Array.from(uniqueImagesMap.values());
+      if (!product) {
+        throw new NotFoundException(
+          new ApiResponse(HttpStatus.NOT_FOUND, 'Product not found', null),
+        );
+      }
 
-    // Construct the final output.
-    // Will adjust later if we can have mult-currency feature.
-    const summary: ProductSummaryOutputDTO = {
-      id: productData.id,
-      name: productData.name,
-      title: productData.title || null,
-      averageRating: averageRating,
-      price: price,
-      symbol: firstActiveItem.currency?.symbol || '$',
-      colors: colors,
-      images: images,
-      viewerShipCount: viewershipCount || 0,
-      model: productData.model,
-    };
+      const viewershipCountResponse =
+        await this.productAnalyticsService.getProductUniqueViewershipCount(
+          productId,
+        );
+      const viewershipCount = viewershipCountResponse.data || 0;
 
-    return ResponseHelper.CreateResponse<ProductSummaryOutputDTO>(
-      '',
-      summary,
-      HttpStatus.OK,
-    );
+      // 1. Calculate Average Rating
+      const totalRatings = product.productReviews.reduce(
+        (sum: number, review: any) => sum + review.rating,
+        0,
+      );
+
+      const averageRating =
+        product.productReviews.length > 0
+          ? parseFloat(
+              (totalRatings / product.productReviews.length).toFixed(1),
+            )
+          : 0;
+
+      // 2. Determine Price with Currency Symbol
+      const price = product?.sales_price.toFixed(2) || '0.00';
+
+      // 3. Extract Unique Color Information
+      // 4. Extract Image Information
+      const images = product.productImages.map((img) => ({
+        id: BigInt(img.id),
+        product_id: BigInt(product.id),
+        img_url: img.img_url,
+        altText: img.alt_text || '',
+        order: img.order,
+      }));
+
+      // Construct the final output.
+      const summary: ProductSummaryOutputDTO = {
+        id: product.id,
+        name: product.name,
+        title: product.title || product.name,
+        description: product.description,
+        currency_id: product.currency.id,
+        averageRating: averageRating,
+        sales_price: Number(price),
+        symbol: product.currency?.curr || '$',
+        images: images,
+        viewerShipCount: viewershipCount,
+        model: product.model,
+      };
+
+      return ResponseHelper.CreateResponse<ProductSummaryOutputDTO>(
+        '',
+        summary,
+        HttpStatus.OK,
+      );
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        new ApiResponse(
+          HttpStatus.INTERNAL_SERVER_ERROR,
+          'Failed to get product summary',
+          error,
+        ),
+      );
+    }
   }
 
-  // TODO: High Priority: Need to optimize this method in such a way only one request must be done on the DB side.
-  // TODO: Move queries into repository class
   async getProductListingFiltered(
     pageNumber: number,
     pageSize: number,
@@ -363,8 +330,7 @@ export class ProductService {
     select?: object,
     customCategoryExpression?: CustomFilter,
   ): Promise<ApiResponse<any[]>> {
-    let finalWhere: any;
-    finalWhere = {
+    let finalWhere: any = {
       product: {
         is_deleted: false,
         is_accessory: isAccessory,
@@ -376,33 +342,31 @@ export class ProductService {
     };
     let finalOrderBy: any = { ...order };
 
-    //TODO: Review Later
-
-    // // filter logic using tags
-    // if (customCategoryExpression) {
-    //   const tagName = CUSTOM_FILTER_TO_TAG[customCategoryExpression];
-    //   if (tagName) {
-    //     // Filter products that have the tag
-    //     finalWhere.product = {
-    //       ...finalWhere.product,
-    //       productTags: {
-    //         some: {
-    //           tags: {
-    //             name: tagName,
-    //           },
-    //         },
-    //       },
-    //     };
-    //   }
-    //   // For NEW_ARRIVAL, we may also want to filter by created_at (optional)
-    //   if (customCategoryExpression === CustomFilter.NEW_ARRIVAL) {
-    //     const newArrivalDays = 30; // or configurable
-    //     finalWhere.product.created_at = {
-    //       gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
-    //     };
-    //     finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
-    //   }
-    // }
+    // Filter logic using tags
+    if (customCategoryExpression) {
+      const tagName = CUSTOM_FILTER_TO_TAG[customCategoryExpression];
+      if (tagName) {
+        // Filter products that have the tag
+        finalWhere.product = {
+          ...finalWhere.product,
+          productTags: {
+            some: {
+              tags: {
+                name: tagName,
+              },
+            },
+          },
+        };
+      }
+      // For NEW_ARRIVAL, we may also want to filter by created_at (optional)
+      if (customCategoryExpression === CustomFilter.NEW_ARRIVAL) {
+        const newArrivalDays = 30; // or configurable
+        finalWhere.product.created_at = {
+          gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
+        };
+        finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
+      }
+    }
 
     // This ensures all necessary related data is fetched.
     const selectOptions: any = {
@@ -445,7 +409,7 @@ export class ProductService {
       },
     };
 
-    const response = await this.productItemService.getAllPagedData(
+    const response = await this.getAllPagedData(
       pageNumber,
       pageSize,
       finalOrderBy,
@@ -502,119 +466,182 @@ export class ProductService {
     order?: object,
     where?: object,
   ): Promise<ApiResponse<any[]>> {
-    // 🔹 Base filters
+    // Base filters
     const finalWhere: any = {
-      product: {
-        is_accessory: false,
-        is_deleted: false,
-      },
-      currency: {
-        is_deleted: false,
-      },
+      is_accessory: false,
+      is_deleted: false,
       ...where,
     };
 
-    // 🔹 Select options (fetching joined data)
-    const selectOptions: any = {
-      id: true,
-      base_image_url: true,
-      case_material: true,
-      original_box: true,
-      original_paper: true,
-      size: {
-        select: {
-          value: true,
-          widthUnit: true,
-          height: true,
-        },
-      },
-      movement: {
-        select: {
-          title: true,
-        },
-      },
-      product: {
+    // Select options (fetching joined data)
+    // Fetch paged data
+    const skip = (pageNumber - 1) * pageSize;
+    const [products, totalCount] = await Promise.all([
+      this.prisma.product.findMany({
+        where: finalWhere,
         select: {
           id: true,
           name: true,
           title: true,
+          description: true,
           year_of_production: true,
-          reference_number: true,
-        },
-      },
-      productItemFavorite: userId
-        ? {
+          product_slug: true,
+          sales_price: true,
+          currency: {
+            select: {
+              curr: true,
+            },
+          },
+          productImages: {
+            select: {
+              img_url: true,
+              alt_text: true,
+              order: true,
+            },
             where: {
-              user_id: userId,
               is_deleted: false,
             },
-            select: {
-              id: true,
+            orderBy: {
+              order: 'asc' as const,
             },
-          }
-        : false,
-    };
+            take: 1,
+          },
+          brand: {
+            select: {
+              title: true,
+            },
+          },
+          category: {
+            select: {
+              title: true,
+            },
+          },
+          model: {
+            select: {
+              title: true,
+            },
+          },
+          productFavorite: userId
+            ? {
+                where: {
+                  user_id: userId,
+                  is_deleted: false,
+                },
+                select: {
+                  id: true,
+                },
+              }
+            : undefined,
+        },
+        skip,
+        take: pageSize,
+        orderBy: order || { created_at: 'desc' },
+      }),
+      this.prisma.product.count({
+        where: finalWhere,
+      }),
+    ]);
 
-    // 🔹 Fetch paged data
-    const response = await this.productItemService.getAllPagedData(
-      pageNumber,
-      pageSize,
-      order,
-      finalWhere,
-      selectOptions,
-    );
-
-    if (!response.data || response.data?.length === 0) {
+    if (!products || products.length === 0) {
       throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
     }
 
-    // 🔹 Map into your expected response
-    const result = response.data.map(
-      (pv: {
-        id: bigint;
-        base_image_url: string;
-        case_material: string | null;
-        original_box: boolean;
-        original_paper: boolean;
-        productItemFavorite: any;
-        size: { value: number; widthUnit: string; height: number } | null;
-        movement: { title: string } | null;
-        product: {
-          id: bigint;
-          name: string;
-          title: string;
-          year_of_production: number;
-          reference_number: bigint;
-        };
-      }) => ({
-        itemId: pv.id,
-        productId: pv.product.id,
-        image: pv.base_image_url,
-        name: pv.product.name,
-        title: pv.product.title,
-        movement: pv.movement?.title ?? null,
-        yearOfProduction: pv.product.year_of_production,
-        referenceNumber: pv.product.reference_number,
-        location: 'Switzerland', // 🔹 Hardcoded
-        caseMaterial: pv.case_material,
-        condition: 'Pre-owned', // 🔹 Hardcoded
-        scope: {
-          box: pv.original_box,
-          paper: pv.original_paper,
-        },
-        caseDiameter: pv.size
-          ? `${pv.size.value}x${pv.size.height} ${pv.size.widthUnit}`
-          : null,
-        isFavorite: userId ? !!pv.productItemFavorite?.[0]?.id : null,
-      }),
+    // Map into expected response
+    const mappedProducts = products.map((p) => ({
+      id: p.id,
+      name: p.name,
+      title: p.title,
+      slug: p.product_slug,
+      price: p.sales_price.toFixed(2),
+      symb: p.currency?.curr || '$',
+      image_url: p.productImages[0]?.img_url,
+      isFavorite: userId
+        ? p.productFavorite && p.productFavorite.length > 0
+        : null,
+      brand: p.brand?.title,
+      category: p.category?.title,
+      model: p.model?.title,
+      yearOfProduction: p.year_of_production,
+    }));
+
+    // Return paginated response
+    const numberOfTotalPages = Math.ceil(totalCount / pageSize);
+    return ResponseHelper.CreateResponse<any[]>(
+      '',
+      mappedProducts,
+      HttpStatus.OK,
+      {
+        totalCount,
+        pageNumber,
+        pageSize,
+        numberOfTotalPages,
+      },
     );
 
-    const meta = response.getMeta ? response.getMeta() : {};
-    return ResponseHelper.CreateResponse<any[]>('', result, HttpStatus.OK, {
-      totalCount: (meta as any).totalCount ?? 0,
-      pageNumber: (meta as any).pageNumber ?? 1,
-      pageSize: (meta as any).pageSize ?? 0,
-      numberOfTotalPages: (meta as any).numberOfTotalPages ?? 1,
-    });
+    // Deleted duplicate response handling code
+  }
+
+  async calculateEstimatedPayoutAndCommission(
+    salesPrice: number,
+    calculate: 'commission' | 'payout',
+  ): Promise<number> {
+    try {
+      // Ensure input is number
+      const numSalesPrice = Number(salesPrice);
+
+      // Get commission % from global config
+      const config = await this.prisma.globalConfiguration.findUnique({
+        where: { key: 'PLATFORM_COMMISSION' },
+      });
+
+      if (!config) {
+        throw new InternalServerErrorException(
+          'Platform commission config not found',
+        );
+      }
+
+      const commissionPercentage = Number(config.value);
+      const commissionFee = (numSalesPrice * commissionPercentage) / 100;
+
+      if (calculate === 'commission') {
+        return commissionFee;
+      }
+
+      // Default: payout
+      return numSalesPrice - commissionFee;
+    } catch (error: any) {
+      throw new InternalServerErrorException(
+        'Error occurred while calculating estimated payout',
+        error,
+      );
+    }
+  }
+  async getAllPagedData(
+    pageNumber: number,
+    pageSize: number,
+    order?: object,
+    where?: object,
+    select?: object,
+    include?: object,
+  ): Promise<ApiResponse<any>> {
+    const { data, totalCount } = await this.productRepository.findManyPaginated(
+      pageNumber,
+      pageSize,
+      where,
+      select,
+      order,
+      include,
+    );
+    return ResponseHelper.CreateResponse<any>(
+      Constants.DATA_SUCCESS,
+      data,
+      HttpStatus.OK,
+      {
+        pageNumber,
+        pageSize,
+        totalCount,
+        numberOfTotalPages: Math.ceil(totalCount / pageSize),
+      },
+    );
   }
 }

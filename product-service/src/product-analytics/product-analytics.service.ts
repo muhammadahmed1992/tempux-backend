@@ -56,7 +56,7 @@ export class ProductAnalyticsService {
             id: productId,
           },
         },
-        productItem: {
+        product_item: {
           connect: {
             id: itemId,
           },
