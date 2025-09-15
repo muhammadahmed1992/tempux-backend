@@ -9,16 +9,16 @@ datasource db {
 
 // Movement types for watches/products
 model movement_type {
-  id          Int            @id @default(autoincrement())
-  name        String         @unique @db.VarChar(50)
-  description String         @db.VarChar(200)
-  created_at  DateTime       @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime?      @db.Timestamptz(6)
-  deleted_at  DateTime?      @db.Timestamptz(6)
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(50)
+  description String    @db.VarChar(200)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
   created_by  BigInt
   updated_by  BigInt?
   deleted_by  BigInt?
-  is_deleted  Boolean        @default(false)
+  is_deleted  Boolean   @default(false)
 
   // Relations
   product_items product_items[] @relation("ItemMovementType")
@@ -26,16 +26,16 @@ model movement_type {
 
 // Product inclusions/accessories
 model product_inclusion {
-  id          Int            @id @default(autoincrement())
-  name        String         @unique @db.VarChar(100)
-  description String         @db.VarChar(200)
-  created_at  DateTime       @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime?      @db.Timestamptz(6)
-  deleted_at  DateTime?      @db.Timestamptz(6)
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  description String    @db.VarChar(200)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
   created_by  BigInt
   updated_by  BigInt?
   deleted_by  BigInt?
-  is_deleted  Boolean        @default(false)
+  is_deleted  Boolean   @default(false)
 
   // Relations
   product_items product_items[] @relation("ItemInclusions")
@@ -266,15 +266,15 @@ model attribute_value_mapping {
 }
 
 model watch_inclusions {
-  id          Int       @id @default(autoincrement())
-  title       String    @unique @db.VarChar(100)
-  created_at  DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @db.Timestamptz(6)
-  deleted_at  DateTime? @db.Timestamptz(6)
-  created_by  BigInt
-  updated_by  BigInt?
-  deleted_by  BigInt?
-  is_deleted  Boolean   @default(false)
+  id         Int       @id @default(autoincrement())
+  title      String    @unique @db.VarChar(100)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
 
   @@map("watch_inclusions")
 }
@@ -444,25 +444,28 @@ model product {
 }
 
 model product_images {
-  id          Int       @id @default(autoincrement())
-  img_url     String    @db.VarChar(2000)
-  alt_text    String?   @db.VarChar(500)
-  order       Int       @default(0)
-  type        String    @db.VarChar(50) // e.g. "listing", "ownership", "accessory"
+  id            Int     @id @default(autoincrement())
+  img_url       String  @db.VarChar(2000)
+  alt_text      String? @db.VarChar(500)
+  order         Int     @default(0)
+  type          String  @db.VarChar(50) // e.g. "listing", "ownership", "sign-of-wear"
+  image_type    String  @db.VarChar(50) // e.g. "thumbnail", "gallery", "detail"
+  file_size     Int // in bytes
+  mime_type     String  @db.VarChar(100)
+  original_name String  @db.VarChar(255)
 
-  product_id  BigInt?
+  product_id BigInt?
 
-  created_at  DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime? @db.Timestamptz(6)
-  deleted_at  DateTime? @db.Timestamptz(6)
-  created_by  BigInt
-  updated_by  BigInt?
-  deleted_by  BigInt?
-  is_deleted  Boolean   @default(false)
-  product     product?  @relation("itemImages", fields: [product_id], references: [id])
-  item        product_items[] @relation("itemImages")
+  created_at DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at DateTime?       @db.Timestamptz(6)
+  deleted_at DateTime?       @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean         @default(false)
+  product    product?        @relation("itemImages", fields: [product_id], references: [id])
+  item       product_items[] @relation("itemImages")
 }
-
 
 model product_items {
   id                                 BigInt                                  @id @default(autoincrement())
@@ -472,9 +475,9 @@ model product_items {
   bracelet_color_id                  Int
   dial_color_id                      Int
   size_id                            Int
-  movement_id                        BigInt?   // Made nullable since we're adding movement_type_id
-  movement_type_id                   Int?      // New field for movement types
-  inclusion_id                       Int?      // New field for inclusions
+  movement_id                        BigInt? // Made nullable since we're adding movement_type_id
+  movement_type_id                   Int? // New field for movement types
+  inclusion_id                       Int? // New field for inclusions
   price                              Decimal                                 @db.Decimal(10, 2)
   cost_price                         Decimal                                 @db.Decimal(10, 2)
   quantity                           Int                                     @default(0)
@@ -486,10 +489,10 @@ model product_items {
   approximation                      Boolean                                 @default(false)
   buyer_confidence_boost_description String?                                 @db.VarChar(5000)
   unknown                            Boolean                                 @default(false)
-  has_original_box_and_papers        Boolean   @default(false)              // Updated fields for better clarity
-  has_original_box                   Boolean   @default(false)
-  has_original_papers                Boolean   @default(false)
-  has_additional_accessories         Boolean   @default(false)
+  has_original_box_and_papers        Boolean                                 @default(false) // Updated fields for better clarity
+  has_original_box                   Boolean                                 @default(false)
+  has_original_papers                Boolean                                 @default(false)
+  has_additional_accessories         Boolean                                 @default(false)
   crystal_id                         Int?
   case_material_id                   Int?
   bracelet_material_id               Int?
@@ -534,8 +537,8 @@ model product_items {
   complication                       complications?                          @relation(fields: [complication_id], references: [id])
 
   // New relations for movements and inclusions
-  movement_type                      movement_type?                         @relation("ItemMovementType", fields: [movement_type_id], references: [id])
-  product_inclusion                  product_inclusion?                     @relation("ItemInclusions", fields: [inclusion_id], references: [id])
+  movement_type     movement_type?     @relation("ItemMovementType", fields: [movement_type_id], references: [id])
+  product_inclusion product_inclusion? @relation("ItemInclusions", fields: [inclusion_id], references: [id])
 }
 
 model availability {
