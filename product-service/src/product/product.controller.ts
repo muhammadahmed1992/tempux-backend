@@ -10,7 +10,11 @@ import {
   Post,
   Query,
   Req,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ProductService } from '@Product/product.service';
 import { FavoriteService } from '@Favorite/favorite.service';
@@ -27,6 +31,9 @@ import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import { ProductItemService } from '@ProductItem/product-item.service';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
 import { CreateProductDto } from '@DTO/product.dto';
+import { ImageType } from 'src/image-upload/constants/image-configs';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { ImageUploadDto } from '@DTO/image-upload.dto';
 
 @Controller()
 export class ProductController {
@@ -153,13 +160,38 @@ export class ProductController {
   }
 
   @Post('create')
+  @UseInterceptors(FilesInterceptor('images', 10)) // Max 10 images
   @UseGuards(HeaderAuthGuard)
-  async create(
-    @Body() dto: CreateProductDto,
-    @Req() req: any,
-    @UserId() userId: bigint,
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async createProduct(
+    @Body() createProductDto: CreateProductDto,
+    @UploadedFiles() imageFiles: Express.Multer.File[],
+    @UserId() userId?: bigint,
   ) {
-    return this.productService.createProduct(dto, userId);
+    userId = userId ?? 1n;
+
+    // Parse alt texts if provided
+    let altTexts: string[] | undefined;
+    if (createProductDto.altTexts) {
+      try {
+        altTexts = typeof createProductDto.altTexts === 'string'
+          ? JSON.parse(createProductDto.altTexts)
+          : createProductDto.altTexts;
+      } catch (error) {
+        throw new BadRequestException('Invalid altTexts format. Expected JSON array.');
+      }
+    }
+
+    // Create image upload DTO if images are provided
+    let imageUploadDto: ImageUploadDto | undefined;
+    if (imageFiles && imageFiles.length > 0) {
+      imageUploadDto = new ImageUploadDto();
+      // Will be set after product creation
+      imageUploadDto.imageType = createProductDto.imageType as ImageType;
+      imageUploadDto.altTexts = altTexts;
+    }
+
+    return this.productService.createProduct(createProductDto, userId, imageFiles, imageUploadDto);
   }
 
   @Post('favorite/:id/:itemId')

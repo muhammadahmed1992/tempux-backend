@@ -1874,7 +1874,13 @@ export default class SeedHelper {
             data: {
               img_url: `https://picsum.photos/800/600?random=${product.id}-${j}`,
               alt_text: `${product.name} - Image ${j + 1}`,
-              type: j === 0 ? 'PRIMARY' : 'GALLERY',
+              type:
+                j === 0 ? 'ownership' : j === 1 ? 'gallery' : 'sign-of-wear',
+              image_type:
+                j === 0 ? 'thumbnail' : j === 1 ? 'gallery' : 'detail',
+              original_name: `image-${product.id}-${j}.jpg`,
+              mime_type: 'image/jpeg',
+              file_size: getRandomInt(50000, 200000), // in bytes
               product_id: product.id,
               order: j + 1,
               created_by: creatorId,

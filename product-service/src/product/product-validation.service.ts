@@ -1,15 +1,11 @@
-// product-validation.service.ts - Optimized with Batch Operations
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
-  InternalServerErrorException,
-  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { SlugService } from 'src/slug/slug.service';
-import { AttributeDto } from '@DTO/product.dto';
+import { AttributeDto, ProductDto } from '@DTO/product.dto';
 
 // Define types for better type safety
 interface ProcessedAttributeValue {
@@ -54,7 +50,7 @@ export class ProductValidationService {
 
   async validateForPublish(
     tx: Prisma.TransactionClient,
-    productInfo: any,
+    productInfo: ProductDto,
     attributesDto: AttributeDto[],
     userId: bigint,
   ): Promise<void> {
@@ -67,15 +63,9 @@ export class ProductValidationService {
     // 1. Gender handling for accessories
     const productGender = productInfo.is_accessory ? 3 : productInfo.gender_id;
 
-    // 2. Generate slug
-    const slugContent =
-      productInfo.name +
-      ' ' +
-      (productInfo.is_accessory ? 'accessory' : 'watch') +
-      ' ' +
-      productGender;
-
-    productInfo.generatedSlug = this.slugService.generateSlug(slugContent);
+    console.log(
+      'attributes', attributesDto
+    );
 
     // 3. Validate category mappings
     const mappings = await tx.attribute_category_mapping.findMany({

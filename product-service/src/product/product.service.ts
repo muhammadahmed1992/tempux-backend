@@ -9,7 +9,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateProductDto } from '@DTO/product.dto';
+import { AttributeDto, CreateProductDto } from '@DTO/product.dto';
 import { Prisma, product, PrismaClient } from '@prisma/client';
 import { SlugService } from 'src/slug/slug.service';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -20,6 +20,8 @@ import { ProductSummaryOutputDTO } from '@DTO/product-summary.info.dto';
 import { ProductRepository } from './product.repository';
 import { ProductValidationService } from './product-validation.service';
 import { ProductAttributesService } from 'src/product-attributes/product-attributes.service';
+import { ImageUploadService } from 'src/image-upload/image-upload.service';
+import { ImageUploadDto } from '@DTO/image-upload.dto';
 
 interface ProductSummaryResult {
   id: bigint;
@@ -94,14 +96,21 @@ export class ProductService {
     private readonly prisma: PrismaService,
     private readonly productValidationService: ProductValidationService,
     private readonly productAttributeService: ProductAttributesService,
+    private readonly imageUploadService: ImageUploadService,
   ) {}
 
-  async createProduct(dto: CreateProductDto, userId: bigint) {
+  // 3. Updated createProduct method with image handling
+  async createProduct(
+    dto: CreateProductDto,
+    userId: bigint,
+    imageFiles?: Express.Multer.File[],
+    imageUploadDto?: ImageUploadDto
+  ) {
     try {
       const productInfo = dto.product;
 
       return this.prisma.$transaction(async (tx) => {
-        // Batch validate all at once -  optimized batch operations internally
+        // Existing validation
         await this.productValidationService.validateForPublish(
           tx,
           productInfo,
@@ -114,7 +123,7 @@ export class ProductService {
           userId,
         );
 
-        // Generate slug and other product info
+        // Generate slug and calculate pricing (existing code)
         const productGender = productInfo.is_accessory
           ? 3
           : productInfo.gender_id;
@@ -126,7 +135,6 @@ export class ProductService {
           productGender;
         const generatedSlug = this.slugService.generateSlug(slugContent);
 
-        // Batch calculate commission and payout in parallel
         const [commissionFee, payoutPrice] = await Promise.all([
           this.calculateEstimatedPayoutAndCommission(
             productInfo.sales_price,
@@ -159,7 +167,7 @@ export class ProductService {
           },
         });
 
-        // Batch attribute update
+        // Handle attributes
         const updatedAttributes =
           await this.productAttributeService.updateProductAttributes(
             tx,
@@ -168,9 +176,34 @@ export class ProductService {
             userId,
           );
 
-        console.log('Updated attributes:', updatedAttributes);
+        // Handle image uploads if provided
+        let imageUploadResult = null;
+        if (imageFiles && imageFiles.length > 0 && imageUploadDto) {
+          try {
+            // Set the product_id in the DTO now that we have it
+            imageUploadDto.product_id = Number(newProduct.id);
 
-        // Emit product created event (non-blocking)
+            imageUploadResult =
+              await this.imageUploadService.uploadProductImages(
+                newProduct.id,
+                imageUploadDto.imageType,
+                imageFiles,
+                imageUploadDto.altTexts,
+                userId,
+                tx,
+              );
+          } catch (imageError: any) {
+            console.error('Image upload error:', imageError);
+            imageUploadResult = {
+              processedImages: 0,
+              skippedImages: imageFiles.length,
+              errors: [`Image upload failed: ${imageError.message}`],
+              imageIds: [],
+            };
+          }
+        }
+
+        // Emit product created event
         setImmediate(() => {
           this.eventEmitter.emit(
             'product.created',
@@ -183,6 +216,7 @@ export class ProductService {
           {
             product: newProduct,
             attributesSummary: updatedAttributes,
+            imageUpload: imageUploadResult,
           },
           HttpStatus.CREATED,
         );
@@ -216,7 +250,6 @@ export class ProductService {
         );
       }
 
-      // Handle general errors
       return ResponseHelper.CreateResponse(
         'Failed to create product',
         null,

@@ -18,7 +18,7 @@ export class ImageUploadService {
     files: Express.Multer.File[],
     altTexts?: string[],
     userId?: bigint,
-    transaction?: any, // Prisma transaction
+    transaction?: any,
   ): Promise<UploadJobResult> {
     const result: UploadJobResult = {
       processedImages: 0,
@@ -62,7 +62,7 @@ export class ImageUploadService {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        let tempFilePath: string | null = file.path; // Store original temp path for cleanup
+        let tempFilePath: string | null = file.path; // Storing original temp path for cleanup
 
         try {
           // With diskStorage, file.path contains the temporary file location

@@ -19,7 +19,7 @@ export class ImageUploadDto {
 
   @IsEnum(ALLOWED_IMAGE_TYPES)
   @IsNotEmpty()
-  imageType!: string;
+  imageType: ImageType = ALLOWED_IMAGE_TYPES.PRODUCT_IMAGE;
 
   @IsOptional()
   @IsArray()
