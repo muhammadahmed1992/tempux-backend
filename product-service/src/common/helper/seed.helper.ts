@@ -61,7 +61,7 @@ const predefinedCategories = [
   'Link/Bar',
   'Other',
   'Watch Winders',
-  'Glass/ Crystal',
+  'Glass/Crystal',
   'Tools',
 ];
 
@@ -1174,7 +1174,7 @@ export default class SeedHelper {
         category: 'Watch',
         attribute: 'inclusions',
         data_type: 'lookup',
-        mandatory: true,
+        mandatory: false,
       },
       {
         category: 'Watch',
@@ -1187,36 +1187,36 @@ export default class SeedHelper {
       {
         category: 'Bracelet/Strap',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
-      },
-      {
-        category: 'Bracelet/Strap',
-        attribute: 'clasp_type',
-        data_type: 'string',
-        mandatory: true,
-      },
-      {
-        category: 'Bracelet/Strap',
-        attribute: 'clasp_material',
-        data_type: 'string',
-        mandatory: true,
-      },
-      {
-        category: 'Bracelet/Strap',
-        attribute: 'lug_width',
-        data_type: 'number',
-        mandatory: true,
-      },
-      {
-        category: 'Bracelet/Strap',
-        attribute: 'bracelet_length_long_side',
         data_type: 'number',
         mandatory: false,
       },
       {
         category: 'Bracelet/Strap',
-        attribute: 'braclet_length_short_side',
+        attribute: 'lug_width',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'buckle_width',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'buckle_length_long_side',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'buckle_length_short_side',
         data_type: 'number',
         mandatory: false,
       },
@@ -1226,54 +1226,30 @@ export default class SeedHelper {
         data_type: 'number',
         mandatory: false,
       },
-      {
-        category: 'Bracelet/Strap',
-        attribute: 'condition',
-        data_type: 'string',
-        mandatory: true,
-      },
 
       // Case
       {
         category: 'Case',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'number',
+        mandatory: false,
       },
       {
         category: 'Case',
         attribute: 'case_diameter',
-        data_type: 'number',
-        mandatory: true,
-      },
-      {
-        category: 'Case',
-        attribute: 'case_thickness',
-        data_type: 'number',
-        mandatory: false,
-      },
-      {
-        category: 'Case',
-        attribute: 'crystal_type',
         data_type: 'string',
-        mandatory: true,
-      },
-      {
-        category: 'Case',
-        attribute: 'water_resistance',
-        data_type: 'number',
         mandatory: false,
       },
       {
         category: 'Case',
-        attribute: 'weight',
-        data_type: 'number',
+        attribute: 'case_material',
+        data_type: 'lookup',
         mandatory: false,
       },
       {
         category: 'Case',
         attribute: 'condition',
-        data_type: 'string',
+        data_type: 'lookup',
         mandatory: true,
       },
 
@@ -1281,25 +1257,25 @@ export default class SeedHelper {
       {
         category: 'Bezel',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
-      },
-      {
-        category: 'Bezel',
-        attribute: 'bezel_material',
-        data_type: 'string',
-        mandatory: true,
-      },
-      {
-        category: 'Bezel',
-        attribute: 'case_diameter',
         data_type: 'number',
         mandatory: false,
       },
       {
         category: 'Bezel',
-        attribute: 'condition',
+        attribute: 'bezel_material',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Bezel',
+        attribute: 'case_diameter',
         data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Bezel',
+        attribute: 'condition',
+        data_type: 'lookup',
         mandatory: true,
       },
 
@@ -1307,20 +1283,20 @@ export default class SeedHelper {
       {
         category: 'Buckle',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'number',
+        mandatory: false,
       },
       {
         category: 'Buckle',
         attribute: 'clasp_type',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'lookup',
+        mandatory: false,
       },
       {
         category: 'Buckle',
         attribute: 'clasp_material',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'lookup',
+        mandatory: false,
       },
       {
         category: 'Buckle',
@@ -1330,8 +1306,14 @@ export default class SeedHelper {
       },
       {
         category: 'Buckle',
+        attribute: 'lug_width',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Buckle',
         attribute: 'condition',
-        data_type: 'string',
+        data_type: 'lookup',
         mandatory: true,
       },
 
@@ -1339,19 +1321,13 @@ export default class SeedHelper {
       {
         category: 'Box',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
-      },
-      {
-        category: 'Box',
-        attribute: 'inclusions',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'number',
+        mandatory: false,
       },
       {
         category: 'Box',
         attribute: 'condition',
-        data_type: 'string',
+        data_type: 'lookup',
         mandatory: true,
       },
 
@@ -1359,19 +1335,25 @@ export default class SeedHelper {
       {
         category: 'Dial',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'number',
+        mandatory: false,
       },
       {
         category: 'Dial',
         attribute: 'dial_color',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Dial',
+        attribute: 'case_diameter',
+        data_type: 'number',
+        mandatory: false,
       },
       {
         category: 'Dial',
         attribute: 'condition',
-        data_type: 'string',
+        data_type: 'lookup',
         mandatory: true,
       },
 
@@ -1379,19 +1361,31 @@ export default class SeedHelper {
       {
         category: 'Movement (Complete)',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'number',
+        mandatory: false,
       },
       {
         category: 'Movement (Complete)',
         attribute: 'movement',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'caliber_movement',
         data_type: 'string',
-        mandatory: true,
+        mandatory: false,
       },
       {
         category: 'Movement (Complete)',
         attribute: 'base_caliber',
         data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'power_reserve',
+        data_type: 'number',
         mandatory: false,
       },
       {
@@ -1409,7 +1403,7 @@ export default class SeedHelper {
       {
         category: 'Movement (Complete)',
         attribute: 'condition',
-        data_type: 'string',
+        data_type: 'lookup',
         mandatory: true,
       },
 
@@ -1417,25 +1411,31 @@ export default class SeedHelper {
       {
         category: 'Movement (Parts)',
         attribute: 'reference_number',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'number',
+        mandatory: false,
       },
       {
         category: 'Movement (Parts)',
         attribute: 'movement',
-        data_type: 'string',
-        mandatory: true,
+        data_type: 'lookup',
+        mandatory: false,
       },
       {
         category: 'Movement (Parts)',
-        attribute: 'base_caliber',
+        attribute: 'caliber_movement',
         data_type: 'string',
         mandatory: false,
       },
       {
         category: 'Movement (Parts)',
-        attribute: 'frequency',
+        attribute: 'power_reserve',
         data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Parts)',
+        attribute: 'base_caliber',
+        data_type: 'string',
         mandatory: false,
       },
       {
@@ -1447,9 +1447,119 @@ export default class SeedHelper {
       {
         category: 'Movement (Parts)',
         attribute: 'condition',
-        data_type: 'string',
+        data_type: 'lookup',
         mandatory: true,
       },
+      // Crown Pusher
+      {
+        category: 'Crown/Pusher',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Crown/Pusher',
+        attribute: 'caliber_movement',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Crown/Pusher',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Glass/Crystal
+      {
+        category: 'Glass/Crystal',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Glass/Crystal',
+        attribute: 'crystal_type',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Glass/Crystal',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Hands
+      {
+        category: 'Hands',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Hands',
+        attribute: 'caliber_movement',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Hands',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Link/Bar
+      {
+        category: 'Link/Bar',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Link/Bar',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Books/Calendar
+      {
+        category: 'Books/Calendar',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Cleaning
+      {
+        category: 'Cleaning',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Other
+      {
+        category: 'Other',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Watch Winders
+      {
+        category: 'Watch Winders',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Tools
+      {
+        category: 'Tools',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
     ];
 
     for (const mapping of mappings) {
@@ -1595,9 +1705,8 @@ export default class SeedHelper {
         const product = await tx.product.create({
           data: {
             name: productName,
-            description: `Discover the exquisite ${productName}. This premium ${category.title.toLowerCase()} from ${
-              brand.title
-            } embodies precision engineering and timeless design.`,
+            description: `Discover the exquisite ${productName}. This premium ${category.title.toLowerCase()} from ${brand.title
+              } embodies precision engineering and timeless design.`,
             title: `${productName} | ${brand.title} Official Store`,
             brand_id: brand.id,
             category_id: category.id,
@@ -1722,7 +1831,7 @@ export default class SeedHelper {
                 { length: 4 },
                 () =>
                   'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[
-                    Math.floor(Math.random() * 36)
+                  Math.floor(Math.random() * 36)
                   ],
               ).join('')}`;
               break;
@@ -1796,6 +1905,23 @@ export default class SeedHelper {
                 lookupId = selectedCondition.id;
               }
               break;
+            case 'movement':
+              if (movementType) {
+                value = movementType.name;
+                lookupName = 'movement_type';
+                lookupId = movementType.id;
+              }
+              break;
+
+            case 'inclusions':
+              const inclusion = getRandomElement(productInclusions);
+              if (inclusion) {
+                value = inclusion.name;
+                lookupName = 'product_inclusion';
+                lookupId = inclusion.id;
+              }
+              break;
+
           }
 
           if (value !== null) {
@@ -1809,9 +1935,19 @@ export default class SeedHelper {
                 attributeValue.string_value = value.toString();
                 break;
               case 'number':
-                attributeValue.number_value = new Decimal(
-                  typeof value === 'number' ? value : parseFloat(value),
-                );
+                try {
+                  const numValue = typeof value === 'number' ? value : parseFloat(value);
+                  // Check if the value is a valid number before creating a Decimal
+                  if (!isNaN(numValue)) {
+                    attributeValue.number_value = new Decimal(numValue);
+                  } else {
+                    // Use a default value if the parsed value is NaN
+                    attributeValue.number_value = new Decimal(0);
+                  }
+                } catch (error) {
+                  // Fallback to a default value if conversion fails
+                  attributeValue.number_value = new Decimal(0);
+                }
                 break;
               case 'boolean':
                 attributeValue.boolean_value =
