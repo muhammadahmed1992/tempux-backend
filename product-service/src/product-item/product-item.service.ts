@@ -2,7 +2,7 @@ import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import ApiResponse from '@Helper/api-response';
 import ResponseHelper from '@Helper/response-helper';
 import Constants from '@Helper/constants';
-import { ProductVariantRepository } from './product-variant.repository';
+import { ProductItemRepository } from './product-item.repository';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 import {
   TaxLineItemDTO,
@@ -10,8 +10,8 @@ import {
   OrderSummaryDTO,
 } from '@DTO/order-summary-response.dto';
 @Injectable()
-export class ProductVariantService {
-  constructor(private readonly repository: ProductVariantRepository) {}
+export class ProductItemService {
+  constructor(private readonly repository: ProductItemRepository) {}
   async getAllPagedData(
     pageNumber: number,
     pageSize: number,
@@ -42,26 +42,26 @@ export class ProductVariantService {
   }
 
   /**
-   * @param productId Parent productId for specific product variant
-   * @param product_variant_Id specific variant id which is going to check
+   * @param productId Parent productId for specific product item
+   * @param product_items_Id specific item id which is going to check
    * @param quantity Total.no.of quantity to be check if exists in stock/inventory
-   * @returns bolean. Return true/false depending upon the existance of the product & variant for particular quantity
+   * @returns bolean. Return true/false depending upon the existance of the product & item for particular quantity
    */
   async checkIfStockAvailable(
     productId: bigint,
-    product_variant_Id: bigint,
+    product_items_Id: bigint,
     quantity: number,
   ): Promise<boolean> {
     return this.repository.checkIfStockAvailable(
       productId,
-      product_variant_Id,
+      product_items_Id,
       quantity,
     );
   }
 
   /**
    * This method prepares the order summary for the selected product(s) on the cart. Basically it just calculate total price, discount, taxes where applicable and shipping cost if any.
-   * @param summary The request dto object which contains selected productId, variantId and the quantity
+   * @param summary The request dto object which contains selected productId, itemId and the quantity
    * @returns Promise<ApiResponse<OrderSummaryDTO>>
    */
   async getOrderSummary(
@@ -72,18 +72,16 @@ export class ProductVariantService {
         "Cart is empty. Summary can't be calculated",
       );
 
-    const uniqueVariantIds = cartItems.map((i) => i.itemId);
-    const variantsInfo = await this.repository.getProductVariantsWithTax(
-      uniqueVariantIds,
+    const uniqueItemIds = cartItems.map((i) => i.itemId);
+    const itemsInfo = await this.repository.getProductItemsWithTax(
+      uniqueItemIds,
     );
 
-    if (variantsInfo.length !== uniqueVariantIds.length) {
-      throw new BadRequestException('One or more product variants not found.');
+    if (itemsInfo.length !== uniqueItemIds.length) {
+      throw new BadRequestException('One or more product items not found.');
     }
 
-    const variantMap = new Map(
-      variantsInfo.map((variant) => [variant.id, variant]),
-    );
+    const itemMap = new Map(itemsInfo.map((item) => [item.id, item]));
     const cartItemMap = new Map(
       cartItems.map((item) => [BigInt(item.itemId), item]),
     );
@@ -91,11 +89,11 @@ export class ProductVariantService {
     // TODO: Later will move inside a stored procedure probably
     // Inventory Check
     let inventoryValidation = [];
-    for (const variant of variantsInfo) {
-      const requestedItem = cartItemMap.get(variant.id);
-      if (requestedItem!.quantity > variant.quantity)
+    for (const item of itemsInfo) {
+      const requestedItem = cartItemMap.get(item.id);
+      if (requestedItem!.quantity > item.quantity)
         inventoryValidation.push(
-          `Only stocks of ${variant.quantity} is available for ${variant.id}`,
+          `Only stocks of ${item.quantity} is available for ${item.id}`,
         );
     }
     if (inventoryValidation.length) {
@@ -108,14 +106,14 @@ export class ProductVariantService {
     const summaryItems: OrderSummaryItemDTO[] = [];
 
     for (const cartItem of cartItems) {
-      const variant = variantMap.get(cartItem.itemId)!;
-      const currency = variant.currency;
+      const item = itemMap.get(cartItem.itemId)!;
+      const currency = item.currency;
       const currencyRate = currency?.exchangeRate?.toFixed(2) || 1;
-      const price = variant.price.toFixed(2) * currencyRate;
-      const discount = variant.discount.toFixed(2) * currencyRate;
+      const price = item.price.toFixed(2) * currencyRate;
+      const discount = item.discount.toFixed(2) * currencyRate;
 
-      const taxRate = variant.tax?.taxRate.toFixed(2) || 0 * currencyRate;
-      const taxName = variant.tax?.description || 'N/A';
+      const taxRate = item.tax?.taxRate.toFixed(2) || 0 * currencyRate;
+      const taxName = item.tax?.description || 'N/A';
 
       const itemSubtotal = (price - discount) * cartItem.quantity;
       const itemTaxAmount = itemSubtotal * taxRate;
@@ -130,7 +128,7 @@ export class ProductVariantService {
       summaryItems.push({
         symb: currency?.curr || '$',
         productId: cartItem.productId,
-        itemId: variant.id,
+        itemId: item.id,
         quantity: cartItem.quantity,
         price: price,
         discount: discount,

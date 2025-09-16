@@ -1,7 +1,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { HashidsService } from '../../hash-ids/hashids.service'; // Adjust path if necessary
-import { SlugService } from '../../slug/slug.service'; // Adjust path if necessary
+import { HashidsService } from '../../hash-ids/hashids.service';
+import { SlugService } from '../../slug/slug.service';
 import { ConfigService } from '@nestjs/config';
 import { GlobalConfigKeys } from '../../common/enums/global-config-keys';
 import { AppLoggerService } from '@Common/logging';
@@ -18,110 +18,195 @@ function getRandomInt(min: number, max: number): number {
 }
 
 function generateSerialNumber(): string {
-  // Simple serial number generation (e.g., ABC-123456)
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const randomChars = Array.from(
-    { length: 3 },
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from(
+    { length: 12 },
     () => chars[Math.floor(Math.random() * chars.length)],
   ).join('');
-  const randomNumbers = String(Math.floor(Math.random() * 1000000)).padStart(
-    6,
-    '0',
-  );
-  return `${randomChars}-${randomNumbers}`;
 }
 
-function generateReferenceNumber(): number {
-  // Simple 6-digit reference number, ensures it's a number
-  return getRandomInt(100000, 999999);
+function generateReferenceNumber(): string {
+  const prefixes = ['REF-', 'WR-', 'MT-', 'CL-', 'DX-'];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const alphanumeric = Array.from(
+    { length: 6 },
+    () =>
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)],
+  ).join('');
+  return `${prefix}${alphanumeric}`;
 }
 
-// --- SKU Specific Helper Functions ---
+function generateSku(): string {
+  return Array.from(
+    { length: 10 },
+    () =>
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)],
+  ).join('');
+}
 
-const getBrandCode = (brandTitle: string): string => {
-  // Take first 3 letters, uppercase
-  return brandTitle.substring(0, 3).toUpperCase();
-};
+// Predefined data for seeding
+const predefinedCategories = [
+  'Watch',
+  'Bracelet/Strap',
+  'Case',
+  'Bezel',
+  'Buckle',
+  'Books/Calendar',
+  'Box',
+  'Crown/Pusher',
+  'Cleaning',
+  'Dial',
+  'Hand(s)',
+  'Movement (Complete)',
+  'Movement (Parts)',
+  'Link/Bar',
+  'Other',
+  'Watch Winders',
+  'Glass/Crystal',
+  'Tools',
+];
 
-const getCategoryCode = (categoryTitle: string): string => {
-  // Map common categories to 3-letter codes
-  const upperCaseCategory = categoryTitle.toUpperCase();
-  if (upperCaseCategory.includes('DIVE')) return 'DVR';
-  if (upperCaseCategory.includes('PILOT')) return 'PLT';
-  if (upperCaseCategory.includes('CHRONOGRAPH')) return 'CHN';
-  if (upperCaseCategory.includes('DRESS')) return 'DRS';
-  if (upperCaseCategory.includes('SMARTWATCH')) return 'SMW';
-  if (upperCaseCategory.includes('FIELD')) return 'FLD';
-  if (upperCaseCategory.includes('LUXURY')) return 'LUX';
-  if (upperCaseCategory.includes('DIGITAL')) return 'DGT';
-  return 'GEN'; // Generic fallback if no specific match
-};
+const predefinedAttributes = [
+  'reference_number',
+  'serial_number',
+  'caliber_movement',
+  'clasp_type',
+  'functions',
+  'crystal_type',
+  'dial_color',
+  'clasp_material',
+  'bezel_material',
+  'case_diameter',
+  'lug_width',
+  'water_resistance',
+  'power_reserve',
+  'case_thickness',
+  'weight',
+  'condition',
+  'inclusions',
+  'buckle_width',
+  'bracelet_length_long_side',
+  'braclet_length_short_side',
+  'bracelet_thickness',
+  'movement',
+  'base_caliber',
+  'frequency',
+  'number_of_jewels',
+];
 
-const getColorCode = (colorName: string): string => {
-  // Map common colors to 2-letter codes
-  const lowerCaseColor = colorName.toLowerCase();
-  if (lowerCaseColor.includes('stainless steel')) return 'SS';
-  if (lowerCaseColor.includes('black')) return 'BK';
-  if (lowerCaseColor.includes('white')) return 'WH';
-  if (lowerCaseColor.includes('gold')) return 'GD'; // Covers Yellow Gold, Rose Gold, White Gold
-  if (lowerCaseColor.includes('silver')) return 'SV';
-  if (lowerCaseColor.includes('blue')) return 'BL';
-  if (lowerCaseColor.includes('green')) return 'GR';
-  if (lowerCaseColor.includes('red')) return 'RD';
-  if (lowerCaseColor.includes('brown')) return 'BR';
-  if (lowerCaseColor.includes('ceramic')) return 'CE';
-  if (lowerCaseColor.includes('titanium')) return 'TI';
-  if (lowerCaseColor.includes('bronze')) return 'BZ';
-  return 'OT'; // Other/Unknown
-};
+const attributeCategoryMappings = [
+  {
+    category: 'Watch',
+    attributes: [
+      'serial_number',
+      'caliber_movement',
+      'dial_color',
+      'case_diameter',
+    ],
+  },
+  {
+    category: 'Bracelet/Strap',
+    attributes: ['reference_number', 'lug_width', 'condition'],
+  },
+  {
+    category: 'Case',
+    attributes: ['reference_number', 'case_diameter', 'condition'],
+  },
+  {
+    category: 'Bezel',
+    attributes: [
+      'reference_number',
+      'bezel_material',
+      'case_diameter',
+      'condition',
+    ],
+  },
+  {
+    category: 'Buckle',
+    attributes: [
+      'reference_number',
+      'clasp_type',
+      'clasp_material',
+      'lug_width',
+    ],
+  },
+  {
+    category: 'Box',
+    attributes: ['reference_number'],
+  },
+  {
+    category: 'Crown/Pusher',
+    attributes: ['reference_number', 'caliber_movement'],
+  },
+  {
+    category: 'Dial',
+    attributes: ['dial_color', 'case_diameter'],
+  },
+  {
+    category: 'Hand(s)',
+    attributes: ['reference_number', 'caliber_movement'],
+  },
+  {
+    category: 'Movement (Complete)',
+    attributes: ['reference_number', 'caliber_movement', 'power_reserve'],
+  },
+  {
+    category: 'Movement (Parts)',
+    attributes: ['reference_number', 'caliber_movement', 'power_reserve'],
+  },
+];
 
-const getSizeCode = (sizeValue: number): string => {
-  // Converts a number (e.g., 40, 42.5) to a 2-character string.
-  // For simplicity and 2-char limit, we'll round and take last two digits.
-  // If sizes are always integers (e.g., 38, 40, 42, 44), this is fine.
-  // For 42.5, it will become '43'. If precision is needed, a 3-char code might be required.
-  const roundedSize = Math.round(sizeValue);
-  return String(roundedSize).padStart(2, '0').slice(-2); // Ensure 2 digits (e.g., "08", "42")
-};
+const predefinedMovements = [
+  {
+    name: 'Automatic',
+    description: 'Self-winding mechanical movement',
+  },
+  {
+    name: 'Manual Winding',
+    description: 'Hand-wound mechanical movement',
+  },
+  {
+    name: 'Quartz',
+    description: 'Battery-powered electronic movement',
+  },
+  {
+    name: 'Smart Watch',
+    description: 'Digital smartwatch movement',
+  },
+  {
+    name: 'Solar',
+    description: 'Solar-powered movement',
+  },
+];
 
-const generateSku = (
-  brandTitle: string,
-  categoryTitle: string,
-  productReferenceNumber: number, // Full reference number (e.g., 123456)
-  mainColorName: string,
-  sizeValue: number,
-  productionYear: number,
-): string => {
-  const brandCode = getBrandCode(brandTitle); // 3 chars
-  const categoryCode = getCategoryCode(categoryTitle); // 3 chars
-  // Take last 4 digits of the product's reference number
-  const productRefSnippet = String(productReferenceNumber)
-    .padStart(6, '0')
-    .slice(-4); // 4 chars
-  const colorCode = getColorCode(mainColorName); // 2 chars
-  const sizeCode = getSizeCode(sizeValue); // 2 chars
-  const yearCode = String(productionYear).slice(-2); // Last 2 digits of year (2 chars)
-
-  // Format: BRAND-CAT-REF4-CLR-SZ-YY (3+1+3+1+4+1+2+1+2+1+2 = 20 characters)
-  return `${brandCode}-${categoryCode}-${productRefSnippet}-${colorCode}-${sizeCode}-${yearCode}`;
-};
+const predefinedInclusions = [
+  {
+    name: 'Original box and Original papers',
+    description: 'Complete set with both original box and papers',
+  },
+  {
+    name: 'Original only box',
+    description: 'Product includes only the original box',
+  },
+  {
+    name: 'Original papers',
+    description: 'Product includes only original papers',
+  },
+  {
+    name: 'no further accessories',
+    description: 'Basic product without additional accessories',
+  },
+];
 
 export default class SeedHelper {
   private hashidsService!: HashidsService;
   private readonly slugService: SlugService;
 
   constructor(private prisma: PrismaClient) {
-    // Initialize services here within the constructor
     this.slugService = new SlugService();
   }
 
-  /**
-   * Orchestrates the entire seeding process using upsert logic.
-   * All operations are wrapped in a transaction to ensure atomicity.
-   * @param userId The ID of the user performing the seeding (required for created_by fields).
-   * @param numberOfProducts Target number of products to create (default 450).
-   */
-  async seedAllData(userId: string, numberOfProducts = 450): Promise<void> {
+  async seedAllData(userId: string, numberOfProducts = 100): Promise<void> {
     const creatorId = BigInt(userId);
     const configService = new ConfigService();
     const appLoggerService = new AppLoggerService();
@@ -129,1508 +214,1839 @@ export default class SeedHelper {
     const hashidsService = new HashidsService(configService, appLoggerService);
     hashidsService.onModuleInit();
     this.hashidsService = hashidsService;
-    console.log('Starting extensive data seeding with upsert logic...');
+    console.log('🌱 Starting comprehensive database seeding...');
 
     try {
       await this.prisma.$transaction(
         async (tx: any) => {
-          // Seed global configuration
+          // Seed global configuration first
           await this.seedGlobalConfiguration(creatorId, tx);
 
-          const ifSeedRun = await tx.globalConfiguration.findFirst({
-            where: {
-              key: 'SEED_SCRIPT_RUN',
-            },
+          const seedConfig = await tx.globalConfiguration.findFirst({
+            where: { key: 'SEED_SCRIPT_RUN' },
           });
-          if (Number(ifSeedRun?.value) === 1) {
-            // Seed base data
+
+          if (Number(seedConfig?.value) === 1) {
+            // Seed base reference data
+            await this.seedProductConditions(creatorId, tx);
             await this.seedColors(creatorId, tx);
             await this.seedSizes(creatorId, tx);
             await this.seedBrands(creatorId, tx);
             await this.seedModels(creatorId, tx);
             await this.seedCategories(creatorId, tx);
-            await this.seedMovements(creatorId, tx);
             await this.seedGenders(creatorId, tx);
+            await this.seedMovementTypes(creatorId, tx); // Updated: Seed movement types
+            await this.seedProductInclusions(creatorId, tx); // New: Seed product inclusions
             await this.seedCurrenciesAndTaxes(creatorId, tx);
+            await this.seedMaterials(creatorId, tx);
+            await this.seedCrystals(creatorId, tx);
+            await this.seedCountries(creatorId, tx);
+            await this.seedAvailabilities(creatorId, tx);
+            await this.seedComplications(creatorId, tx);
 
-            // Seed products and variants (these must exist for dependent models)
-            await this.seedProductsAndVariants(creatorId, numberOfProducts, tx);
+            // Seed sign of wear components and conditions
+            await this.seedWatchComponents(creatorId, tx);
+            await this.seedConditionOfWear(creatorId, tx);
 
-            // Seed related media and user-generated content after products/variants are ready
-            await this.seedOwnershipProofs(creatorId, tx);
-            await this.seedSignOfWears(creatorId, tx);
-            await this.seedProductImages(creatorId, tx);
-            await this.seedTags(creatorId, tx); // Seed tags before product_tags
+            // Seed dynamic attribute system
+            const attributeCategories = await this.seedAttributeCategories(
+              creatorId,
+              tx,
+            );
+            const attributes = await this.seedAttributes(creatorId, tx);
+            await this.seedAttributeCategoryMappings(
+              creatorId,
+              tx,
+              attributeCategories,
+              attributes,
+            );
+
+            // Seed products with dynamic attributes
+            await this.seedProductsAndItems(creatorId, numberOfProducts, tx);
+            await this.seedProductListings(creatorId, tx);
+
+            // Seed related data
+            await this.seedTags(creatorId, tx);
             await this.seedProductTags(creatorId, tx);
-            await this.seedReviewsAndRatings(creatorId, tx); // Seed after products exist
-            await this.seedFavorites(creatorId, tx); // Seed after products/variants exist
+            await this.seedOwnershipProofs(creatorId, tx);
+            await this.seedWearSignMappings(creatorId, tx);
+            await this.seedProductImages(creatorId, tx);
+            await this.seedReviewsAndRatings(creatorId, tx);
+            await this.seedFavorites(creatorId, tx);
+
+            console.log('🎉 Database seeding completed successfully!');
           } else {
             console.log(
-              `Seed doesn't run as per its configuration (SEED_SCRIPT_RUN is not 1).`,
+              '⏭️ Seed skipped due to configuration (SEED_SCRIPT_RUN is not 1)',
             );
           }
         },
-        {
-          timeout: 600000, // 10 minutes timeout for the entire transaction
-        },
+        { timeout: 600000 },
       );
-      console.log('Extensive data seeding completed successfully!');
     } catch (error) {
-      console.error(
-        'Extensive data seeding failed and was rolled back:',
-        error,
-      );
-      throw error; // Re-throw to indicate overall failure
+      console.error('❌ Database seeding failed:', error);
+      throw error;
     }
   }
 
-  private async seedColors(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log('Seeding colors (upserting)...');
-    const colorsData = [
-      {
-        name: 'Silver',
-        colorCode: '#C0C0C0',
-        description: 'Classic metal finish'.substring(0, 14),
-      },
-      {
-        name: 'Gold',
-        colorCode: '#FFD700',
-        description: 'Luxurious yellow gold'.substring(0, 14),
-      },
-      {
-        name: 'Black',
-        colorCode: '#000000',
-        description: 'Deep black finish'.substring(0, 14),
-      },
-      {
-        name: 'White',
-        colorCode: '#FFFFFF',
-        description: 'Pristine white'.substring(0, 14),
-      },
-      {
-        name: 'Rose Gold',
-        colorCode: '#B76E79',
-        description: 'Warm pinkish gold'.substring(0, 14),
-      },
-      {
-        name: 'Blue',
-        colorCode: '#0000FF',
-        description: 'Vibrant blue'.substring(0, 14),
-      },
-      {
-        name: 'Navy Blue',
-        colorCode: '#000080',
-        description: 'Dark, deep blue'.substring(0, 14),
-      },
-      {
-        name: 'Green',
-        colorCode: '#008000',
-        description: 'Standard green'.substring(0, 14),
-      },
-      {
-        name: 'Forest Green',
-        colorCode: '#228B22',
-        description: 'Deep forest green'.substring(0, 14),
-      },
-      {
-        name: 'Red',
-        colorCode: '#FF0000',
-        description: 'Bright red'.substring(0, 14),
-      },
-      {
-        name: 'Burgundy',
-        colorCode: '#800020',
-        description: 'Rich deep red'.substring(0, 14),
-      },
-      {
-        name: 'Gray',
-        colorCode: '#808080',
-        description: 'Neutral gray'.substring(0, 14),
-      },
-      {
-        name: 'Charcoal Gray',
-        colorCode: '#36454F',
-        description: 'Dark matte gray'.substring(0, 14),
-      },
-      {
-        name: 'Bronze',
-        colorCode: '#CD7F32',
-        description: 'Earthy brown-orange'.substring(0, 14),
-      },
-      {
-        name: 'Brown',
-        colorCode: '#A52A2A',
-        description: 'Classic brown'.substring(0, 14),
-      },
-      {
-        name: 'Titanium',
-        colorCode: '#878A8F',
-        description: 'Matte gray titanium'.substring(0, 14),
-      },
-      {
-        name: 'Ceramic Black',
-        colorCode: '#080808',
-        description: 'Scratch-resistant black ceramic'.substring(0, 14),
-      },
-    ];
-
-    for (const data of colorsData) {
-      await tx.color.upsert({
-        where: { name: data.name },
-        update: { ...data, updated_by: creatorId },
-        create: { ...data, created_by: creatorId },
-      });
-    }
-    console.log(`Seeded ${colorsData.length} colors.`);
-  }
-
-  private async seedSizes(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log('Seeding sizes (upserting) with MM units...');
-    // Generating common watch case sizes in MM, ensuring all have widthUnit and heightUnit
-    const sizesData = [
-      { value: 28, height: 28, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 30, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 32, height: 32, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 34, height: 34, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 36, height: 36, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 37, height: 37, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 38, height: 38, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 39, height: 39, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 40, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 41, height: 41, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 42, height: 42, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 43, height: 43, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 44, height: 44, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 45, height: 45, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 46, height: 46, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 47, height: 47, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 48, height: 48, widthUnit: 'MM', heightUnit: 'MM' },
-      // Example of rectangular watch sizes, ensuring units are explicit
-      { value: 25, height: 30, widthUnit: 'MM', heightUnit: 'MM' },
-      { value: 30, height: 40, widthUnit: 'MM', heightUnit: 'MM' },
-    ];
-
-    for (const data of sizesData) {
-      await tx.size.upsert({
-        where: { value_height: { value: data.value, height: data.height } },
-        update: { ...data, updated_by: creatorId },
-        create: { ...data, created_by: creatorId },
-      });
-    }
-    console.log(`Seeded ${sizesData.length} sizes.`);
-  }
-
-  private async seedBrands(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log('Seeding brands (upserting)...');
-    const brandsData = [
-      { title: 'Rolex', order: 1, image_url: 'https://example.com/rolex.png' },
-      { title: 'Omega', order: 2, image_url: 'https://example.com/omega.png' },
-      {
-        title: 'Patek Philippe',
-        order: 3,
-        image_url: 'https://example.com/patek.png',
-      },
-      {
-        title: 'Audemars Piguet',
-        order: 4,
-        image_url: 'https://example.com/ap.png',
-      },
-      {
-        title: 'Vacheron Constantin',
-        order: 5,
-        image_url: 'https://example.com/vc.png',
-      },
-      {
-        title: 'A. Lange & Söhne',
-        order: 6,
-        image_url: 'https://example.com/alangesohne.png',
-      },
-      {
-        title: 'Jaeger-LeCoultre',
-        order: 7,
-        image_url: 'https://example.com/jlc.png',
-      },
-      {
-        title: 'IWC Schaffhausen',
-        order: 8,
-        image_url: 'https://example.com/iwc.png',
-      },
-      {
-        title: 'Breitling',
-        order: 9,
-        image_url: 'https://example.com/breitling.png',
-      },
-      {
-        title: 'Zenith',
-        order: 10,
-        image_url: 'https://example.com/zenith.png',
-      },
-      {
-        title: 'Blancpain',
-        order: 11,
-        image_url: 'https://example.com/blancpain.png',
-      },
-      {
-        title: 'Cartier',
-        order: 12,
-        image_url: 'https://example.com/cartier.png',
-      },
-      {
-        title: 'Longines',
-        order: 13,
-        image_url: 'https://example.com/longines.png',
-      },
-      {
-        title: 'Tissot',
-        order: 14,
-        image_url: 'https://example.com/tissot.png',
-      },
-      {
-        title: 'Hamilton',
-        order: 15,
-        image_url: 'https://example.com/hamilton.png',
-      },
-      { title: 'Oris', order: 16, image_url: 'https://example.com/oris.png' },
-      {
-        title: 'Citizen',
-        order: 17,
-        image_url: 'https://example.com/citizen.png',
-      },
-      { title: 'Seiko', order: 18, image_url: 'https://example.com/seiko.png' },
-      { title: 'Casio', order: 19, image_url: 'https://example.com/casio.png' },
-      {
-        title: 'Fossil',
-        order: 20,
-        image_url: 'https://example.com/fossil.png',
-      },
-      { title: 'Timex', order: 21, image_url: 'https://example.com/timex.png' },
-      {
-        title: 'Swatch',
-        order: 22,
-        image_url: 'https://example.com/swatch.png',
-      },
-      {
-        title: 'Grand Seiko',
-        order: 23,
-        image_url: 'https://example.com/grandseiko.png',
-      },
-    ];
-
-    for (const data of brandsData) {
-      await tx.brand.upsert({
-        where: { title: data.title },
-        update: { ...data, updated_by: creatorId },
-        create: { ...data, created_by: creatorId },
-      });
-    }
-    console.log(`Seeded ${brandsData.length} brands.`);
-  }
-
-  private async seedModels(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log('Seeding models (upserting)...');
-
-    // Get all brands to create models for
-    const brands = await tx.brand.findMany({
-      where: { is_deleted: false },
-      select: { id: true, title: true },
-    });
-
-    const modelsData = [
-      // Rolex models
-      {
-        title: 'Submariner',
-        brand_id: 1,
-        order: 1,
-        image_url: 'https://example.com/models/submariner.png',
-      },
-      {
-        title: 'Daytona',
-        brand_id: 1,
-        order: 2,
-        image_url: 'https://example.com/models/daytona.png',
-      },
-      {
-        title: 'GMT-Master',
-        brand_id: 1,
-        order: 3,
-        image_url: 'https://example.com/models/gmt-master.png',
-      },
-      {
-        title: 'Datejust',
-        brand_id: 1,
-        order: 4,
-        image_url: 'https://example.com/models/datejust.png',
-      },
-
-      // Omega models
-      {
-        title: 'Speedmaster',
-        brand_id: 2,
-        order: 1,
-        image_url: 'https://example.com/models/speedmaster.png',
-      },
-      {
-        title: 'Seamaster',
-        brand_id: 2,
-        order: 2,
-        image_url: 'https://example.com/models/seamaster.png',
-      },
-      {
-        title: 'Constellation',
-        brand_id: 2,
-        order: 3,
-        image_url: 'https://example.com/models/constellation.png',
-      },
-
-      // Patek Philippe models
-      {
-        title: 'Nautilus',
-        brand_id: 3,
-        order: 1,
-        image_url: 'https://example.com/models/nautilus.png',
-      },
-      {
-        title: 'Aquanaut',
-        brand_id: 3,
-        order: 2,
-        image_url: 'https://example.com/models/aquanaut.png',
-      },
-      {
-        title: 'Calatrava',
-        brand_id: 3,
-        order: 3,
-        image_url: 'https://example.com/models/calatrava.png',
-      },
-
-      // Audemars Piguet models
-      {
-        title: 'Royal Oak',
-        brand_id: 4,
-        order: 1,
-        image_url: 'https://example.com/models/royal-oak.png',
-      },
-      {
-        title: 'Royal Oak Offshore',
-        brand_id: 4,
-        order: 2,
-        image_url: 'https://example.com/models/royal-oak-offshore.png',
-      },
-
-      // Vacheron Constantin models
-      {
-        title: 'Overseas',
-        brand_id: 5,
-        order: 1,
-        image_url: 'https://example.com/models/overseas.png',
-      },
-      {
-        title: 'Fiftysix',
-        brand_id: 5,
-        order: 2,
-        image_url: 'https://example.com/models/fiftysix.png',
-      },
-
-      // IWC models
-      {
-        title: 'Pilot',
-        brand_id: 8,
-        order: 1,
-        image_url: 'https://example.com/models/pilot.png',
-      },
-      {
-        title: 'Portuguese',
-        brand_id: 8,
-        order: 2,
-        image_url: 'https://example.com/models/portuguese.png',
-      },
-
-      // Breitling models
-      {
-        title: 'Navitimer',
-        brand_id: 9,
-        order: 1,
-        image_url: 'https://example.com/models/navitimer.png',
-      },
-      {
-        title: 'Chronomat',
-        brand_id: 9,
-        order: 2,
-        image_url: 'https://example.com/models/chronomat.png',
-      },
-
-      // Cartier models
-      {
-        title: 'Tank',
-        brand_id: 12,
-        order: 1,
-        image_url: 'https://example.com/models/tank.png',
-      },
-      {
-        title: 'Santos',
-        brand_id: 12,
-        order: 2,
-        image_url: 'https://example.com/models/santos.png',
-      },
-      {
-        title: 'Ballon Bleu',
-        brand_id: 12,
-        order: 3,
-        image_url: 'https://example.com/models/ballon-bleu.png',
-      },
-    ];
-
-    for (const data of modelsData) {
-      await tx.model.upsert({
-        where: {
-          brand_id_title: {
-            brand_id: data.brand_id,
-            title: data.title,
+  private async seedMovementTypes(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🌱 Seeding movement types...');
+    try {
+      for (const movementType of predefinedMovements) {
+        await tx.movement_type.upsert({
+          where: { name: movementType.name },
+          create: {
+            name: movementType.name,
+            description: movementType.description,
+            created_by: creatorId,
           },
-        },
-        update: {
-          order: data.order,
-          image_url: data.image_url,
-          updated_by: creatorId,
-        },
+          update: {},
+        });
+      }
+      console.log('✅ Successfully seeded movement types');
+    } catch (error) {
+      console.error('Error seeding movement types:', error);
+      throw error;
+    }
+  }
+
+  private async seedProductInclusions(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🌱 Seeding product inclusions...');
+    try {
+      for (const inclusion of predefinedInclusions) {
+        await tx.product_inclusion.upsert({
+          where: { name: inclusion.name },
+          create: {
+            name: inclusion.name,
+            description: inclusion.description,
+            created_by: creatorId,
+          },
+          update: {},
+        });
+      }
+      console.log('✅ Successfully seeded product inclusions');
+    } catch (error) {
+      console.error('Error seeding product inclusions:', error);
+      throw error;
+    }
+  }
+
+  private async seedProductConditions(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('📦 Seeding product conditions...');
+    const conditions = [
+      {
+        condition: 'Very good',
+        description:
+          'The item shows minor signs of wear, such as small, intangible scratches.',
+      },
+      {
+        condition: 'Good',
+        description:
+          'The item shows visible and tangible signs of wear like scratches, scuffs, or small dents.',
+      },
+      {
+        condition: 'Fair',
+        description:
+          'The item shows major, visible signs of wear like scratches and dents.',
+      },
+      {
+        condition: 'Incomplete',
+        description:
+          'The item is missing some parts and is not functional. The item is only intended for repair or spare parts.',
+      },
+    ];
+
+    for (const cond of conditions) {
+      await tx.condition.upsert({
+        where: { condition: cond.condition },
+        update: {},
         create: {
-          title: data.title,
-          brand_id: data.brand_id,
-          order: data.order,
-          image_url: data.image_url,
+          condition: cond.condition,
+          description: cond.description,
           created_by: creatorId,
         },
       });
     }
-    console.log(`Seeded ${modelsData.length} models.`);
+    console.log(`✅ Seeded ${conditions.length} product conditions`);
+  }
+
+  private async seedColors(creatorId: bigint, tx: PrismaClient): Promise<void> {
+    console.log('🎨 Seeding colors...');
+    const colors = [
+      { name: 'Black', colorCode: '#000000', description: 'Pure Black' },
+      { name: 'White', colorCode: '#FFFFFF', description: 'Pure White' },
+      { name: 'Silver', colorCode: '#C0C0C0', description: 'Silver' },
+      { name: 'Gold', colorCode: '#FFD700', description: 'Gold' },
+      { name: 'Blue', colorCode: '#0000FF', description: 'Blue' },
+      { name: 'Green', colorCode: '#008000', description: 'Green' },
+      { name: 'Red', colorCode: '#FF0000', description: 'Red' },
+      { name: 'Brown', colorCode: '#8B4513', description: 'Brown' },
+      { name: 'Rose Gold', colorCode: '#E8B4B8', description: 'Rose Gold' },
+      { name: 'Champagne', colorCode: '#F7E7CE', description: 'Champagne' },
+    ];
+
+    for (const color of colors) {
+      await tx.color.upsert({
+        where: { name: color.name },
+        update: {},
+        create: {
+          name: color.name,
+          colorCode: color.colorCode,
+          description: color.description.substring(0, 15),
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${colors.length} colors`);
+  }
+
+  private async seedSizes(creatorId: bigint, tx: PrismaClient): Promise<void> {
+    console.log('📏 Seeding sizes...');
+    const sizes = [
+      { width: 28, height: 28 },
+      { width: 30, height: 30 },
+      { width: 32, height: 32 },
+      { width: 34, height: 34 },
+      { width: 36, height: 36 },
+      { width: 38, height: 38 },
+      { width: 40, height: 40 },
+      { width: 42, height: 42 },
+      { width: 44, height: 44 },
+      { width: 46, height: 46 },
+    ];
+
+    for (const size of sizes) {
+      await tx.size.upsert({
+        where: {
+          caseWidth_caseHeight: {
+            caseWidth: size.width,
+            caseHeight: size.height,
+          },
+        },
+        update: {},
+        create: {
+          caseWidth: size.width,
+          caseHeight: size.height,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${sizes.length} sizes`);
+  }
+
+  private async seedBrands(creatorId: bigint, tx: PrismaClient): Promise<void> {
+    console.log('🏷️ Seeding brands...');
+    const brands = [
+      'Rolex',
+      'Omega',
+      'Patek Philippe',
+      'Audemars Piguet',
+      'Cartier',
+      'Breitling',
+      'TAG Heuer',
+      'IWC',
+      'Jaeger-LeCoultre',
+      'Panerai',
+      'Tudor',
+      'Seiko',
+      'Citizen',
+      'Tissot',
+      'Hamilton',
+    ];
+
+    for (let i = 0; i < brands.length; i++) {
+      await tx.brand.upsert({
+        where: { title: brands[i] },
+        update: {},
+        create: {
+          title: brands[i],
+          order: i + 1,
+          image_url: `https://example.com/brands/${brands[i]
+            .toLowerCase()
+            .replace(/\s+/g, '-')}.png`,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${brands.length} brands`);
+  }
+
+  private async seedModels(creatorId: bigint, tx: PrismaClient): Promise<void> {
+    console.log('🏗️ Seeding models...');
+    const brands = await tx.brand.findMany({
+      select: { id: true, title: true },
+    });
+
+    const modelsByBrand = {
+      Rolex: ['Submariner', 'Daytona', 'GMT-Master', 'Datejust', 'Explorer'],
+      Omega: ['Speedmaster', 'Seamaster', 'Constellation', 'De Ville'],
+      'Patek Philippe': ['Nautilus', 'Aquanaut', 'Calatrava', 'Complications'],
+      'Audemars Piguet': ['Royal Oak', 'Royal Oak Offshore', 'Millenary'],
+      Cartier: ['Tank', 'Santos', 'Ballon Bleu', 'Panthère'],
+    };
+
+    for (const brand of brands) {
+      const models = modelsByBrand[
+        brand.title as keyof typeof modelsByBrand
+      ] || ['Classic', 'Sport', 'Dress'];
+
+      for (let i = 0; i < models.length; i++) {
+        await tx.model.upsert({
+          where: {
+            brand_id_title: {
+              brand_id: brand.id,
+              title: models[i],
+            },
+          },
+          update: {},
+          create: {
+            title: models[i],
+            brand_id: brand.id,
+            order: i + 1,
+            image_url: `https://example.com/models/${models[i]
+              .toLowerCase()
+              .replace(/\s+/g, '-')}.png`,
+            created_by: creatorId,
+          },
+        });
+      }
+    }
+    console.log('✅ Models seeded');
   }
 
   private async seedCategories(
     creatorId: bigint,
     tx: PrismaClient,
   ): Promise<void> {
-    console.log('Seeding categories (upserting)...');
-    const categoriesData = [
-      {
-        title: 'Luxury Watches',
-        order: 1,
-        image_url: 'https://example.com/cat_luxury.png',
-      },
-      {
-        title: 'Sports Watches',
-        order: 2,
-        image_url: 'https://example.com/cat_sports.png',
-      },
-      {
-        title: 'Smartwatches',
-        order: 3,
-        image_url: 'https://example.com/cat_smart.png',
-      },
-      {
-        title: 'Dress Watches',
-        order: 4,
-        image_url: 'https://example.com/cat_dress.png',
-      },
-      {
-        title: 'Dive Watches',
-        order: 5,
-        image_url: 'https://example.com/cat_dive.png',
-      },
-      {
-        title: 'Pilot Watches',
-        order: 6,
-        image_url: 'https://example.com/cat_pilot.png',
-      },
-      {
-        title: 'Field Watches',
-        order: 7,
-        image_url: 'https://example.com/cat_field.png',
-      },
-      {
-        title: 'Chronographs',
-        order: 8,
-        image_url: 'https://example.com/cat_chrono.png',
-      },
-      {
-        title: 'GMT Watches',
-        order: 9,
-        image_url: 'https://example.com/cat_gmt.png',
-      },
-      {
-        title: 'Fashion Watches',
-        order: 10,
-        image_url: 'https://example.com/cat_fashion.png',
-      },
-      {
-        title: 'Digital Watches',
-        order: 11,
-        image_url: 'https://example.com/cat_digital.png',
-      },
-      {
-        title: 'Skeleton Watches',
-        order: 12,
-        image_url: 'https://example.com/cat_skeleton.png',
-      },
-      {
-        title: 'Complication Watches',
-        order: 13,
-        image_url: 'https://example.com/cat_complication.png',
-      },
-      {
-        title: 'Vintage Watches',
-        order: 14,
-        image_url: 'https://example.com/cat_vintage.png',
-      },
+    console.log('📂 Seeding categories...');
+    const categories = [
+      'Watch',
+      'Bracelet/Strap',
+      'Case',
+      'Bezel',
+      'Buckle',
+      'Books/Calendar',
+      'Box',
+      'Crown/Pusher',
+      'Cleaning',
+      'Dial',
+      'Hand(s)',
+      'Movement(complete)',
+      'Movement(parts)',
+      'Link/Bar',
+      'Other',
+      'Tools',
+      'Watch Winders',
     ];
 
-    for (const data of categoriesData) {
+    for (let i = 0; i < categories.length; i++) {
       await tx.category.upsert({
-        where: { title: data.title },
-        update: { ...data, updated_by: creatorId },
-        create: { ...data, created_by: creatorId },
+        where: { title: categories[i] },
+        update: {},
+        create: {
+          title: categories[i],
+          order: i + 1,
+          image_url: `https://example.com/categories/${categories[
+            i
+          ].toLowerCase()}.png`,
+          created_by: creatorId,
+        },
       });
     }
-    console.log(`Seeded ${categoriesData.length} categories.`);
-  }
-
-  private async seedMovements(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('Seeding movements (upserting)...');
-    const movementsData = [
-      { title: 'Automatic' },
-      { title: 'Quartz' },
-      { title: 'Manual Wind' },
-      { title: 'Smartwatch' },
-      { title: 'Solar-Powered' },
-      { title: 'Kinetic' },
-      { title: 'Spring Drive' },
-    ];
-
-    for (const data of movementsData) {
-      await tx.movement.upsert({
-        where: { title: data.title },
-        update: { ...data, updated_by: creatorId },
-        create: { ...data, created_by: creatorId },
-      });
-    }
-    console.log(`Seeded ${movementsData.length} movements.`);
+    console.log(`✅ Seeded ${categories.length} categories`);
   }
 
   private async seedGenders(
     creatorId: bigint,
     tx: PrismaClient,
   ): Promise<void> {
-    console.log('Seeding genders (upserting)...');
-    const gendersData = [
-      {
-        title: "Men's",
-        order: 1,
-        image_url: 'https://example.com/gender_mens.png',
-      },
-      {
-        title: "Women's",
-        order: 2,
-        image_url: 'https://example.com/gender_womens.png',
-      },
-      {
-        title: 'Unisex',
-        order: 3,
-        image_url: 'https://example.com/gender_unisex.png',
-      },
-    ];
-    for (const data of gendersData) {
+    console.log('👥 Seeding genders...');
+    const genders = ['Men', 'Women', 'Unisex'];
+
+    for (let i = 0; i < genders.length; i++) {
       await tx.gender.upsert({
-        where: { title: data.title },
-        update: { ...data, updated_by: creatorId },
-        create: { ...data, created_by: creatorId },
+        where: { title: genders[i] },
+        update: {},
+        create: {
+          title: genders[i],
+          order: i + 1,
+          image_url: `https://example.com/genders/${genders[
+            i
+          ].toLowerCase()}.png`,
+          created_by: creatorId,
+        },
       });
     }
-    console.log(`Seeded ${gendersData.length} genders.`);
+    console.log(`✅ Seeded ${genders.length} genders`);
   }
 
   private async seedCurrenciesAndTaxes(
     creatorId: bigint,
     tx: PrismaClient,
   ): Promise<void> {
-    console.log('Seeding currencies and tax rules (upserting)...');
-    await tx.currency_exchange.upsert({
-      where: { curr: '$' },
-      update: {
-        description: 'United States Dollar',
-        exchangeRate: new Decimal(1.0),
-        updated_by: creatorId,
-      },
-      create: {
-        curr: '$',
-        description: 'United States Dollar',
-        exchangeRate: new Decimal(1.0),
-        created_by: creatorId,
-      },
-    });
-    await tx.currency_exchange.upsert({
-      where: { curr: 'RP' },
-      update: {
-        description: 'Pakistani Rupee',
-        exchangeRate: new Decimal(278.0),
-        updated_by: creatorId,
-        is_deleted: true,
-      },
-      create: {
-        curr: 'RP',
-        description: 'Pakistani Rupee',
-        exchangeRate: new Decimal(278.0),
-        created_by: creatorId,
-        is_deleted: true,
-      },
-    });
+    console.log('💰 Seeding currencies and taxes...');
+
+    const currencies = [
+      { curr: 'USD', description: 'US Dollar', rate: 1.0 },
+      { curr: 'EUR', description: 'Euro', rate: 0.85 },
+      { curr: 'GBP', description: 'British Pound', rate: 0.73 },
+      { curr: 'JPY', description: 'Japanese Yen', rate: 110.0 },
+    ];
+
+    for (const currency of currencies) {
+      await tx.currency_exchange.upsert({
+        where: { curr: currency.curr },
+        update: {},
+        create: {
+          curr: currency.curr,
+          description: currency.description,
+          exchangeRate: new Decimal(currency.rate),
+          created_by: creatorId,
+        },
+      });
+    }
 
     await tx.tax_rule.upsert({
-      where: { description: 'Standard Sales Tax (10%)' },
-      update: { taxRate: new Decimal(0.1), updated_by: creatorId },
-      create: {
-        taxRate: new Decimal(0.1),
-        description: 'Standard Sales Tax (10%)',
-        created_by: creatorId,
-      },
-    });
-    await tx.tax_rule.upsert({
-      where: { description: 'Luxury Goods Tax (20%)' },
-      update: { taxRate: new Decimal(0.2), updated_by: creatorId },
+      where: { description: 'Standard VAT' },
+      update: {},
       create: {
         taxRate: new Decimal(0.2),
-        description: 'Luxury Goods Tax (20%)',
+        description: 'Standard VAT',
         created_by: creatorId,
       },
     });
-    await tx.tax_rule.upsert({
-      where: { description: 'No Tax' },
-      update: { taxRate: new Decimal(0.0), updated_by: creatorId },
-      create: {
-        taxRate: new Decimal(0.0),
-        description: 'No Tax',
-        created_by: creatorId,
-      },
-    });
-    console.log('Currencies and Tax Rules seeded.');
+
+    console.log('✅ Currencies and tax rules seeded');
   }
 
-  private async seedProductsAndVariants(
+  private async seedMaterials(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🔩 Seeding materials...');
+    const materials = [
+      'Stainless Steel',
+      'Gold',
+      'Rose Gold',
+      'Platinum',
+      'Titanium',
+      'Ceramic',
+      'Carbon Fiber',
+      'Leather',
+      'Rubber',
+      'Fabric',
+    ];
+
+    for (const material of materials) {
+      await tx.material.create({
+        data: {
+          title: material,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${materials.length} materials`);
+  }
+
+  private async seedCrystals(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('💎 Seeding crystals...');
+    const crystals = ['Sapphire', 'Mineral', 'Acrylic', 'Hardlex'];
+
+    for (const crystal of crystals) {
+      await tx.crystal.create({
+        data: {
+          title: crystal,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${crystals.length} crystals`);
+  }
+
+  private async seedCountries(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🌍 Seeding countries...');
+    const countries = [
+      'Switzerland',
+      'Japan',
+      'Germany',
+      'United States',
+      'France',
+      'Italy',
+      'United Kingdom',
+      'China',
+      'South Korea',
+    ];
+
+    for (const country of countries) {
+      await tx.country.create({
+        data: {
+          name: country,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${countries.length} countries`);
+  }
+
+  private async seedAvailabilities(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('📦 Seeding availabilities...');
+    const statuses = ['In Stock', 'Pre-order', 'Out of Stock', 'Discontinued'];
+
+    for (const status of statuses) {
+      await tx.availability.create({
+        data: {
+          status,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${statuses.length} availability statuses`);
+  }
+
+  private async seedComplications(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🎯 Seeding complications...');
+    const complications = [
+      'Date',
+      'Day-Date',
+      'GMT',
+      'Chronograph',
+      'Moon Phase',
+      'Power Reserve',
+      'Perpetual Calendar',
+      'Annual Calendar',
+      'World Time',
+      'Tourbillon',
+      'Minute Repeater',
+    ];
+
+    for (const complication of complications) {
+      await tx.complications.create({
+        data: {
+          title: complication,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${complications.length} complications`);
+  }
+
+  private async seedWatchComponents(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🔧 Seeding watch components...');
+    const components = [
+      'Case',
+      'Dial',
+      'Hands',
+      'Crown',
+      'Bezel',
+      'Crystal',
+      'Bracelet',
+      'Strap',
+      'Buckle',
+      'Clasp',
+      'Caseback',
+      'Pusher',
+    ];
+
+    for (const component of components) {
+      await tx.watchComponents.upsert({
+        where: { name: component },
+        update: {},
+        create: {
+          name: component,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${components.length} watch components`);
+  }
+
+  private async seedConditionOfWear(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('👀 Seeding condition of wear...');
+    const conditions = [
+      {
+        condition: 'None',
+        description: 'Like new, no visible wear',
+      },
+      {
+        condition: 'Barely Visible',
+        description: 'Minimal signs of wear, excellent condition',
+      },
+      {
+        condition: 'Obvious',
+        description: 'Minor signs of wear, very good condition',
+      },
+      {
+        condition: 'Good',
+        description: 'Visible signs of wear but functions properly',
+      },
+      {
+        condition: 'Fair',
+        description: 'Significant signs of wear',
+      },
+      {
+        condition: 'Poor',
+        description: 'Heavy wear or damage present',
+      },
+    ];
+
+    for (const condition of conditions) {
+      await tx.condition_of_wear.upsert({
+        where: { condition: condition.condition },
+        update: {},
+        create: {
+          condition: condition.condition,
+          description: condition.description,
+          created_by: creatorId,
+        },
+      });
+    }
+    console.log(`✅ Seeded ${conditions.length} wear conditions`);
+  }
+
+  private async seedWearSignMappings(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🔍 Seeding wear sign mappings...');
+
+    // Get all used products
+    const products = await tx.product.findMany({
+      where: { is_used: true },
+      include: {
+        productItems: true,
+      },
+    });
+
+    // Get components and conditions
+    const watchComponents = await tx.watchComponents.findMany();
+    const conditionsOfWear = await tx.condition_of_wear.findMany();
+
+    let count = 0;
+    for (const product of products) {
+      // For each product, create 1-3 wear signs
+      const numberOfWearSigns = getRandomInt(1, 3);
+
+      for (const productItem of product.productItems) {
+        for (let w = 0; w < numberOfWearSigns; w++) {
+          const component = getRandomElement(watchComponents);
+          const condition = getRandomElement(conditionsOfWear);
+
+          if (component && condition) {
+            await tx.wear_sign_component_condition_mapping.upsert({
+              where: {
+                product_id_product_item_id_watch_component_id_condition_id: {
+                  product_id: product.id,
+                  product_item_id: productItem.id,
+                  watch_component_id: component.id,
+                  condition_id: condition.id,
+                },
+              },
+              update: {},
+              create: {
+                product_id: product.id,
+                product_item_id: productItem.id,
+                watch_component_id: component.id,
+                condition_id: condition.id,
+                image_url: `https://picsum.photos/600/400?random=wear-${product.id}-${w}`,
+                alt_text: `${component.name} wear condition: ${condition.condition}`,
+                order: w + 1,
+                created_by: creatorId,
+              },
+            });
+            count++;
+          }
+        }
+      }
+    }
+    console.log(`✅ Seeded ${count} wear sign mappings`);
+  }
+
+  private async seedAttributeCategories(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<any[]> {
+    console.log('🏗️ Seeding attribute categories...');
+    const categories = [
+      'Watch',
+      'Bracelet/Strap',
+      'Case',
+      'Bezel',
+      'Buckle',
+      'Books/Calendar',
+      'Box',
+      'Crown/Pusher',
+      'Cleaning',
+      'Dial',
+      'Hand(s)',
+      'Movement(complete)',
+      'Movement(parts)',
+      'Link/Bar',
+      'Other',
+      'Tools',
+      'Watch Winders',
+    ];
+
+    const attributeCategories = [];
+    for (const category of categories) {
+      const result = await tx.attribute_categories.upsert({
+        where: { name: category },
+        update: {},
+        create: {
+          name: category,
+          is_active: true,
+          created_by: creatorId,
+        },
+      });
+      attributeCategories.push(result);
+    }
+    // Store the created categories for use in mappings
+    return attributeCategories;
+  }
+
+  private async seedAttributes(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<any[]> {
+    console.log('📋 Seeding attributes...');
+    const attributes = [
+      {
+        name: 'reference_number',
+        display_name: 'Reference Number',
+        unit: null,
+        description: 'Watch reference number',
+      },
+      {
+        name: 'serial_number',
+        display_name: 'Serial Number',
+        unit: null,
+        description: 'Watch serial number',
+      },
+      {
+        name: 'caliber_movement',
+        display_name: 'Caliber/Movement',
+        unit: null,
+        description: 'Movement caliber information',
+      },
+      {
+        name: 'clasp_type',
+        display_name: 'Type of Clasp',
+        unit: null,
+        description: 'Clasp mechanism type',
+      },
+      {
+        name: 'functions',
+        display_name: 'Functions',
+        unit: null,
+        description: 'Watch functions and complications',
+      },
+      {
+        name: 'crystal_type',
+        display_name: 'Crystal Type',
+        unit: null,
+        description: 'Crystal material type',
+      },
+      {
+        name: 'dial_color',
+        display_name: 'Dial Color',
+        unit: null,
+        description: 'Color of the watch dial',
+      },
+      {
+        name: 'clasp_material',
+        display_name: 'Clasp Material',
+        unit: null,
+        description: 'Material of the clasp',
+      },
+      {
+        name: 'bezel_material',
+        display_name: 'Bezel Material',
+        unit: null,
+        description: 'Material of the bezel',
+      },
+      {
+        name: 'case_diameter',
+        display_name: 'Case Diameter',
+        unit: 'mm',
+        description: 'Case diameter in millimeters',
+      },
+      {
+        name: 'lug_width',
+        display_name: 'Lug Width',
+        unit: 'mm',
+        description: 'Width between lugs',
+      },
+      {
+        name: 'water_resistance',
+        display_name: 'Water Resistance',
+        unit: 'm',
+        description: 'Water resistance in meters',
+      },
+      {
+        name: 'power_reserve',
+        display_name: 'Power Reserve',
+        unit: 'hours',
+        description: 'Power reserve duration',
+      },
+      {
+        name: 'case_thickness',
+        display_name: 'Case Thickness',
+        unit: 'mm',
+        description: 'Thickness of the case',
+      },
+      {
+        name: 'weight',
+        display_name: 'Weight',
+        unit: 'g',
+        description: 'Weight of the watch',
+      },
+      {
+        name: 'condition',
+        display_name: 'Condition',
+        unit: null,
+        description: 'Overall condition of the product',
+      },
+      {
+        name: 'inclusions',
+        display_name: 'Inclusions',
+        unit: null,
+        description: 'Included accessories',
+      },
+      {
+        name: 'movement',
+        display_name: 'Movement Type',
+        unit: null,
+        description: 'Type of watch movement',
+      },
+      {
+        name: 'base_caliber',
+        display_name: 'Base Caliber',
+        unit: null,
+        description: 'Base movement caliber',
+      },
+      {
+        name: 'frequency',
+        display_name: 'Frequency',
+        unit: 'Hz',
+        description: 'Movement frequency',
+      },
+      {
+        name: 'number_of_jewels',
+        display_name: 'Jewels',
+        unit: null,
+        description: 'Number of jewels in movement',
+      },
+      {
+        name: 'buckle_width',
+        display_name: 'Buckle Width',
+        unit: 'mm',
+        description: 'Width of the buckle',
+      },
+      {
+        name: 'bracelet_length_long_side',
+        display_name: 'Bracelet Length (Long)',
+        unit: 'mm',
+        description: 'Length of long side of bracelet',
+      },
+      {
+        name: 'braclet_length_short_side',
+        display_name: 'Bracelet Length (Short)',
+        unit: 'mm',
+        description: 'Length of short side of bracelet',
+      },
+      {
+        name: 'bracelet_thickness',
+        display_name: 'Bracelet Thickness',
+        unit: 'mm',
+        description: 'Thickness of bracelet',
+      },
+      {
+        name: 'bracelet_material',
+        display_name: 'Bracelet material',
+        unit: null,
+        description: 'Material of the bracelet',
+      },
+      {
+        name: 'bracelet_color',
+        display_name: 'Bracelet Color',
+        unit: null,
+        description: 'Color of the bracelet',
+      },
+      {
+        name: 'case_material',
+        display_name: 'Case Material',
+        unit: null,
+        description: 'Material of the case',
+      },
+    ];
+
+    const createdAttributes = [];
+    for (const attribute of attributes) {
+      const result = await tx.attributes.upsert({
+        where: { name: attribute.name },
+        update: {},
+        create: {
+          name: attribute.name,
+          display_name: attribute.display_name,
+          unit: attribute.unit,
+          description: attribute.description,
+          is_active: true,
+          created_by: creatorId,
+        },
+      });
+      createdAttributes.push(result);
+    }
+    console.log(`✅ Seeded ${attributes.length} attributes`);
+    return createdAttributes;
+  }
+
+  private async seedAttributeCategoryMappings(
+    creatorId: bigint,
+    tx: PrismaClient,
+    attributeCategories: any[],
+    attributes: any[],
+  ): Promise<void> {
+    console.log('🔗 Seeding attribute category mappings...');
+
+    const mappings = [
+      // Watch
+      {
+        category: 'Watch',
+        attribute: 'serial_number',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Watch',
+        attribute: 'dial_color',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Watch',
+        attribute: 'case_diameter',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Watch',
+        attribute: 'case_material',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Watch',
+        attribute: 'bracelet_material',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Watch',
+        attribute: 'bracelet_color',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Watch',
+        attribute: 'inclusions',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Watch',
+        attribute: 'movement',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+
+      // Bracelet/Strap
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'lug_width',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'buckle_width',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'buckle_length_long_side',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'buckle_length_short_side',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bracelet/Strap',
+        attribute: 'bracelet_thickness',
+        data_type: 'number',
+        mandatory: false,
+      },
+
+      // Case
+      {
+        category: 'Case',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Case',
+        attribute: 'case_diameter',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Case',
+        attribute: 'case_material',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Case',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Bezel
+      {
+        category: 'Bezel',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Bezel',
+        attribute: 'bezel_material',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Bezel',
+        attribute: 'case_diameter',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Bezel',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Buckle
+      {
+        category: 'Buckle',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Buckle',
+        attribute: 'clasp_type',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Buckle',
+        attribute: 'clasp_material',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Buckle',
+        attribute: 'buckle_width',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Buckle',
+        attribute: 'lug_width',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Buckle',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Box
+      {
+        category: 'Box',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Box',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Dial
+      {
+        category: 'Dial',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Dial',
+        attribute: 'dial_color',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Dial',
+        attribute: 'case_diameter',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Dial',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Movement (Complete)
+      {
+        category: 'Movement (Complete)',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'movement',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'caliber_movement',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'base_caliber',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'power_reserve',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'frequency',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'number_of_jewels',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Complete)',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Movement (Parts)
+      {
+        category: 'Movement (Parts)',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Parts)',
+        attribute: 'movement',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Parts)',
+        attribute: 'caliber_movement',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Parts)',
+        attribute: 'power_reserve',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Parts)',
+        attribute: 'base_caliber',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Parts)',
+        attribute: 'number_of_jewels',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Movement (Parts)',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Crown Pusher
+      {
+        category: 'Crown/Pusher',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Crown/Pusher',
+        attribute: 'caliber_movement',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Crown/Pusher',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Glass/Crystal
+      {
+        category: 'Glass/Crystal',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Glass/Crystal',
+        attribute: 'crystal_type',
+        data_type: 'lookup',
+        mandatory: false,
+      },
+      {
+        category: 'Glass/Crystal',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Hands
+      {
+        category: 'Hands',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Hands',
+        attribute: 'caliber_movement',
+        data_type: 'string',
+        mandatory: false,
+      },
+      {
+        category: 'Hands',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Link/Bar
+      {
+        category: 'Link/Bar',
+        attribute: 'reference_number',
+        data_type: 'number',
+        mandatory: false,
+      },
+      {
+        category: 'Link/Bar',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+      // Books/Calendar
+      {
+        category: 'Books/Calendar',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Cleaning
+      {
+        category: 'Cleaning',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Other
+      {
+        category: 'Other',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Watch Winders
+      {
+        category: 'Watch Winders',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+      // Tools
+      {
+        category: 'Tools',
+        attribute: 'condition',
+        data_type: 'lookup',
+        mandatory: true,
+      },
+
+    ];
+
+    for (const mapping of mappings) {
+      const category = attributeCategories.find(
+        (c) => c.name === mapping.category,
+      );
+      const attribute = attributes.find((a) => a.name === mapping.attribute);
+
+      if (!attribute) continue;
+      if (!category) continue;
+
+      if (category && attribute) {
+        await tx.attribute_category_mapping.upsert({
+          where: {
+            attribute_category_id_attribute_id: {
+              attribute_category_id: category.id,
+              attribute_id: attribute.id,
+            },
+          },
+          create: {
+            attribute_category_id: category.id,
+            attribute_id: attribute.id,
+            data_type: mapping.data_type || 'string',
+            is_mandatory: mapping.mandatory,
+            is_active: true,
+            created_by: BigInt(1),
+          },
+          update: {},
+        });
+      }
+    }
+    console.log(`✅ Seeded attribute category mappings`);
+  }
+
+  private async seedProductsAndItems(
     creatorId: bigint,
     numberOfProducts: number,
-    tx: PrismaClient, // Use the transactional client
+    tx: PrismaClient,
   ): Promise<void> {
-    console.log(`Attempting to seed up to ${numberOfProducts} products...`);
+    console.log(
+      `🎯 Seeding ${numberOfProducts} products with dynamic attributes...`,
+    );
 
-    const allColors = await tx.color.findMany();
-    const allSizes = await tx.size.findMany();
-    const allBrands = await tx.brand.findMany();
-    const allCategories = await tx.category.findMany();
-    const allMovements = await tx.movement.findMany();
-    const allGenders = await tx.gender.findMany();
-    const defaultCurrency = await tx.currency_exchange.findUnique({
-      where: { curr: '$' },
-    });
-    const standardTax = await tx.tax_rule.findUnique({
-      where: { description: 'Standard Sales Tax (10%)' },
-    });
-    const luxuryTax = await tx.tax_rule.findUnique({
-      where: { description: 'Luxury Goods Tax (20%)' },
-    });
+    // Get all required data
+    const colors = await tx.color.findMany();
+    const sizes = await tx.size.findMany();
+    const brands = await tx.brand.findMany();
+    const categories = await tx.category.findMany();
+    const genders = await tx.gender.findMany();
+    const movementTypes = await tx.movement_type.findMany();
+    const crystals = await tx.crystal.findMany();
+    const materials = await tx.material.findMany();
+    const countries = await tx.country.findMany();
+    const availabilities = await tx.availability.findMany();
+    const complications = await tx.complications.findMany();
+    const currencies = await tx.currency_exchange.findMany();
+    const taxRules = await tx.tax_rule.findMany();
+    const attributes = await tx.attributes.findMany();
+    const attributeCategories = await tx.attribute_categories.findMany();
+    const attributeMappings = await tx.attribute_category_mapping.findMany();
+    const conditions = await tx.condition.findMany();
+    const watchComponents = await tx.watchComponents.findMany();
+    const conditionsOfWear = await tx.condition_of_wear.findMany();
+    const productInclusions = await tx.product_inclusion.findMany();
 
-    if (
-      !defaultCurrency ||
-      !standardTax ||
-      !luxuryTax ||
-      allBrands.length === 0 ||
-      allCategories.length === 0 ||
-      allMovements.length === 0 ||
-      allColors.length === 0 ||
-      allSizes.length === 0 ||
-      allGenders.length === 0
-    ) {
-      console.error(
-        'Missing required base data (currency, tax, or lookup entities like brands, categories, movements, colors, sizes, types) for product variant seeding. Please ensure they are seeded.',
-      );
+    console.log(
+      '👉 Found required lookup data, proceeding with product seeding...',
+    );
+
+    const watchCategory = categories.find((c) => c.title === 'Watch');
+    const usdCurrency = currencies.find((c) => c.curr === 'USD');
+    const standardTax = taxRules.find((t) => t.description === 'Standard VAT');
+
+    if (!watchCategory || !usdCurrency || !standardTax) {
+      console.error('❌ Missing required base data');
       return;
     }
 
-    const getNameSuffix = (categoryTitle: string) => {
-      if (categoryTitle.includes('Dive')) return 'Pro Diver';
-      if (categoryTitle.includes('Pilot')) return 'Pilot Chrono';
-      if (categoryTitle.includes('Chronograph')) return 'Racing';
-      if (categoryTitle.includes('Dress')) return 'Elegance';
-      if (categoryTitle.includes('Smartwatch')) return 'Connect';
-      if (categoryTitle.includes('Field')) return 'Explorer';
-      if (categoryTitle.includes('Luxury')) return 'Masterpiece';
-      if (categoryTitle.includes('Digital')) return 'Digital';
-      return 'Classic';
-    };
+    const watchMappings = attributeMappings.filter((m) => {
+      const category = attributeCategories.find(
+        (c) => c.id === m.attribute_category_id,
+      );
+      return category?.name === 'Watch';
+    });
+
+    const claspTypes = [
+      'Deployant',
+      'Buckle',
+      'Folding',
+      'Hook',
+      'Magnetic',
+      'Push Button',
+    ];
 
     let productsCreated = 0;
-    const existingReferenceNumbers = new Set(
-      (await tx.product.findMany({ select: { reference_number: true } })).map(
-        (p) => Number(p.reference_number),
-      ),
-    );
-    const existingSerialNumbers = new Set(
-      (await tx.product.findMany({ select: { serial_number: true } })).map(
-        (p) => p.serial_number,
-      ),
-    );
-    const existingSkus = new Set(
-      (await tx.product_variants.findMany({ select: { sku: true } })).map(
-        (pv) => pv.sku,
-      ),
-    );
+    const existingRefs = new Set<string>();
+    const existingSerials = new Set<string>();
+    const existingSkus = new Set<string>();
 
-    const MAX_GENERATION_ATTEMPTS = numberOfProducts * 10;
-    let overallAttemptCount = 0;
-
-    for (
-      let i = 0;
-      productsCreated < numberOfProducts &&
-      overallAttemptCount < MAX_GENERATION_ATTEMPTS;
-      i++
-    ) {
-      overallAttemptCount++;
-
-      const brand = getRandomElement(allBrands);
-      const category = getRandomElement(allCategories);
-      const gender = getRandomElement(allGenders);
-
-      if (!brand || !category || !gender) {
-        console.warn(
-          'Skipping product creation due to missing base data (brand, category, or type). This should not happen if initial checks pass.',
-        );
-        continue;
-      }
-
-      let basePrice: number;
-      switch (brand.title) {
-        case 'Patek Philippe':
-        case 'Audemars Piguet':
-        case 'Vacheron Constantin':
-        case 'A. Lange & Söhne':
-          basePrice = getRandomInt(40000, 250000);
-          break;
-        case 'Rolex':
-        case 'Omega':
-        case 'Jaeger-LeCoultre':
-        case 'IWC Schaffhausen':
-        case 'Breitling':
-        case 'Zenith':
-        case 'Blancpain':
-        case 'Cartier':
-        case 'Grand Seiko':
-          basePrice = getRandomInt(5000, 40000);
-          break;
-        case 'Longines':
-          basePrice = getRandomInt(1000, 4000);
-          break;
-        case 'Tissot':
-        case 'Hamilton':
-        case 'Oris':
-          basePrice = getRandomInt(300, 1500);
-          break;
-        case 'Citizen':
-        case 'Seiko':
-          basePrice = getRandomInt(150, 800);
-          break;
-        case 'Casio':
-        case 'Timex':
-          basePrice = getRandomInt(50, 300);
-          break;
-        case 'Fossil':
-        case 'Swatch':
-          basePrice = getRandomInt(100, 400);
-          break;
-        default:
-          basePrice = getRandomInt(200, 1000);
-      }
-
-      if (category.title.includes('Smartwatch'))
-        basePrice = getRandomInt(150, 600);
-      if (category.title.includes('Chronographs'))
-        basePrice += getRandomInt(100, 500);
-      if (category.title.includes('Complication'))
-        basePrice += getRandomInt(1000, 10000);
-      if (category.title.includes('Digital')) basePrice = getRandomInt(50, 250);
-
-      const productNameSuffix = getNameSuffix(category.title);
-      const productName = `${brand.title} ${productNameSuffix} ${getRandomInt(
-        100,
-        999,
-      )}`;
-      const productTitle = `${productName} | ${brand.title} Official Store`;
-      const productDescription = `Discover the exquisite ${productName}. This premium ${category.title.toLowerCase()} from ${
-        brand.title
-      } embodies precision engineering and timeless design. A perfect blend of style and functionality for the discerning individual.`;
-
-      let serialNumber: string;
-      const MAX_SERIAL_ATTEMPTS = 50;
-      let serialAttemptCount = 0;
-      do {
-        serialNumber = generateSerialNumber();
-        serialAttemptCount++;
-        if (serialAttemptCount > MAX_SERIAL_ATTEMPTS) {
-          console.warn(
-            `Could not generate unique serial number for product after ${MAX_SERIAL_ATTEMPTS} attempts. Skipping this product.`,
-          );
-          break;
-        }
-      } while (existingSerialNumbers.has(serialNumber));
-      if (serialAttemptCount > MAX_SERIAL_ATTEMPTS) continue;
-
-      let referenceNumber: number;
-      let refAttemptCount = 0;
-      do {
-        referenceNumber = generateReferenceNumber();
-        refAttemptCount++;
-        if (refAttemptCount > MAX_SERIAL_ATTEMPTS) {
-          console.warn(
-            `Could not generate unique reference number for product after ${MAX_SERIAL_ATTEMPTS} attempts. Skipping this product.`,
-          );
-          break;
-        }
-      } while (existingReferenceNumbers.has(referenceNumber));
-      if (refAttemptCount > MAX_SERIAL_ATTEMPTS) continue;
-
-      existingSerialNumbers.add(serialNumber);
-      existingReferenceNumbers.add(referenceNumber);
-
-      const productionYear = getRandomInt(2010, 2024);
-
-      // Generate product slug here for the initial create
-      const initialProductSlug = this.slugService.generateSlug(
-        `${productName} ${brand.title} ${category.title} ${gender.title}`,
-      );
-
-      let createdProduct;
+    for (let i = 0; i < numberOfProducts; i++) {
       try {
-        createdProduct = await tx.product.create({
-          // Changed from upsert to create
+        const brand = getRandomElement(brands)!;
+        const gender = getRandomElement(genders)!;
+        const category = getRandomElement(categories)!;
+        const isWatch = category.title === 'Watch';
+
+        // Generate unique identifiers
+        let referenceNumber: string;
+        do {
+          referenceNumber = generateReferenceNumber();
+        } while (existingRefs.has(referenceNumber));
+        existingRefs.add(referenceNumber);
+
+        let serialNumber: string;
+        do {
+          serialNumber = generateSerialNumber();
+        } while (existingSerials.has(serialNumber));
+        existingSerials.add(serialNumber);
+
+        let sku: string;
+        do {
+          sku = generateSku();
+        } while (existingSkus.has(sku));
+        existingSkus.add(sku);
+
+        // Product Price
+        let productPrice = getRandomInt(100000, 50000000);
+
+        // Create product
+        const productName = `${brand.title} ${getRandomInt(100, 999)}`;
+        const productSlug = this.slugService.generateSlug(
+          `${productName} ${brand.title} ${category.title} ${gender.title}`,
+        );
+
+        // Ensure at least 10% of products are always marked as used
+        let isUsed = false;
+        if (i < Math.ceil(numberOfProducts * 0.1)) {
+          isUsed = true;
+        } else {
+          isUsed = Math.random() < 0.3;
+        }
+
+        const product = await tx.product.create({
           data: {
-            // Data for the new product
             name: productName,
-            description: productDescription,
-            title: productTitle,
+            description: `Discover the exquisite ${productName}. This premium ${category.title.toLowerCase()} from ${brand.title
+              } embodies precision engineering and timeless design.`,
+            title: `${productName} | ${brand.title} Official Store`,
             brand_id: brand.id,
             category_id: category.id,
             gender_id: gender.id,
-            is_accessory: false,
-            year_of_production: productionYear,
-            serial_number: serialNumber,
-            reference_number: referenceNumber,
+            is_accessory: !isWatch,
+            product_slug: productSlug,
+            year_of_production: getRandomInt(2010, 2024),
+            is_used: isUsed,
+            sales_price: new Decimal(productPrice),
+            commission_fee: new Decimal(productPrice * 0.6),
+            payout_price: new Decimal(productPrice * 0.4), // 40% of sales price
+            seller_id: BigInt(1), // Default seller ID for seeding
+            currency_id: 1, // Default to USD
             created_by: creatorId,
-            approval_status_by_admin: 'PENDING',
-            product_slug: initialProductSlug, // Use the generated slug
-          },
-          include: {
-            // Include relations to get their names for accurate slug generation in the next step
-            brand: true,
-            category: true,
-            gender: true,
           },
         });
-        productsCreated++;
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002'
-        ) {
-          console.warn(
-            `Product with serial number ${serialNumber} or reference number ${referenceNumber} already exists in DB. Retrying with a new one.`,
+
+        const color = getRandomElement(colors)!;
+        const braceletColor = getRandomElement(colors)!;
+        const dialColor = getRandomElement(colors)!;
+        const size = getRandomElement(sizes)!;
+        const movementType = getRandomElement(movementTypes)!;
+        const crystal = getRandomElement(crystals)!;
+        const caseMaterial = getRandomElement(materials)!;
+        const braceletMaterial = getRandomElement(materials)!;
+        const country = getRandomElement(countries)!;
+        const availability = getRandomElement(availabilities)!;
+        const complication = getRandomElement(complications)!;
+
+        const productItem = await tx.product_items.create({
+          data: {
+            product_id: product.id,
+            title: `${product.name} - ${color.name}`,
+            color_id: color.id,
+            bracelet_color_id: braceletColor.id,
+            dial_color_id: dialColor.id,
+            size_id: size.id,
+            movement_type_id: movementType.id,
+            price: new Decimal(getRandomInt(1000, 50000)),
+            cost_price: new Decimal(getRandomInt(500, 25000)),
+            quantity: getRandomInt(0, 100),
+            gender_id: gender.id,
+            year_of_production: getRandomInt(2010, 2024),
+            serial_number: serialNumber,
+            reference_number: referenceNumber, // This field exists on product_items
+            approval_status_by_admin: 'APPROVED',
+            approximation: Math.random() < 0.3,
+            buyer_confidence_boost_description: `Premium ${brand.title} timepiece with exceptional craftsmanship`,
+            unknown: Math.random() < 0.1,
+            has_original_box_and_papers: Math.random() < 0.7,
+            has_original_box: Math.random() < 0.8,
+            has_original_papers: Math.random() < 0.6,
+            has_additional_accessories: Math.random() < 0.5,
+            crystal_id: crystal.id,
+            case_material_id: caseMaterial.id,
+            bracelet_material_id: braceletMaterial.id,
+            complication_id: complication.id,
+            release_date: new Date(
+              Date.now() - Math.random() * 1000 * 60 * 60 * 24 * 365 * 10,
+            ),
+            country_id: country.id,
+            availability_id: availability.id,
+            currency_id: usdCurrency.id,
+            tax_rule_id: standardTax.id,
+            seller_id: creatorId,
+            power_reserve: getRandomInt(24, 168),
+            base_image_url: `https://picsum.photos/800/600?random=${i}`,
+            sku: sku,
+            discount: new Decimal(Math.random() * 20),
+            warranty: getRandomInt(1, 5),
+            created_by: creatorId,
+          },
+        });
+
+        // Add dynamic attributes - get mappings based on product category
+        const relevantMappings = attributeMappings.filter((m) => {
+          const attrCategory = attributeCategories.find(
+            (c) => c.id === m.attribute_category_id,
           );
-          i--;
-          continue;
-        } else {
-          console.error(`Error creating product ${productName}:`, error);
-          throw error;
-        }
-      }
+          return attrCategory?.name === category.title;
+        });
 
-      // Generate product_public_id using the service after creation
-      // and update the product. The product_slug will also be re-set here
-      // to ensure consistency if any changes are made during the update phase.
-      const productPublicId = this.hashidsService.encode(createdProduct.id);
-      const productSlug = this.slugService.generateSlug(
-        `${createdProduct.name} ${brand.title} ${category.title} ${gender.title}`,
-      );
-
-      // Update the newly created product with the generated values
-      await tx.product.update({
-        where: { id: createdProduct.id },
-        data: {
-          product_slug: productSlug,
-        },
-      });
-
-      const numberOfVariants = getRandomInt(1, 4);
-      const usedVariantCombos = new Set<string>();
-      const MAX_VARIANT_ATTEMPTS = 10;
-
-      for (let j = 0; j < numberOfVariants; j++) {
-        let variantAttemptCount = 0;
-        let mainColor, braceletColor, dialColor, size, movement;
-        let variantSku;
-
-        do {
-          mainColor = getRandomElement(allColors);
-          braceletColor = getRandomElement(allColors);
-          dialColor = getRandomElement(allColors);
-          size = getRandomElement(allSizes);
-          const tempMovement = getRandomElement(allMovements);
-
-          if (
-            category.title.includes('Smartwatch') &&
-            tempMovement?.title !== 'Smartwatch'
-          ) {
-            movement = allMovements.find((m) => m.title === 'Smartwatch');
-          } else if (
-            !category.title.includes('Smartwatch') &&
-            tempMovement?.title === 'Smartwatch'
-          ) {
-            movement = getRandomElement(
-              allMovements.filter((m) => m.title !== 'Smartwatch'),
-            );
-          } else {
-            movement = tempMovement;
-          }
-
-          if (
-            !mainColor ||
-            !braceletColor ||
-            !dialColor ||
-            !size ||
-            !movement
-          ) {
-            console.warn(
-              `Incomplete data for variant creation (color, size, or movement). Retrying variant.`,
-            );
-            variantAttemptCount++;
-            continue;
-          }
-
-          const comboKey = `${mainColor.id}-${braceletColor.id}-${dialColor.id}-${size.id}`;
-          if (usedVariantCombos.has(comboKey)) {
-            variantAttemptCount++;
-            continue;
-          }
-
-          // Use size.value directly as it's now numeric
-          variantSku = generateSku(
-            brand.title,
-            category.title,
-            Number(createdProduct.reference_number),
-            mainColor.name,
-            size.value, // Pass the numeric size value
-            createdProduct.year_of_production,
-          ).substring(0, 19);
-
-          if (existingSkus.has(variantSku)) {
-            variantAttemptCount++;
-            continue;
-          }
-
-          break;
-        } while (variantAttemptCount < MAX_VARIANT_ATTEMPTS);
-
-        if (variantAttemptCount >= MAX_VARIANT_ATTEMPTS) {
-          console.warn(
-            `Could not create unique variant for product ${createdProduct.id} after ${MAX_VARIANT_ATTEMPTS} attempts. Skipping this variant.`,
+        for (const mapping of relevantMappings) {
+          const attribute = attributes.find(
+            (a) => a.id === mapping.attribute_id,
           );
-          continue;
-        }
+          if (!attribute) continue;
 
-        usedVariantCombos.add(
-          `${mainColor!.id}-${braceletColor!.id}-${dialColor!.id}-${size!.id}`,
-        );
-        existingSkus.add(variantSku!);
+          let value: any = null;
+          let lookupName: string | null = null;
+          let lookupId: number | null = null;
 
-        let variantPrice = basePrice + getRandomInt(-100, 500);
-        if (
-          mainColor!.name.includes('Gold') ||
-          mainColor!.name.includes('Rose Gold')
-        ) {
-          variantPrice += getRandomInt(500, 5000);
-        } else if (mainColor!.name.includes('Bronze')) {
-          variantPrice += getRandomInt(100, 500);
-        }
+          switch (attribute.name) {
+            case 'reference_number':
+              value = referenceNumber;
+              break;
+            case 'serial_number':
+              value = serialNumber;
+              break;
 
-        let caseMaterial = 'Stainless Steel';
-        let braceletMaterial = 'Stainless Steel';
+            case 'crystal_type':
+              const selectedCrystal = getRandomElement(crystals);
+              if (selectedCrystal) {
+                value = selectedCrystal.title;
+                lookupName = 'crystal';
+                lookupId = selectedCrystal.id;
+              }
+              break;
 
-        if (mainColor!.name.includes('Gold')) {
-          caseMaterial = 'Gold';
-          braceletMaterial = 'Gold';
-        } else if (mainColor!.name.includes('Bronze')) {
-          caseMaterial = 'Bronze';
-        } else if (mainColor!.name.includes('Ceramic')) {
-          caseMaterial = 'Ceramic';
-          braceletMaterial = 'Ceramic';
-        } else if (mainColor!.name.includes('Titanium')) {
-          caseMaterial = 'Titanium';
-          braceletMaterial = 'Titanium';
-        }
+            case 'case_diameter':
+              value = getRandomInt(28, 50);
+              break;
 
-        if (getRandomInt(0, 100) < 30) {
-          if (getRandomInt(0, 1) === 0) {
-            braceletMaterial = 'Leather';
-            variantPrice -= getRandomInt(50, 200);
-          } else {
-            braceletMaterial = 'Rubber';
-            variantPrice -= getRandomInt(20, 100);
+            case 'dial_color':
+              value = dialColor.name;
+              lookupName = 'color';
+              lookupId = dialColor.id;
+              break;
+
+            case 'caliber_movement':
+              value = `${movementType.name} Cal. ${Array.from(
+                { length: 4 },
+                () =>
+                  'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[
+                  Math.floor(Math.random() * 36)
+                  ],
+              ).join('')}`;
+              break;
+
+            case 'clasp_type':
+              value = getRandomElement(claspTypes);
+              break;
+
+            case 'clasp_material':
+              const claspMat = getRandomElement(materials);
+              if (claspMat) {
+                value = claspMat.title;
+                lookupName = 'material';
+                lookupId = claspMat.id;
+              }
+              break;
+
+            case 'bezel_material':
+              const bezelMat = getRandomElement(materials);
+              if (bezelMat) {
+                value = bezelMat.title;
+                lookupName = 'material';
+                lookupId = bezelMat.id;
+              }
+              break;
+
+            case 'lug_width':
+              value = getRandomInt(16, 24);
+              break;
+
+            case 'water_resistance':
+              value = getRandomElement([30, 50, 100, 200, 300, 500, 1000]);
+              break;
+
+            case 'power_reserve':
+              value = getRandomInt(24, 168);
+              break;
+
+            case 'case_thickness':
+              value = Math.round((Math.random() * 10 + 8) * 10) / 10;
+              break;
+
+            case 'weight':
+              value = getRandomInt(80, 300);
+              break;
+
+            case 'functions':
+              const functionList = [
+                'Date',
+                'Day-Date',
+                'GMT',
+                'Chronograph',
+                'Moon Phase',
+              ];
+              const selectedFunctions: any = [];
+              const numFunctions = getRandomInt(1, 3);
+              for (let f = 0; f < numFunctions; f++) {
+                const func = getRandomElement(functionList);
+                if (func && !selectedFunctions.includes(func)) {
+                  selectedFunctions.push(func);
+                }
+              }
+              value = selectedFunctions.join(', ');
+              break;
+
+            case 'condition':
+              const selectedCondition = getRandomElement(conditions);
+              if (selectedCondition) {
+                value = selectedCondition.condition;
+                lookupName = 'condition';
+                lookupId = selectedCondition.id;
+              }
+              break;
+            case 'movement':
+              if (movementType) {
+                value = movementType.name;
+                lookupName = 'movement_type';
+                lookupId = movementType.id;
+              }
+              break;
+
+            case 'inclusions':
+              const inclusion = getRandomElement(productInclusions);
+              if (inclusion) {
+                value = inclusion.name;
+                lookupName = 'product_inclusion';
+                lookupId = inclusion.id;
+              }
+              break;
+
           }
-        }
 
-        if (variantPrice < 50) variantPrice = 50;
+          if (value !== null) {
+            let attributeValue: any = {
+              lookup_name: lookupName,
+              lookup_id: lookupId,
+            };
 
-        const brandSlug = this.slugService.generateSlug(brand.title);
-        const categorySlug = this.slugService.generateSlug(category.title);
-        const mainColorSlug = this.slugService.generateSlug(mainColor!.name);
-        const sizeSlug = String(size!.value).replace('.', '-').toLowerCase(); // Use numeric size for slug
+            switch (mapping.data_type) {
+              case 'string':
+                attributeValue.string_value = value.toString();
+                break;
+              case 'number':
+                try {
+                  const numValue = typeof value === 'number' ? value : parseFloat(value);
+                  // Check if the value is a valid number before creating a Decimal
+                  if (!isNaN(numValue)) {
+                    attributeValue.number_value = new Decimal(numValue);
+                  } else {
+                    // Use a default value if the parsed value is NaN
+                    attributeValue.number_value = new Decimal(0);
+                  }
+                } catch (error) {
+                  // Fallback to a default value if conversion fails
+                  attributeValue.number_value = new Decimal(0);
+                }
+                break;
+              case 'boolean':
+                attributeValue.boolean_value =
+                  typeof value === 'boolean' ? value : Boolean(value);
+                break;
+              case 'date':
+                attributeValue.date_value =
+                  value instanceof Date ? value : new Date(value);
+                break;
+            }
 
-        const baseImageUrl = `https://images.watchstore.com/watches/${brandSlug}-${categorySlug}-${mainColorSlug}-${sizeSlug}.jpg`;
-
-        try {
-          const createdProductVariant = await tx.product_variants.upsert({
-            where: { sku: variantSku! },
-            update: {
-              updated_by: creatorId,
-              quantity: getRandomInt(1, 20),
-              base_image_url: baseImageUrl,
-              sku: variantSku!,
-            },
-            create: {
-              product_id: createdProduct.id,
-              color_id: mainColor!.id,
-              bracelet_color_id: braceletColor!.id,
-              dial_color_id: dialColor!.id,
-              size_id: size!.id,
-              movement_id: movement!.id,
-              price: new Decimal(variantPrice),
-              discount: j % 3 == 0 ? 10 : 24,
-              cost_price: new Decimal(variantPrice * 0.7),
-              quantity: getRandomInt(1, 20),
-              original_box_and_paper: getRandomInt(0, 1) === 1,
-              original_box: getRandomInt(0, 1) === 1,
-              original_paper: getRandomInt(0, 1) === 1,
-              accessories: getRandomInt(0, 1) === 1,
-              case_material: caseMaterial,
-              bracelet_material: braceletMaterial,
-              currency_id: defaultCurrency.id,
-              tax_rule_id:
-                category.title.includes('Luxury') || basePrice > 5000
-                  ? luxuryTax.id
-                  : standardTax.id,
-              created_by: creatorId,
-              base_image_url: baseImageUrl,
-              sku: variantSku!,
-            },
-          });
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002' &&
-            error.meta?.target === 'sku'
-          ) {
-            console.warn(
-              `SKU ${variantSku} already exists in DB. Retrying this variant.`,
-            );
-            j--;
-            existingSkus.delete(variantSku!);
-            continue;
-          }
-          console.error(
-            `Error upserting product variant for product ${createdProduct.id} (Color: ${mainColor?.name}, Size: ${size?.value}mm):`,
-            error,
-          );
-          throw error;
-        }
-      }
-    }
-    console.log(`Seeded ${productsCreated} new products and their variants.`);
-  }
-
-  // --- NEW SEEDING METHODS FOR THE MISSED MODELS ---
-
-  private async seedOwnershipProofs(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('Seeding ownership proofs...');
-    const products = await tx.product.findMany({ select: { id: true } });
-    const productVariants = await tx.product_variants.findMany({
-      select: { id: true, product_id: true },
-    });
-
-    if (products.length === 0 || productVariants.length === 0) {
-      console.warn(
-        'No products or product variants found to attach ownership proofs. Skipping.',
-      );
-      return;
-    }
-
-    const maxProofsPerVariant = 2; // Max number of proofs per product variant
-    const proofsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
-
-    for (const variant of productVariants) {
-      // Check if we already created a proof for this variant based on your unique constraint
-      if (proofsCreated.has(`${variant.product_id}-${variant.id}`)) {
-        continue;
-      }
-
-      const numProofs = getRandomInt(0, maxProofsPerVariant); // 0, 1, or 2 proofs
-      // Due to the unique constraint `@@unique([product_id, product_variant_id])`,
-      // we can only successfully `create` one entry per variant.
-      // If `numProofs` is > 1, subsequent attempts for the same variant will fail/warn.
-      // The loop will effectively create at most one proof per variant.
-      for (let i = 0; i < numProofs; i++) {
-        const imageUrl = `https://picsum.photos/id/${getRandomInt(
-          100,
-          200,
-        )}/600/400`;
-        const altText = `Proof image for product variant ${variant.id}`;
-
-        try {
-          await tx.ownership_proof.upsert({
-            where: {
-              product_id_product_variant_id: {
-                product_id: variant.product_id,
-                product_variant_id: variant.id,
+            await tx.attribute_value_mapping.create({
+              data: {
+                attribute_category_mapping_id: mapping.id,
+                product_id: product.id,
+                ...attributeValue,
+                created_by: creatorId,
               },
-            },
-            update: {
-              image_url: imageUrl,
-              alt_text: altText,
-              order: i + 1, // This `order` might not be unique if only one entry is created
-              updated_by: creatorId,
-            },
-            create: {
-              product_id: variant.product_id,
-              product_variant_id: variant.id,
-              image_url: imageUrl,
-              alt_text: altText,
-              order: i + 1,
-              created_by: creatorId,
-            },
-          });
-          proofsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
-          // If upsert successful, and we only want one per unique constraint, break here
-          break;
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002'
-          ) {
-            console.warn(
-              `Ownership proof for product variant ${variant.id} already exists (unique constraint). Skipping further proofs for this variant.`,
-            );
-            break; // Stop trying to add more for this variant if unique constraint hit
-          } else {
-            console.error(
-              `Error seeding ownership proof for variant ${variant.id}:`,
-              error,
-            );
-            throw error;
+            });
           }
         }
-      }
-    }
-    console.log(`Seeded ${proofsCreated.size} ownership proofs.`);
-  }
 
-  private async seedSignOfWears(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('Seeding signs of wear...');
-    const products = await tx.product.findMany({ select: { id: true } });
-    const productVariants = await tx.product_variants.findMany({
-      select: { id: true, product_id: true },
-    });
+        // Add sign of wear mappings only for watches
+        if (isWatch && product.is_used) {
+          const numberOfWearSigns = getRandomInt(1, 3);
+          for (let w = 0; w < numberOfWearSigns; w++) {
+            const component = getRandomElement(watchComponents);
+            const condition = getRandomElement(conditionsOfWear);
 
-    if (products.length === 0 || productVariants.length === 0) {
-      console.warn(
-        'No products or product variants found to attach signs of wear. Skipping.',
-      );
-      return;
-    }
-
-    const maxSignsPerVariant = 3; // Max number of signs of wear per product variant
-    const signsCreated = new Set<string>(); // To track unique product_id, product_variant_id combos
-
-    for (const variant of productVariants) {
-      // Check if we already created a sign of wear for this variant based on your unique constraint
-      if (signsCreated.has(`${variant.product_id}-${variant.id}`)) {
-        continue;
-      }
-
-      const numSigns = getRandomInt(0, maxSignsPerVariant); // 0 to 3 signs
-      // Similar to ownership proofs, due to the unique constraint, only one entry will be created.
-      for (let i = 0; i < numSigns; i++) {
-        const imageUrl = `https://picsum.photos/id/${getRandomInt(
-          200,
-          300,
-        )}/600/400`;
-        const altText = `Sign of wear image for product variant ${variant.id}`;
-
-        try {
-          await tx.sign_of_wear.upsert({
-            where: {
-              product_id_product_variant_id: {
-                product_id: variant.product_id,
-                product_variant_id: variant.id,
-              },
-            },
-            update: {
-              image_url: imageUrl,
-              alt_text: altText,
-              order: i + 1, // This `order` might not be unique if only one entry is created
-              updated_by: creatorId,
-            },
-            create: {
-              product_id: variant.product_id,
-              product_variant_id: variant.id,
-              image_url: imageUrl,
-              alt_text: altText,
-              order: i + 1,
-              created_by: creatorId,
-            },
-          });
-          signsCreated.add(`${variant.product_id}-${variant.id}`); // Mark combo as used
-          break; // Stop trying to add more for this variant if unique constraint hit
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002'
-          ) {
-            console.warn(
-              `Sign of wear for product variant ${variant.id} already exists (unique constraint). Skipping further signs for this variant.`,
-            );
-            break;
-          } else {
-            console.error(
-              `Error seeding sign of wear for variant ${variant.id}:`,
-              error,
-            );
-            throw error;
+            if (component && condition) {
+              await tx.wear_sign_component_condition_mapping.upsert({
+                where: {
+                  product_id_product_item_id_watch_component_id_condition_id: {
+                    product_id: product.id,
+                    product_item_id: productItem.id,
+                    watch_component_id: component.id,
+                    condition_id: condition.id,
+                  },
+                },
+                update: {},
+                create: {
+                  product_id: product.id,
+                  product_item_id: productItem.id,
+                  watch_component_id: component.id,
+                  condition_id: condition.id,
+                  image_url: `https://picsum.photos/600/400?random=wear-${product.id}-${w}`,
+                  alt_text: `${component.name} wear condition: ${condition.condition}`,
+                  order: w + 1,
+                  created_by: creatorId,
+                },
+              });
+            }
           }
         }
-      }
-    }
-    console.log(`Seeded ${signsCreated.size} signs of wear.`);
-  }
 
-  private async seedProductImages(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('Seeding product images...');
-    const productVariants = await tx.product_variants.findMany({
-      select: { id: true, color_id: true, size_id: true },
-    });
-
-    if (productVariants.length === 0) {
-      console.warn('No product variants found to attach images. Skipping.');
-      return;
-    }
-
-    let imagesCreatedCount = 0;
-    const maxImagesPerVariant = 5;
-
-    for (const variant of productVariants) {
-      const numImages = getRandomInt(1, maxImagesPerVariant); // At least 1 image per variant
-
-      for (let i = 0; i < numImages; i++) {
-        const imgUrl = `https://picsum.photos/id/${getRandomInt(
-          1,
-          100,
-        )}/800/600?random=${variant.id}-${i}`;
-        const altText = `Image ${i + 1} for variant ${variant.id}`;
-
-        try {
-          // product_images doesn't have a unique constraint on product_variant_id + img_url,
-          // so we can add multiple images per variant.
+        // Create product images
+        const imageCount = getRandomInt(3, 8);
+        for (let j = 0; j < imageCount; j++) {
           await tx.product_images.create({
             data: {
-              img_url: imgUrl,
-              alt_text: altText,
-              order: i + 1,
-              color_id: variant.color_id, // Link to variant's color
-              size_id: variant.size_id, // Link to variant's size
-              product_variant_id: variant.id,
-              created_by: creatorId,
-            },
-          });
-          imagesCreatedCount++;
-        } catch (error) {
-          console.error(
-            `Error seeding product image for variant ${variant.id}:`,
-            error,
-          );
-          throw error;
-        }
-      }
-    }
-    console.log(`Seeded ${imagesCreatedCount} product images.`);
-  }
-
-  private async seedReviewsAndRatings(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('Seeding reviews and ratings...');
-    const products = await tx.product.findMany({
-      select: { id: true, name: true },
-    });
-    // For `reviewedBy`, assuming `creatorId` can act as a user ID for seeding purposes.
-    // In a real app, you'd fetch actual user IDs.
-
-    if (products.length === 0) {
-      console.warn('No products found to add reviews to. Skipping.');
-      return;
-    }
-
-    const reviewsAdded = new Set<string>(); // To track unique [product_id, reviewedBy] combos
-    let reviewsCount = 0;
-
-    for (const product of products) {
-      const numReviews = getRandomInt(0, 3); // 0 to 3 reviews per product
-
-      for (let i = 0; i < numReviews; i++) {
-        const reviewText = `This ${product.name} is absolutely amazing! The quality is superb.`;
-        const ratings = getRandomInt(3, 5); // Ratings from 3 to 5 stars
-
-        // The unique constraint is on [product_id, reviewedBy].
-        // To ensure uniqueness, we'll try to upsert with a fixed reviewedBy (creatorId).
-        // If we want multiple reviews per product by different users, we'd need to mock more user IDs.
-        const comboKey = `${product.id}-${creatorId}`;
-        if (reviewsAdded.has(comboKey)) {
-          continue; // Skip if this product already has a review by creatorId
-        }
-
-        try {
-          await tx.reviews_ratings.upsert({
-            where: {
-              product_id_reviewedBy: {
-                product_id: product.id,
-                reviewedBy: creatorId,
-              },
-            },
-            update: {
-              review: reviewText,
-              ratings: ratings,
-              updated_by: creatorId,
-            },
-            create: {
+              img_url: `https://picsum.photos/800/600?random=${product.id}-${j}`,
+              alt_text: `${product.name} - Image ${j + 1}`,
+              type:
+                j === 0 ? 'ownership' : j === 1 ? 'gallery' : 'sign-of-wear',
+              image_type:
+                j === 0 ? 'thumbnail' : j === 1 ? 'gallery' : 'detail',
+              original_name: `image-${product.id}-${j}.jpg`,
+              mime_type: 'image/jpeg',
+              file_size: getRandomInt(50000, 200000), // in bytes
               product_id: product.id,
-              review: reviewText,
-              ratings: ratings,
-              reviewedBy: creatorId,
+              order: j + 1,
               created_by: creatorId,
             },
           });
-          reviewsAdded.add(comboKey);
-          reviewsCount++;
-        } catch (error) {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2002'
-          ) {
-            console.warn(
-              `Review for product ${product.id} by user ${creatorId} already exists. Skipping duplicate.`,
-            );
-          } else {
-            console.error(
-              `Error seeding review for product ${product.id}:`,
-              error,
-            );
-            throw error;
-          }
         }
-      }
-    }
-    console.log(`Seeded ${reviewsCount} reviews and ratings.`);
-  }
 
-  private async seedFavorites(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('Seeding favorites...');
-    // For `user_id`, assuming `creatorId` can act as a user ID for seeding purposes.
-    const products = await tx.product.findMany({ select: { id: true } });
-    const productVariants = await tx.product_variants.findMany({
-      select: { id: true, product_id: true },
-    });
+        productsCreated++;
 
-    if (products.length === 0 || productVariants.length === 0) {
-      console.warn(
-        'No products or product variants found for favorites. Skipping.',
-      );
-      return;
-    }
-
-    const favoritesAdded = new Set<string>(); // To track unique [user_id, product_id, product_variant_id]
-    let favoritesCount = 0;
-
-    // Pick a random subset of product variants to mark as favorite
-    const variantsToFavorite = getRandomInt(
-      1,
-      Math.min(50, productVariants.length),
-    );
-
-    for (let i = 0; i < variantsToFavorite; i++) {
-      const variant = getRandomElement(productVariants);
-      if (!variant) continue;
-
-      const comboKey = `${creatorId}-${variant.product_id}-${variant.id}`;
-      if (favoritesAdded.has(comboKey)) {
-        i--; // Retry if this combo already exists
-        continue;
-      }
-
-      try {
-        await tx.favorite.upsert({
-          where: {
-            user_id_product_id_product_variant_id: {
-              user_id: creatorId,
-              product_id: variant.product_id,
-              product_variant_id: variant.id,
-            },
-          },
-          update: { updated_by: creatorId },
-          create: {
-            user_id: creatorId,
-            product_id: variant.product_id,
-            product_variant_id: variant.id,
-            created_by: creatorId,
-          },
-        });
-        favoritesAdded.add(comboKey);
-        favoritesCount++;
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002'
-        ) {
-          console.warn(
-            `Favorite for user ${creatorId}, product ${variant.product_id}, variant ${variant.id} already exists. Skipping duplicate.`,
+        if (productsCreated % 50 === 0) {
+          console.log(
+            `✅ Seeded ${productsCreated}/${numberOfProducts} products`,
           );
-        } else {
-          console.error(`Error seeding favorite:`, error);
-          throw error;
         }
+      } catch (error) {
+        console.error(`❌ Failed to seed product ${i + 1}:`, error);
+        // Continue with next product instead of failing completely
       }
     }
-    console.log(`Seeded ${favoritesCount} favorites.`);
+
+    console.log(
+      `✅ Successfully seeded ${productsCreated} products with dynamic attributes`,
+    );
   }
 
   private async seedTags(creatorId: bigint, tx: PrismaClient): Promise<void> {
-    console.log('Seeding tags...');
-    const tagsData = [
+    console.log('🏷️ Seeding tags...');
+    const tags = [
       {
         key: 'New_Arrival',
         title: 'New Arrival',
@@ -1648,162 +2064,1570 @@ export default class SeedHelper {
       },
     ];
 
-    for (const data of tagsData) {
+    for (const tag of tags) {
       await tx.tags.upsert({
-        where: { title: data.title },
-        update: { ...data, updated_by: creatorId },
-        create: { ...data, created_by: creatorId },
+        where: { title: tag.title },
+        update: {},
+        create: {
+          key: tag.key,
+          title: tag.title,
+          description: tag.description,
+          created_by: creatorId,
+        },
       });
     }
-    console.log(`Seeded ${tagsData.length} tags.`);
+    console.log(`✅ Seeded ${tags.length} tags`);
   }
 
   private async seedProductTags(
     creatorId: bigint,
     tx: PrismaClient,
   ): Promise<void> {
-    console.log('Seeding product tags...');
-    // FYI: External job is implemented for this purpose.
-    console.log('Product not seeded. Now job is implemented to sync data');
+    console.log('🔗 Seeding product tags...');
+    console.log(
+      'Product tags not seeded. External job implemented to sync data',
+    );
+  }
+
+  private async seedOwnershipProofs(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('📋 Seeding ownership proofs...');
+    const productItems = await tx.product_items.findMany({
+      select: { id: true, product_id: true },
+    });
+
+    if (productItems.length === 0) {
+      console.warn('No product items found for ownership proofs. Skipping.');
+      return;
+    }
+
+    let proofsCreated = 0;
+    const maxProofsToCreate = Math.min(
+      100,
+      Math.floor(productItems.length * 0.3),
+    );
+
+    for (let i = 0; i < maxProofsToCreate; i++) {
+      const item = getRandomElement(productItems)!;
+
+      try {
+        await tx.ownership_proof.upsert({
+          where: {
+            product_id_product_item_id: {
+              product_id: item.product_id,
+              product_item_id: item.id,
+            },
+          },
+          update: {},
+          create: {
+            product_id: item.product_id,
+            product_item_id: item.id,
+            image_url: `https://picsum.photos/600/400?random=proof-${item.id}`,
+            alt_text: `Proof of ownership for item ${item.id}`,
+            order: 1,
+            created_by: creatorId,
+          },
+        });
+        proofsCreated++;
+      } catch (error) {
+        // Skip if already exists due to unique constraint
+        continue;
+      }
+    }
+    console.log(`✅ Seeded ${proofsCreated} ownership proofs`);
+  }
+
+  private async seedSignOfWears(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🔍 Signs of wear already seeded during product creation');
+  }
+
+  private async seedProductImages(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('🖼️ Product images already seeded during product creation');
+  }
+
+  private async seedReviewsAndRatings(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('⭐ Seeding reviews and ratings...');
+    const products = await tx.product.findMany({
+      select: { id: true, name: true },
+    });
+
+    if (products.length === 0) {
+      console.warn('No products found for reviews. Skipping.');
+      return;
+    }
+
+    let reviewsCreated = 0;
+    const maxReviewsToCreate = Math.min(200, Math.floor(products.length * 0.4));
+
+    const reviewTexts = [
+      'Excellent quality watch, highly recommended!',
+      'Beautiful timepiece, exceeded my expectations.',
+      'Great value for money, very satisfied.',
+      'Amazing craftsmanship and attention to detail.',
+      'Perfect watch for daily wear, very durable.',
+    ];
+
+    for (let i = 0; i < maxReviewsToCreate; i++) {
+      const product = getRandomElement(products)!;
+      const reviewText = getRandomElement(reviewTexts)!;
+      const rating = getRandomInt(3, 5);
+
+      try {
+        await tx.reviews_ratings.upsert({
+          where: {
+            product_id_reviewedBy: {
+              product_id: product.id,
+              reviewedBy: creatorId,
+            },
+          },
+          update: {},
+          create: {
+            product_id: product.id,
+            review: reviewText,
+            ratings: rating,
+            reviewedBy: creatorId,
+            created_by: creatorId,
+          },
+        });
+        reviewsCreated++;
+      } catch (error) {
+        // Skip if already exists due to unique constraint
+        continue;
+      }
+    }
+    console.log(`✅ Seeded ${reviewsCreated} reviews and ratings`);
+  }
+
+  private async seedFavorites(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('❤️ Seeding favorites...');
+    const productItems = await tx.product_items.findMany({
+      select: { id: true, product_id: true },
+    });
+
+    if (productItems.length === 0) {
+      console.warn('No product items found for favorites. Skipping.');
+      return;
+    }
+
+    let favoritesCreated = 0;
+    const maxFavoritesToCreate = Math.min(
+      100,
+      Math.floor(productItems.length * 0.2),
+    );
+
+    for (let i = 0; i < maxFavoritesToCreate; i++) {
+      const item = getRandomElement(productItems)!;
+
+      try {
+        await tx.favorite.upsert({
+          where: {
+            user_id_product_id_product_item_id: {
+              user_id: creatorId,
+              product_id: item.product_id,
+              product_item_id: item.id,
+            },
+          },
+          update: {},
+          create: {
+            user_id: creatorId,
+            product_id: item.product_id,
+            product_item_id: item.id,
+            created_by: creatorId,
+          },
+        });
+        favoritesCreated++;
+      } catch (error) {
+        // Skip if already exists due to unique constraint
+        continue;
+      }
+    }
+    console.log(`✅ Seeded ${favoritesCreated} favorites`);
+  }
+
+  private async seedProductListings(
+    creatorId: bigint,
+    tx: PrismaClient,
+  ): Promise<void> {
+    console.log('📋 Seeding product listings...');
+
+    // Complete JSON data - add all your 40 entries here
+    const listingsData = [
+      {
+        ID: 1,
+        Brand: 'Seiko',
+        Category: 'Sports',
+        'Model Name': 'Prospex',
+        'Reference No.': 'SE96069',
+        'Price (USD)': 2658.69,
+        Currency: 'USD',
+        'Release Date': '19/08/2022',
+        Gender: 'Unisex',
+        'Case Material': 'Stainless Steel',
+        'Case Diameter (mm)': 32,
+        'Case Thickness (mm)': 14.7,
+        'Dial Color': 'Gold',
+        'Strap Material': 'Leather',
+        'Strap Color': 'Blue',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 40,
+        Complications: 'World Time',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 2,
+        Brand: 'Citizen',
+        Category: 'Eco-Drive',
+        'Model Name': 'Promaster',
+        'Reference No.': 'CI19632',
+        'Price (USD)': 5219.34,
+        Currency: 'USD',
+        'Release Date': '17/05/2021',
+        Gender: "Women's",
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 34.9,
+        'Case Thickness (mm)': 13.6,
+        'Dial Color': 'Black',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Blue',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Solar Powered',
+        'Power Reserve (hours)': 0,
+        Complications: 'GMT',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 3,
+        Brand: 'Omega',
+        Category: 'Dress',
+        'Model Name': 'Speedmaster',
+        'Reference No.': 'OM90435',
+        'Price (USD)': 13084.44,
+        Currency: 'USD',
+        'Release Date': '11/10/2023',
+        Gender: 'Unisex',
+        'Case Material': 'Bronze',
+        'Case Diameter (mm)': 37.8,
+        'Case Thickness (mm)': 13.2,
+        'Dial Color': 'Black',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 60,
+        Complications: 'None',
+        Availability: 'In Stock',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 4,
+        Brand: 'Omega',
+        Category: 'Dress',
+        'Model Name': 'Speedmaster',
+        'Reference No.': 'OM14756',
+        'Price (USD)': 4401.79,
+        Currency: 'USD',
+        'Release Date': '28/12/2023',
+        Gender: "Women's",
+        'Case Material': 'Bioceramic',
+        'Case Diameter (mm)': 43.9,
+        'Case Thickness (mm)': 9,
+        'Dial Color': 'Silver',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Red',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 70,
+        Complications: 'GMT',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 5,
+        Brand: 'Seiko',
+        Category: 'Sports',
+        'Model Name': 'Prospex',
+        'Reference No.': 'SE37679',
+        'Price (USD)': 3163.87,
+        Currency: 'USD',
+        'Release Date': '20/11/2023',
+        Gender: "Women's",
+        'Case Material': 'Bioceramic',
+        'Case Diameter (mm)': 36.6,
+        'Case Thickness (mm)': 8.6,
+        'Dial Color': 'Red',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 60,
+        Complications: 'Moonphase',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 6,
+        Brand: 'Fossil',
+        Category: 'Fashion',
+        'Model Name': 'Gen 6',
+        'Reference No.': 'FO56219',
+        'Price (USD)': 13035.57,
+        Currency: 'USD',
+        'Release Date': '28/10/2020',
+        Gender: "Women's",
+        'Case Material': 'Stainless Steel',
+        'Case Diameter (mm)': 44.6,
+        'Case Thickness (mm)': 13.3,
+        'Dial Color': 'Red',
+        'Strap Material': 'Leather',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Smart',
+        'Power Reserve (hours)': 0,
+        Complications: 'Chronograph',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 7,
+        Brand: 'Fossil',
+        Category: 'Fashion',
+        'Model Name': 'Gen 6',
+        'Reference No.': 'FO70599',
+        'Price (USD)': 8103.27,
+        Currency: 'USD',
+        'Release Date': '04/08/2021',
+        Gender: "Women's",
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 45,
+        'Case Thickness (mm)': 8.1,
+        'Dial Color': 'Gray',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Green',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Smart',
+        'Power Reserve (hours)': 40,
+        Complications: 'World Time',
+        Availability: 'In Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 8,
+        Brand: 'Tissot',
+        Category: 'Classic',
+        'Model Name': 'Le Locle',
+        'Reference No.': 'TI10158',
+        'Price (USD)': 11976.17,
+        Currency: 'USD',
+        'Release Date': '23/10/2021',
+        Gender: 'Unisex',
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 37.1,
+        'Case Thickness (mm)': 8.1,
+        'Dial Color': 'Green',
+        'Strap Material': 'Canvas',
+        'Strap Color': 'Brown',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 70,
+        Complications: 'GMT',
+        Availability: 'In Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 9,
+        Brand: 'Swatch',
+        Category: 'Fashion',
+        'Model Name': 'MoonSwatch',
+        'Reference No.': 'SW16030',
+        'Price (USD)': 11003.69,
+        Currency: 'USD',
+        'Release Date': '08/03/2023',
+        Gender: "Men's",
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 38.2,
+        'Case Thickness (mm)': 9.5,
+        'Dial Color': 'Gold',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Brown',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 60,
+        Complications: 'Chronograph',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 10,
+        Brand: 'Hamilton',
+        Category: 'Military',
+        'Model Name': 'Khaki Field',
+        'Reference No.': 'HA87204',
+        'Price (USD)': 139.39,
+        Currency: 'USD',
+        'Release Date': '22/05/2022',
+        Gender: "Women's",
+        'Case Material': 'Resin',
+        'Case Diameter (mm)': 42.2,
+        'Case Thickness (mm)': 7.1,
+        'Dial Color': 'Black',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Green',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 40,
+        Complications: 'Moonphase',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 11,
+        Brand: 'Timex',
+        Category: 'Casual',
+        'Model Name': 'Weekender',
+        'Reference No.': 'TI35269',
+        'Price (USD)': 445.24,
+        Currency: 'USD',
+        'Release Date': '14/02/2021',
+        Gender: "Women's",
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 43.3,
+        'Case Thickness (mm)': 9.5,
+        'Dial Color': 'Red',
+        'Strap Material': 'Leather',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Sapphire',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 40,
+        Complications: 'None',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 12,
+        Brand: 'Hamilton',
+        Category: 'Military',
+        'Model Name': 'Khaki Field',
+        'Reference No.': 'HA13015',
+        'Price (USD)': 14682.7,
+        Currency: 'USD',
+        'Release Date': '31/08/2021',
+        Gender: 'Unisex',
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 44.9,
+        'Case Thickness (mm)': 9.3,
+        'Dial Color': 'Gold',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 40,
+        Complications: 'World Time',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 13,
+        Brand: 'TAG Heuer',
+        Category: 'Sports',
+        'Model Name': 'Carrera',
+        'Reference No.': 'TA35554',
+        'Price (USD)': 9624.21,
+        Currency: 'USD',
+        'Release Date': '22/02/2025',
+        Gender: 'Unisex',
+        'Case Material': 'Titanium',
+        'Case Diameter (mm)': 41.9,
+        'Case Thickness (mm)': 7,
+        'Dial Color': 'Red',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 40,
+        Complications: 'Moonphase',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 14,
+        Brand: 'Hamilton',
+        Category: 'Military',
+        'Model Name': 'Khaki Field',
+        'Reference No.': 'HA45343',
+        'Price (USD)': 92.6,
+        Currency: 'USD',
+        'Release Date': '05/07/2025',
+        Gender: "Men's",
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 36.7,
+        'Case Thickness (mm)': 7.4,
+        'Dial Color': 'Red',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Green',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 40,
+        Complications: 'GMT',
+        Availability: 'In Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 15,
+        Brand: 'Longines',
+        Category: 'Dress',
+        'Model Name': 'Master Collection',
+        'Reference No.': 'LO79518',
+        'Price (USD)': 10565.5,
+        Currency: 'USD',
+        'Release Date': '01/09/2022',
+        Gender: 'Unisex',
+        'Case Material': 'Bioceramic',
+        'Case Diameter (mm)': 38.7,
+        'Case Thickness (mm)': 11.4,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Leather',
+        'Strap Color': 'Green',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 80,
+        Complications: 'Moonphase',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 16,
+        Brand: 'Hublot',
+        Category: 'Luxury',
+        'Model Name': 'Big Bang',
+        'Reference No.': 'HU87119',
+        'Price (USD)': 106.81,
+        Currency: 'USD',
+        'Release Date': '18/09/2024',
+        Gender: 'Unisex',
+        'Case Material': 'Ceramic',
+        'Case Diameter (mm)': 44.8,
+        'Case Thickness (mm)': 14.1,
+        'Dial Color': 'Red',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Blue',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 40,
+        Complications: 'GMT',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 17,
+        Brand: 'Seiko',
+        Category: 'Sports',
+        'Model Name': 'Prospex',
+        'Reference No.': 'SE17695',
+        'Price (USD)': 2448.56,
+        Currency: 'USD',
+        'Release Date': '19/09/2022',
+        Gender: "Women's",
+        'Case Material': 'Bioceramic',
+        'Case Diameter (mm)': 35,
+        'Case Thickness (mm)': 10.9,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Brown',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 60,
+        Complications: 'World Time',
+        Availability: 'In Stock',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 18,
+        Brand: 'Orient',
+        Category: 'Classic',
+        'Model Name': 'Bambino',
+        'Reference No.': 'OR55609',
+        'Price (USD)': 3927.42,
+        Currency: 'USD',
+        'Release Date': '22/06/2024',
+        Gender: "Men's",
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 41,
+        'Case Thickness (mm)': 13.8,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Brown',
+        'Water Resistance (m)': 200,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 70,
+        Complications: 'Date',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 19,
+        Brand: 'TAG Heuer',
+        Category: 'Sports',
+        'Model Name': 'Carrera',
+        'Reference No.': 'TA20895',
+        'Price (USD)': 3999.22,
+        Currency: 'USD',
+        'Release Date': '24/07/2022',
+        Gender: "Men's",
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 36.9,
+        'Case Thickness (mm)': 7.4,
+        'Dial Color': 'Green',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 80,
+        Complications: 'GMT',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 20,
+        Brand: 'Casio',
+        Category: 'Digital',
+        'Model Name': 'G-Shock',
+        'Reference No.': 'CA40181',
+        'Price (USD)': 5496.29,
+        Currency: 'USD',
+        'Release Date': '02/01/2022',
+        Gender: "Women's",
+        'Case Material': 'Bioceramic',
+        'Case Diameter (mm)': 44.6,
+        'Case Thickness (mm)': 13.6,
+        'Dial Color': 'Gold',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Sapphire',
+        'Movement Type': 'Digital',
+        'Power Reserve (hours)': 40,
+        Complications: 'Chronograph',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 21,
+        Brand: 'Hamilton',
+        Category: 'Military',
+        'Model Name': 'Khaki Field',
+        'Reference No.': 'HA41708',
+        'Price (USD)': 1052.67,
+        Currency: 'USD',
+        'Release Date': '30/04/2021',
+        Gender: "Women's",
+        'Case Material': 'Bronze',
+        'Case Diameter (mm)': 38.4,
+        'Case Thickness (mm)': 13.1,
+        'Dial Color': 'Red',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Gold',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Sapphire',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 70,
+        Complications: 'World Time',
+        Availability: 'In Stock',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 22,
+        Brand: 'Apple',
+        Category: 'Smartwatch',
+        'Model Name': 'Watch Series',
+        'Reference No.': 'AP61203',
+        'Price (USD)': 13681.1,
+        Currency: 'USD',
+        'Release Date': '08/03/2023',
+        Gender: "Men's",
+        'Case Material': 'Bronze',
+        'Case Diameter (mm)': 38.5,
+        'Case Thickness (mm)': 9.8,
+        'Dial Color': 'Black',
+        'Strap Material': 'Canvas',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 200,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Smart',
+        'Power Reserve (hours)': 60,
+        Complications: 'Date',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'China',
+      },
+      {
+        ID: 23,
+        Brand: 'Garmin',
+        Category: 'Smartwatch',
+        'Model Name': 'Fenix',
+        'Reference No.': 'GA61975',
+        'Price (USD)': 10471.18,
+        Currency: 'USD',
+        'Release Date': '26/05/2025',
+        Gender: "Women's",
+        'Case Material': 'Stainless Steel',
+        'Case Diameter (mm)': 37.3,
+        'Case Thickness (mm)': 7.8,
+        'Dial Color': 'Green',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Digital',
+        'Power Reserve (hours)': 0,
+        Complications: 'None',
+        Availability: 'In Stock',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Taiwan',
+      },
+      {
+        ID: 24,
+        Brand: 'Citizen',
+        Category: 'Eco-Drive',
+        'Model Name': 'Promaster',
+        'Reference No.': 'CI72620',
+        'Price (USD)': 7674.11,
+        Currency: 'USD',
+        'Release Date': '05/12/2020',
+        Gender: "Men's",
+        'Case Material': 'Titanium',
+        'Case Diameter (mm)': 35.8,
+        'Case Thickness (mm)': 14.1,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Sapphire',
+        'Movement Type': 'Solar Powered',
+        'Power Reserve (hours)': 70,
+        Complications: 'None',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 25,
+        Brand: 'Daniel Wellington',
+        Category: 'Minimalist',
+        'Model Name': 'Petite',
+        'Reference No.': 'DA14877',
+        'Price (USD)': 13199.55,
+        Currency: 'USD',
+        'Release Date': '01/09/2021',
+        Gender: "Women's",
+        'Case Material': 'Bronze',
+        'Case Diameter (mm)': 38.5,
+        'Case Thickness (mm)': 10.8,
+        'Dial Color': 'Gold',
+        'Strap Material': 'Canvas',
+        'Strap Color': 'Green',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 70,
+        Complications: 'GMT',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Sweden',
+      },
+      {
+        ID: 26,
+        Brand: 'Hamilton',
+        Category: 'Military',
+        'Model Name': 'Khaki Field',
+        'Reference No.': 'HA77427',
+        'Price (USD)': 13117.6,
+        Currency: 'USD',
+        'Release Date': '04/04/2023',
+        Gender: 'Unisex',
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 33.5,
+        'Case Thickness (mm)': 14.6,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 70,
+        Complications: 'Chronograph',
+        Availability: 'In Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 27,
+        Brand: 'Seiko',
+        Category: 'Sports',
+        'Model Name': 'Prospex',
+        'Reference No.': 'SE14478',
+        'Price (USD)': 7186.85,
+        Currency: 'USD',
+        'Release Date': '06/02/2024',
+        Gender: "Men's",
+        'Case Material': 'Titanium',
+        'Case Diameter (mm)': 42.8,
+        'Case Thickness (mm)': 9.6,
+        'Dial Color': 'White',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Sapphire',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 70,
+        Complications: 'GMT',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 28,
+        Brand: 'Daniel Wellington',
+        Category: 'Minimalist',
+        'Model Name': 'Petite',
+        'Reference No.': 'DA41723',
+        'Price (USD)': 1259.83,
+        Currency: 'USD',
+        'Release Date': '11/08/2023',
+        Gender: 'Unisex',
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 36.6,
+        'Case Thickness (mm)': 11.5,
+        'Dial Color': 'Red',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Sapphire',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 80,
+        Complications: 'None',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Sweden',
+      },
+      {
+        ID: 29,
+        Brand: 'Daniel Wellington',
+        Category: 'Minimalist',
+        'Model Name': 'Petite',
+        'Reference No.': 'DA85196',
+        'Price (USD)': 6914.33,
+        Currency: 'USD',
+        'Release Date': '08/06/2024',
+        Gender: 'Unisex',
+        'Case Material': 'Titanium',
+        'Case Diameter (mm)': 43.8,
+        'Case Thickness (mm)': 9.9,
+        'Dial Color': 'Gold',
+        'Strap Material': 'Canvas',
+        'Strap Color': 'Blue',
+        'Water Resistance (m)': 200,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 0,
+        Complications: 'Chronograph',
+        Availability: 'In Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'Sweden',
+      },
+      {
+        ID: 30,
+        Brand: 'Seiko',
+        Category: 'Sports',
+        'Model Name': 'Prospex',
+        'Reference No.': 'SE32724',
+        'Price (USD)': 9116.47,
+        Currency: 'USD',
+        'Release Date': '05/06/2023',
+        Gender: "Men's",
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 34.9,
+        'Case Thickness (mm)': 7,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 70,
+        Complications: 'Chronograph',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 31,
+        Brand: 'Garmin',
+        Category: 'Smartwatch',
+        'Model Name': 'Fenix',
+        'Reference No.': 'GA61772',
+        'Price (USD)': 6544.64,
+        Currency: 'USD',
+        'Release Date': '27/03/2021',
+        Gender: 'Unisex',
+        'Case Material': 'Bronze',
+        'Case Diameter (mm)': 33.6,
+        'Case Thickness (mm)': 12.1,
+        'Dial Color': 'Red',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Brown',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Digital',
+        'Power Reserve (hours)': 70,
+        Complications: 'None',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'Taiwan',
+      },
+      {
+        ID: 32,
+        Brand: 'Citizen',
+        Category: 'Eco-Drive',
+        'Model Name': 'Promaster',
+        'Reference No.': 'CI41033',
+        'Price (USD)': 12041.6,
+        Currency: 'USD',
+        'Release Date': '19/03/2021',
+        Gender: "Women's",
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 43,
+        'Case Thickness (mm)': 12.7,
+        'Dial Color': 'Gray',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Solar Powered',
+        'Power Reserve (hours)': 70,
+        Complications: 'None',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 1,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 33,
+        Brand: 'Orient',
+        Category: 'Classic',
+        'Model Name': 'Bambino',
+        'Reference No.': 'OR86109',
+        'Price (USD)': 8974.56,
+        Currency: 'USD',
+        'Release Date': '02/12/2020',
+        Gender: "Men's",
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 39.1,
+        'Case Thickness (mm)': 13,
+        'Dial Color': 'Red',
+        'Strap Material': 'Canvas',
+        'Strap Color': 'Green',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 40,
+        Complications: 'Chronograph',
+        Availability: 'In Stock',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 34,
+        Brand: 'Omega',
+        Category: 'Dress',
+        'Model Name': 'Speedmaster',
+        'Reference No.': 'OM74909',
+        'Price (USD)': 10545.86,
+        Currency: 'USD',
+        'Release Date': '16/06/2021',
+        Gender: "Men's",
+        'Case Material': 'Titanium',
+        'Case Diameter (mm)': 41.3,
+        'Case Thickness (mm)': 10.6,
+        'Dial Color': 'Black',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Gold',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 60,
+        Complications: 'None',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 35,
+        Brand: 'Swatch',
+        Category: 'Fashion',
+        'Model Name': 'MoonSwatch',
+        'Reference No.': 'SW67084',
+        'Price (USD)': 12995.97,
+        Currency: 'USD',
+        'Release Date': '11/01/2025',
+        Gender: "Men's",
+        'Case Material': 'Stainless Steel',
+        'Case Diameter (mm)': 34.7,
+        'Case Thickness (mm)': 6.6,
+        'Dial Color': 'Gray',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Gold',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 70,
+        Complications: 'World Time',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 36,
+        Brand: 'TAG Heuer',
+        Category: 'Sports',
+        'Model Name': 'Carrera',
+        'Reference No.': 'TA42855',
+        'Price (USD)': 14789.48,
+        Currency: 'USD',
+        'Release Date': '01/12/2024',
+        Gender: "Women's",
+        'Case Material': 'Resin',
+        'Case Diameter (mm)': 34.6,
+        'Case Thickness (mm)': 9.3,
+        'Dial Color': 'Green',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Red',
+        'Water Resistance (m)': 200,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 0,
+        Complications: 'Chronograph',
+        Availability: 'In Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 37,
+        Brand: 'Citizen',
+        Category: 'Eco-Drive',
+        'Model Name': 'Promaster',
+        'Reference No.': 'CI97862',
+        'Price (USD)': 10176.66,
+        Currency: 'USD',
+        'Release Date': '11/05/2021',
+        Gender: 'Unisex',
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 39.2,
+        'Case Thickness (mm)': 8.9,
+        'Dial Color': 'Silver',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Red',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Solar Powered',
+        'Power Reserve (hours)': 80,
+        Complications: 'None',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 38,
+        Brand: 'Fossil',
+        Category: 'Fashion',
+        'Model Name': 'Gen 6',
+        'Reference No.': 'FO79500',
+        'Price (USD)': 8547.49,
+        Currency: 'USD',
+        'Release Date': '22/12/2023',
+        Gender: 'Unisex',
+        'Case Material': 'Bronze',
+        'Case Diameter (mm)': 44.5,
+        'Case Thickness (mm)': 11.5,
+        'Dial Color': 'White',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Red',
+        'Water Resistance (m)': 200,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Smart',
+        'Power Reserve (hours)': 70,
+        Complications: 'None',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'USA',
+      },
+      {
+        ID: 39,
+        Brand: 'Garmin',
+        Category: 'Smartwatch',
+        'Model Name': 'Fenix',
+        'Reference No.': 'GA18133',
+        'Price (USD)': 4912.39,
+        Currency: 'USD',
+        'Release Date': '31/08/2024',
+        Gender: "Men's",
+        'Case Material': 'Ceramic',
+        'Case Diameter (mm)': 34.2,
+        'Case Thickness (mm)': 7.1,
+        'Dial Color': 'Black',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Blue',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Digital',
+        'Power Reserve (hours)': 0,
+        Complications: 'GMT',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Taiwan',
+      },
+      {
+        ID: 40,
+        Brand: 'Tissot',
+        Category: 'Classic',
+        'Model Name': 'Le Locle',
+        'Reference No.': 'TI24592',
+        'Price (USD)': 12794.19,
+        Currency: 'USD',
+        'Release Date': '31/10/2024',
+        Gender: "Women's",
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 39.2,
+        'Case Thickness (mm)': 7.7,
+        'Dial Color': 'Gray',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Brown',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 0,
+        Complications: 'None',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 41,
+        Brand: 'Orient',
+        Category: 'Classic',
+        'Model Name': 'Bambino',
+        'Reference No.': 'OR81611',
+        'Price (USD)': 6875.33,
+        Currency: 'USD',
+        'Release Date': '17/05/2025',
+        Gender: 'Unisex',
+        'Case Material': 'Resin',
+        'Case Diameter (mm)': 43.1,
+        'Case Thickness (mm)': 13.2,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Gold',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 60,
+        Complications: 'Date',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 42,
+        Brand: 'Citizen',
+        Category: 'Eco-Drive',
+        'Model Name': 'Promaster',
+        'Reference No.': 'CI13923',
+        'Price (USD)': 13046.1,
+        Currency: 'USD',
+        'Release Date': '03/06/2025',
+        Gender: "Women's",
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 38.8,
+        'Case Thickness (mm)': 10.4,
+        'Dial Color': 'Blue',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Solar Powered',
+        'Power Reserve (hours)': 0,
+        Complications: 'GMT',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 43,
+        Brand: 'Casio',
+        Category: 'Digital',
+        'Model Name': 'G-Shock',
+        'Reference No.': 'CA90420',
+        'Price (USD)': 7325.02,
+        Currency: 'USD',
+        'Release Date': '01/03/2021',
+        Gender: "Men's",
+        'Case Material': 'Bronze',
+        'Case Diameter (mm)': 39.2,
+        'Case Thickness (mm)': 12.6,
+        'Dial Color': 'Red',
+        'Strap Material': 'Mesh Steel',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Digital',
+        'Power Reserve (hours)': 0,
+        Complications: 'World Time',
+        Availability: 'In Stock',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 44,
+        Brand: 'Swatch',
+        Category: 'Fashion',
+        'Model Name': 'MoonSwatch',
+        'Reference No.': 'SW89559',
+        'Price (USD)': 9827.58,
+        Currency: 'USD',
+        'Release Date': '01/12/2021',
+        Gender: "Women's",
+        'Case Material': 'Titanium',
+        'Case Diameter (mm)': 39.1,
+        'Case Thickness (mm)': 7.5,
+        'Dial Color': 'Red',
+        'Strap Material': 'Rubber',
+        'Strap Color': 'Silver',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Plastic',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 40,
+        Complications: 'Chronograph',
+        Availability: 'Out of Stock',
+        'Warranty (Years)': 5,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 45,
+        Brand: 'Citizen',
+        Category: 'Eco-Drive',
+        'Model Name': 'Promaster',
+        'Reference No.': 'CI25230',
+        'Price (USD)': 12522.5,
+        Currency: 'USD',
+        'Release Date': '01/09/2023',
+        Gender: 'Unisex',
+        'Case Material': 'Bioceramic',
+        'Case Diameter (mm)': 38.3,
+        'Case Thickness (mm)': 13.1,
+        'Dial Color': 'White',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Red',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Solar Powered',
+        'Power Reserve (hours)': 60,
+        Complications: 'Chronograph',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 2,
+        'Country of Origin': 'Japan',
+      },
+      {
+        ID: 46,
+        Brand: 'Omega',
+        Category: 'Dress',
+        'Model Name': 'Speedmaster',
+        'Reference No.': 'OM77160',
+        'Price (USD)': 5200.38,
+        Currency: 'USD',
+        'Release Date': '02/08/2020',
+        Gender: 'Unisex',
+        'Case Material': 'Ceramic',
+        'Case Diameter (mm)': 37.9,
+        'Case Thickness (mm)': 12,
+        'Dial Color': 'Gray',
+        'Strap Material': 'Leather',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 300,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 70,
+        Complications: 'None',
+        Availability: 'In Stock',
+        'Warranty (Years)': 4,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 47,
+        Brand: 'Daniel Wellington',
+        Category: 'Minimalist',
+        'Model Name': 'Petite',
+        'Reference No.': 'DA81922',
+        'Price (USD)': 3227.83,
+        Currency: 'USD',
+        'Release Date': '24/02/2021',
+        Gender: "Men's",
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 42.9,
+        'Case Thickness (mm)': 12.1,
+        'Dial Color': 'White',
+        'Strap Material': 'Leather',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 30,
+        'Crystal Type': 'Hardlex',
+        'Movement Type': 'Quartz',
+        'Power Reserve (hours)': 80,
+        Complications: 'World Time',
+        Availability: 'In Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Sweden',
+      },
+      {
+        ID: 48,
+        Brand: 'Hublot',
+        Category: 'Luxury',
+        'Model Name': 'Big Bang',
+        'Reference No.': 'HU78673',
+        'Price (USD)': 4878.2,
+        Currency: 'USD',
+        'Release Date': '15/08/2024',
+        Gender: 'Unisex',
+        'Case Material': 'Bioceramic',
+        'Case Diameter (mm)': 37.8,
+        'Case Thickness (mm)': 14.9,
+        'Dial Color': 'Gold',
+        'Strap Material': 'Nylon',
+        'Strap Color': 'Black',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Gorilla Glass',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 60,
+        Complications: 'Moonphase',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Switzerland',
+      },
+      {
+        ID: 49,
+        Brand: 'Apple',
+        Category: 'Smartwatch',
+        'Model Name': 'Watch Series',
+        'Reference No.': 'AP60515',
+        'Price (USD)': 3747.45,
+        Currency: 'USD',
+        'Release Date': '12/04/2025',
+        Gender: 'Unisex',
+        'Case Material': 'Brass',
+        'Case Diameter (mm)': 43,
+        'Case Thickness (mm)': 7.1,
+        'Dial Color': 'Silver',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Brown',
+        'Water Resistance (m)': 50,
+        'Crystal Type': 'Mineral',
+        'Movement Type': 'Smart',
+        'Power Reserve (hours)': 60,
+        Complications: 'World Time',
+        Availability: 'Pre-Order',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'China',
+      },
+      {
+        ID: 50,
+        Brand: 'Longines',
+        Category: 'Dress',
+        'Model Name': 'Master Collection',
+        'Reference No.': 'LO81820',
+        'Price (USD)': 14403.26,
+        Currency: 'USD',
+        'Release Date': '09/12/2022',
+        Gender: 'Unisex',
+        'Case Material': 'Aluminum',
+        'Case Diameter (mm)': 43.8,
+        'Case Thickness (mm)': 14.1,
+        'Dial Color': 'Gray',
+        'Strap Material': 'Silicone',
+        'Strap Color': 'Gold',
+        'Water Resistance (m)': 100,
+        'Crystal Type': 'Sapphire',
+        'Movement Type': 'Automatic',
+        'Power Reserve (hours)': 40,
+        Complications: 'GMT',
+        Availability: 'Limited Stock',
+        'Warranty (Years)': 3,
+        'Country of Origin': 'Switzerland',
+      },
+    ];
+    let listingsCreated = 0;
+
+    for (const listing of listingsData) {
+      try {
+        // Parse release date
+        const [day, month, year] = listing['Release Date'].split('/');
+        const releaseDate = new Date(`${year}-${month}-${day}`);
+
+        // Create product listing record matching your schema
+        await tx.product_listings.create({
+          data: {
+            brand: listing.Brand,
+            category: listing.Category,
+            modelName: listing['Model Name'],
+            referenceNo: listing['Reference No.'],
+            priceUsd: listing['Price (USD)'],
+            currency: listing.Currency,
+            releaseDate: releaseDate,
+            gender: listing.Gender,
+            caseMaterial: listing['Case Material'],
+            caseDiameterMm: listing['Case Diameter (mm)'],
+            caseThicknessMm: listing['Case Thickness (mm)'],
+            dialColor: listing['Dial Color'],
+            strapMaterial: listing['Strap Material'],
+            strapColor: listing['Strap Color'],
+            waterResistanceM: listing['Water Resistance (m)'],
+            crystalType: listing['Crystal Type'],
+            movementType: listing['Movement Type'],
+            powerReserveHours: listing['Power Reserve (hours)'],
+            complications: listing.Complications,
+            availability: listing.Availability,
+            warrantyYears: listing['Warranty (Years)'],
+            countryOfOrigin: listing['Country of Origin'],
+          },
+        });
+
+        listingsCreated++;
+      } catch (error) {
+        console.error(
+          `Failed to seed listing for ${listing['Reference No.']}:`,
+          error,
+        );
+      }
+    }
+
+    console.log(`✅ Seeded ${listingsCreated} product listings`);
   }
 
   private async seedGlobalConfiguration(
     creatorId: bigint,
     tx: PrismaClient,
   ): Promise<void> {
-    try {
-      console.log(`Seeding GlobalConfiguration...`);
+    console.log('⚙️ Seeding global configuration...');
 
-      // Add (or update) the 'PRODUCT_VIEWERSHIP_LAST_SEEN' configuration
+    const configurations = [
+      {
+        key: GlobalConfigKeys.PRODUCT_VIEWERSHIP_LAST_SEEN,
+        value: 48,
+      },
+      {
+        key: GlobalConfigKeys.NEW_ARRIVAL,
+        value: 7,
+      },
+      {
+        key: GlobalConfigKeys.POPULAR,
+        value: 15,
+      },
+      {
+        key: GlobalConfigKeys.BEST_SELLER,
+        value: 10,
+      },
+      {
+        key: GlobalConfigKeys.SEED_SCRIPT_RUN,
+        value: 1,
+      },
+      {
+        key: GlobalConfigKeys.PLATFORM_COMMISSION,
+        value: 6.5,
+      },
+    ];
+
+    for (const config of configurations) {
       await tx.globalConfiguration.upsert({
-        where: {
-          key: GlobalConfigKeys.PRODUCT_VIEWERSHIP_LAST_SEEN,
-        },
+        where: { key: config.key },
         update: {
-          value: await this.getAnalyticsWindowHours(), // Dynamic value for analytics window
+          value: new Decimal(config.value),
           updated_at: new Date(),
           updated_by: creatorId,
         },
         create: {
-          key: GlobalConfigKeys.PRODUCT_VIEWERSHIP_LAST_SEEN,
-          value: await this.getAnalyticsWindowHours(),
+          key: config.key,
+          value: new Decimal(config.value),
           created_at: new Date(),
           created_by: creatorId,
         },
       });
-
-      // Add (or update) the 'NEW_ARRIVAL' configuration
-      await tx.globalConfiguration.upsert({
-        where: {
-          key: GlobalConfigKeys.NEW_ARRIVAL,
-        },
-        update: {
-          value: 7, // Products created in last 7-Days
-          updated_at: new Date(),
-          updated_by: creatorId,
-        },
-        create: {
-          key: GlobalConfigKeys.NEW_ARRIVAL,
-          value: 7, // Products created in last 7-Days.
-          created_at: new Date(),
-          created_by: creatorId,
-        },
-      });
-
-      // Add (or update) the 'POPULAR' configuration
-      await tx.globalConfiguration.upsert({
-        where: {
-          key: GlobalConfigKeys.POPULAR,
-        },
-        update: {
-          value: 15, // select top 10 Product most viewed in last 15 days,
-          updated_at: new Date(),
-          updated_by: creatorId,
-        },
-        create: {
-          key: GlobalConfigKeys.POPULAR,
-          value: 15, // select top 10 Product most viewed in last 15 days,
-          created_at: new Date(),
-          created_by: creatorId,
-        },
-      });
-
-      // Add (or update) the 'BEST_SELLER' configuration
-      await tx.globalConfiguration.upsert({
-        where: {
-          key: GlobalConfigKeys.BEST_SELLER,
-        },
-        update: {
-          value: 10, // select top 10 max products sold in last 10 days
-          updated_at: new Date(),
-          updated_by: creatorId,
-        },
-        create: {
-          key: GlobalConfigKeys.BEST_SELLER,
-          value: 10, // select top 10 max products sold in last 10 days
-          created_at: new Date(),
-          created_by: creatorId,
-        },
-      });
-
-      // Add (or update) the 'SEED_SCRIPT_RUN' configuration
-      await tx.globalConfiguration.upsert({
-        where: {
-          key: GlobalConfigKeys.SEED_SCRIPT_RUN,
-        },
-        update: {
-          value: await this.getSeedScriptRunFlag(), // Always set to '1' to ensure seed runs on subsequent executions
-          updated_at: new Date(),
-          updated_by: creatorId,
-        },
-        create: {
-          key: GlobalConfigKeys.SEED_SCRIPT_RUN,
-          value: 1, // Default set to '1' so that it will get executed.
-          created_at: new Date(),
-          created_by: creatorId,
-        },
-      });
-
-      // Add (or update) the 'PLATFORM_COMMISSION' configuration
-      await tx.globalConfiguration.upsert({
-        where: {
-          key: GlobalConfigKeys.PLATFORM_COMMISSION,
-        },
-        update: {
-          value: 6.5,
-          updated_at: new Date(),
-          updated_by: creatorId, // Always set to '1' to ensure seed runs on subsequent executions
-        },
-        create: {
-          key: GlobalConfigKeys.PLATFORM_COMMISSION,
-          value: 6.5,
-          created_at: new Date(),
-          created_by: creatorId, // Default set to '1' so that it will get executed.
-        },
-      });
-      console.log(`GlobalConfiguration seeded.`);
-      console.log(`Seeding finished.`);
-    } catch (error) {
-      console.error(`Error seeding global configuration: `, error);
-      throw error;
     }
+    console.log(`✅ Seeded ${configurations.length} global configurations`);
   }
 
-  // Helper method for getting analytics window hours (though it's seeded now)
   async getAnalyticsWindowHours(): Promise<number> {
     const config = await this.prisma.globalConfiguration.findUnique({
       where: { key: 'PRODUCT_VIEWERSHIP_LAST_SEEN' },
     });
-
-    // Default to '48' if not found or invalid
     return config ? Number(config.value) : 48;
   }
 
-  // Helper method for getting seed script run flag (though it's seeded now)
   async getSeedScriptRunFlag(): Promise<number> {
     const config = await this.prisma.globalConfiguration.findUnique({
       where: { key: 'SEED_SCRIPT_RUN' },
     });
-    return config ? Number(config.value) : 1; // Default to '0' if not found
+    return config ? Number(config.value) : 1;
   }
 }

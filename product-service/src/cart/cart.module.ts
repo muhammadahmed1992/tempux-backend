@@ -2,11 +2,11 @@ import { Module } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { CartController } from './cart.controller';
 import { CartRepository } from './cart.repository';
-import { ProductVariantModule } from '@ProductVariant/product-variant.module';
 import { LoggingModule } from '@Common/logging';
+import { ProductItemModule } from '@ProductItem/product-item.module';
 
 @Module({
-  imports: [ProductVariantModule, LoggingModule],
+  imports: [LoggingModule,ProductItemModule],
   providers: [CartService, CartRepository],
   controllers: [CartController],
 })
