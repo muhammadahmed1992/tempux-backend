@@ -24,7 +24,7 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
     private readonly configService: ConfigService,
     private readonly userService: UserService,
     private readonly userCookieHandlerService: UserCookieHandlerService,
-  ) {}
+  ) { }
 
   async intercept(
     context: ExecutionContext,
@@ -52,13 +52,12 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
       origin = (req.headers['x-client-origin'] || '') as string;
     }
 
-    console.log(`[Social Auth] Origin from state/header: ${origin}`);
+    console.log(`Logging origin: ${origin}`);
 
     const frontendUrl =
       origin || this.configService.get<string>('FRONTEND_URL')!;
 
-    console.log(`[Social Auth] Resolved frontend URL: ${frontendUrl}`);
-    console.log(`[Social Auth] Headers:`, req.headers);
+    console.log(`Logging frontend url social-auth-redirect: ${frontendUrl}`);
 
     const dns = this.configService.get<string>('DNS')!;
 
@@ -68,7 +67,6 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
     if (!frontendUrl) {
       throw new BadRequestException('FRONTEND_URL is not configured');
     }
-    console.log(`[Social Auth] DNS value: ${dns}`);
 
     const safeRedirect = (url: string) => {
       if (!res.headersSent) {
@@ -84,7 +82,11 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
           { socialEmail, provider },
           dns,
         );
-        safeRedirect(`${frontendUrl}/account-check`);
+        // Ensure we're using the correct path without duplicating /login prefix
+        const redirectPath = frontendUrl.endsWith('/login')
+          ? frontendUrl.replace('/login', '/account-check')
+          : `${frontendUrl}/account-check`;
+        safeRedirect(redirectPath);
         return of(null);
       }
 
@@ -108,10 +110,8 @@ export class SocialAuthRedirectInterceptor implements NestInterceptor {
               result.data.accessToken,
               dns,
             );
-            // Redirect to home page after successful login
-            safeRedirect(`${frontendUrl}/`);
-            return of(null);
           }
+          res.redirect(frontendUrl);
         } catch (err) {
           console.error('Login error:', err);
           safeRedirect(`${frontendUrl}/server-error`);
