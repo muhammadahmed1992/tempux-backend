@@ -13,6 +13,13 @@ import { ProductValidationService } from '@Product/product-validation.service';
 import { Prisma } from '@prisma/client';
 import { ValidationError } from 'class-validator';
 import { AttributeDto } from '@DTO/product.dto';
+import { 
+  AttributeCategoryDto, 
+  AttributeCategoryMappingDto, 
+  AttributeCategoryMappingsResponseDto 
+} from '@Common/dto/attribute-category.dto';
+import ApiResponse from '@Helper/api-response';
+import Constants from '@Helper/constants';
 
 interface BatchAttributeResult {
   attributeId: number;
@@ -26,6 +33,129 @@ export class ProductAttributesService {
     private readonly prisma: PrismaService,
     private readonly productValidationService: ProductValidationService,
   ) {}
+  
+  /**
+   * Fetches all attribute categories
+   * @returns List of attribute categories with their IDs and metadata
+   */
+  async getAllAttributeCategories(): Promise<ApiResponse<AttributeCategoryDto[]>> {
+    try {
+      const categories = await this.prisma.attribute_categories.findMany({
+        where: {
+          is_deleted: false,
+          is_active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          is_active: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+      
+      if (!categories || categories.length === 0) {
+        throw new NotFoundException(Constants.NO_DATA_FOUND);
+      }
+      
+      return ResponseHelper.CreateResponse<AttributeCategoryDto[]>(
+        Constants.DATA_SUCCESS,
+        categories,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Failed to fetch attribute categories: ${error.message}`,
+      );
+    }
+  }
+  
+  /**
+   * Fetches all attribute mappings for a specific category
+   * @param categoryId The ID of the attribute category
+   * @returns Attribute mappings for the specified category
+   */
+  async getAttributeMappingsByCategory(categoryId: number): Promise<ApiResponse<AttributeCategoryMappingsResponseDto>> {
+    try {
+      // First check if the category exists
+      const category = await this.prisma.attribute_categories.findUnique({
+        where: {
+          id: categoryId,
+          is_deleted: false,
+          is_active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+      
+      if (!category) {
+        throw new NotFoundException(`Attribute category with ID ${categoryId} not found`);
+      }
+      
+      // Get all attribute mappings for this category
+      const mappings = await this.prisma.attribute_category_mapping.findMany({
+        where: {
+          attribute_category_id: categoryId,
+          is_deleted: false,
+          is_active: true,
+        },
+        select: {
+          id: true,
+          attribute_id: true,
+          data_type: true,
+          is_mandatory: true,
+          control_type: true,
+          attribute: {
+            select: {
+              name: true,
+              display_name: true,
+              unit: true,
+            },
+          },
+        },
+        orderBy: {
+          id: 'asc',
+        },
+      });
+      
+      // Transform the data to match the expected response format
+      const attributeMappings: AttributeCategoryMappingDto[] = mappings.map(mapping => ({
+        id: mapping.id,
+        attribute_id: mapping.attribute_id,
+        attribute_name: mapping.attribute.name,
+        attribute_display_name: mapping.attribute.display_name,
+        attribute_unit: mapping.attribute.unit,
+        data_type: mapping.data_type,
+        is_mandatory: mapping.is_mandatory,
+        control_type: mapping.control_type,
+      }));
+      
+      const response: AttributeCategoryMappingsResponseDto = {
+        categoryId: category.id,
+        categoryName: category.name,
+        attributes: attributeMappings,
+      };
+      
+      return ResponseHelper.CreateResponse<AttributeCategoryMappingsResponseDto>(
+        Constants.DATA_SUCCESS,
+        response,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Failed to fetch attribute mappings: ${error.message}`,
+      );
+    }
+  }
 
   // Get attributes by category
   async getAttributesByCategory(categoryId: number) {
