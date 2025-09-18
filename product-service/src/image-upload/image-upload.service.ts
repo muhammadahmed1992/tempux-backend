@@ -7,10 +7,14 @@ import {
   UploadJobResult,
   ImageUploadMetadata,
 } from './interfaces/image-upload.interface';
+import { AppLoggerService } from '@Common/logging';
 
 @Injectable()
 export class ImageUploadService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: AppLoggerService,
+  ) { }
 
   async uploadProductImages(
     productId: bigint,
@@ -126,24 +130,51 @@ export class ImageUploadService {
           result.processedImages++;
           result.imageIds.push(BigInt(image.id));
 
-          console.log(
-            `Successfully processed: ${file.originalname} -> ${fileName}`,
-          );
+          this.logger.info({
+            message: `Successfully processed: ${file.originalname} -> ${fileName}`,
+            context: {
+              productId,
+              imageType,
+              fileName,
+            },
+          });
         } catch (error: any) {
           const errorMessage = `Failed to process ${file.originalname}: ${error.message}`;
           result.errors.push(errorMessage);
           result.skippedImages++;
-          console.error(errorMessage);
+          this.logger.error({
+            message: errorMessage,
+            context: {
+              productId,
+              imageType,
+              fileName: file.originalname,
+            },
+            error,
+          });
 
           // Cleanup temporary file if it still exists at original location
           if (tempFilePath) {
             try {
               await fs.access(tempFilePath); // Check if file exists first
               await fs.unlink(tempFilePath);
-              console.log(`Cleaned up temp file: ${tempFilePath}`);
+              this.logger.info({
+                message: `Cleaned up temp file: ${tempFilePath}`,
+                context: {
+                  productId,
+                  imageType,
+                  fileName: file.originalname,
+                },
+              });
             } catch (cleanupError) {
               // File might have already been moved or doesn't exist, ignore error
-              console.log(`Temp file cleanup not needed: ${tempFilePath}`);
+              this.logger.info({
+                message: `Temp file cleanup not needed: ${tempFilePath}`,
+                context: {
+                  productId,
+                  imageType,
+                  fileName: file.originalname,
+                },
+              });
             }
           }
         }
@@ -159,10 +190,24 @@ export class ImageUploadService {
           try {
             await fs.access(file.path); // Check if file exists first
             await fs.unlink(file.path);
-            console.log(`Cleaned up remaining temp file: ${file.path}`);
+            this.logger.info({
+              message: `Cleaned up remaining temp file: ${file.path}`,
+              context: {
+                productId,
+                imageType,
+                fileName: file.originalname,
+              },
+            });
           } catch (cleanupError) {
             // File might not exist, ignore cleanup errors for temp files
-            console.log(`Temp file cleanup not needed: ${file.path}`);
+            this.logger.info({
+              message: `Temp file cleanup not needed: ${file.path}`,
+              context: {
+                productId,
+                imageType,
+                fileName: file.originalname,
+              },
+            });
           }
         }
       }

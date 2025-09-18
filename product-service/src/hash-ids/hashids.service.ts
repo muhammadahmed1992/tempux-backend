@@ -1,5 +1,4 @@
-// src/hashids/hashids.service.ts
-import { AppLoggerService } from '@Common/logging';
+import { AppLoggerService } from '../common/logging';
 import {
   Injectable,
   OnModuleInit,

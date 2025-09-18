@@ -3,10 +3,15 @@ import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
 import { StaticConfiguration } from '@Common/static.configurations.keys';
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ProductProxyService } from '@Proxy/product-proxy/product-proxy.service';
+import { AppLoggerService } from '@Common/logging';
+import { context } from '@opentelemetry/api';
 
 @Injectable()
 export class GlobalConfigurationService implements OnModuleInit {
-  constructor(private readonly productProxyService: ProductProxyService) {}
+  constructor(
+    private readonly productProxyService: ProductProxyService,
+    private readonly logger: AppLoggerService,
+  ) { }
 
   async onModuleInit() {
     this.loadInitialConfigs();
@@ -19,8 +24,11 @@ export class GlobalConfigurationService implements OnModuleInit {
       GlobalConfigKeys.PLATFORM_COMMISSION,
       response || 6.5,
     );
-    console.log(`Configs loaded`, {
-      platformCommission: StaticConfiguration.platformCommission,
+    this.logger.info({
+      message: 'Configs loaded, Platform Commision:',
+      context: {
+        platformCommission: StaticConfiguration.platformCommission,
+      },
     });
   }
 

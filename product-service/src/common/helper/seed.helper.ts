@@ -4,7 +4,7 @@ import { HashidsService } from '../../hash-ids/hashids.service';
 import { SlugService } from '../../slug/slug.service';
 import { ConfigService } from '@nestjs/config';
 import { GlobalConfigKeys } from '../../common/enums/global-config-keys';
-import { AppLoggerService } from '@Common/logging';
+import { AppLoggerService } from '../../common/logging';
 
 function getRandomElement<T>(arr: T[]): T | undefined {
   if (arr.length === 0) return undefined;

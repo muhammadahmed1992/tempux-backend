@@ -7,13 +7,17 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Hashids from 'hashids';
+import { AppLoggerService } from '@Common/logging';
 
 @Injectable()
 export class HashidsService implements OnModuleInit {
   private hashids!: Hashids;
   private readonly minLength = 6;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: AppLoggerService,
+  ) {}
 
   onModuleInit() {
     const salt = this.configService.get<string>('HASHIDS_SALT');
@@ -23,7 +27,20 @@ export class HashidsService implements OnModuleInit {
       console.error(
         'HASHIDS_SALT environment variable is not set. Please set it securely.',
       );
+      this.logger.error(
+        'HASHIDS_SALT environment variable is not set. Please set it securely.',
+      );
       throw new InternalServerErrorException('Something went wrong.');
+    } else {
+      this.hashids = new Hashids(salt, this.minLength);
+      this.logger.info('Hashids initialized with salt from ConfigService.');
+    }
+  }
+
+  /**
+   * Encodes a BigInt (or number) ID into a short, obfuscated string.
+   * @param id The BigInt or number to encode.
+      throw new InternalServerErrorException('Something went wrong.');  
     } else {
       this.hashids = new Hashids(salt, this.minLength);
       console.log('Hashids initialized with salt from ConfigService.');

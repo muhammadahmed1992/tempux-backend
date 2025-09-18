@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { SlugService } from 'src/slug/slug.service';
 import { AttributeDto, ProductDto } from '@DTO/product.dto';
+import { AppLoggerService } from '@Common/logging';
 
 // Define types for better type safety
 interface ProcessedAttributeValue {
@@ -46,7 +47,8 @@ export class ProductValidationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly slugService: SlugService,
-  ) {}
+    private readonly logger: AppLoggerService,
+  ) { }
 
   async validateForPublish(
     tx: Prisma.TransactionClient,
@@ -63,9 +65,10 @@ export class ProductValidationService {
     // 1. Gender handling for accessories
     const productGender = productInfo.is_accessory ? 3 : productInfo.gender_id;
 
-    console.log(
-      'attributes', attributesDto
-    );
+    this.logger.info(
+      {
+        message: 'attributes', context: attributesDto
+      });
 
     // 3. Validate category mappings
     const mappings = await tx.attribute_category_mapping.findMany({
@@ -353,8 +356,11 @@ export class ProductValidationService {
               };
             }
           }
-        } catch (error) {
-          console.error(`Error fetching from ${tableName}:`, error);
+        } catch (error: any) {
+          this.logger.error({
+            message: `Error fetching from ${tableName}:`,
+            error: error,
+          });
           // Continue processing other tables
         }
       },

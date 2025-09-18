@@ -13,13 +13,14 @@ import { ProductValidationService } from '@Product/product-validation.service';
 import { Prisma } from '@prisma/client';
 import { ValidationError } from 'class-validator';
 import { AttributeDto } from '@DTO/product.dto';
-import { 
-  AttributeCategoryDto, 
-  AttributeCategoryMappingDto, 
-  AttributeCategoryMappingsResponseDto 
+import {
+  AttributeCategoryDto,
+  AttributeCategoryMappingDto,
+  AttributeCategoryMappingsResponseDto
 } from '@Common/dto/attribute-category.dto';
 import ApiResponse from '@Helper/api-response';
 import Constants from '@Helper/constants';
+import { AppLoggerService } from '@Common/logging';
 
 interface BatchAttributeResult {
   attributeId: number;
@@ -32,8 +33,9 @@ export class ProductAttributesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly productValidationService: ProductValidationService,
-  ) {}
-  
+    private readonly logger: AppLoggerService,
+  ) { }
+
   /**
    * Fetches all attribute categories
    * @returns List of attribute categories with their IDs and metadata
@@ -54,11 +56,11 @@ export class ProductAttributesService {
           name: 'asc',
         },
       });
-      
+
       if (!categories || categories.length === 0) {
         throw new NotFoundException(Constants.NO_DATA_FOUND);
       }
-      
+
       return ResponseHelper.CreateResponse<AttributeCategoryDto[]>(
         Constants.DATA_SUCCESS,
         categories,
@@ -73,7 +75,7 @@ export class ProductAttributesService {
       );
     }
   }
-  
+
   /**
    * Fetches all attribute mappings for a specific category
    * @param categoryId The ID of the attribute category
@@ -93,11 +95,11 @@ export class ProductAttributesService {
           name: true,
         },
       });
-      
+
       if (!category) {
         throw new NotFoundException(`Attribute category with ID ${categoryId} not found`);
       }
-      
+
       // Get all attribute mappings for this category
       const mappings = await this.prisma.attribute_category_mapping.findMany({
         where: {
@@ -123,7 +125,7 @@ export class ProductAttributesService {
           id: 'asc',
         },
       });
-      
+
       // Transform the data to match the expected response format
       const attributeMappings: AttributeCategoryMappingDto[] = mappings.map(mapping => ({
         id: mapping.id,
@@ -135,13 +137,13 @@ export class ProductAttributesService {
         is_mandatory: mapping.is_mandatory,
         control_type: mapping.control_type,
       }));
-      
+
       const response: AttributeCategoryMappingsResponseDto = {
         categoryId: category.id,
         categoryName: category.name,
         attributes: attributeMappings,
       };
-      
+
       return ResponseHelper.CreateResponse<AttributeCategoryMappingsResponseDto>(
         Constants.DATA_SUCCESS,
         response,
@@ -204,12 +206,16 @@ export class ProductAttributesService {
         },
         HttpStatus.OK,
       );
-    } catch (error) {
-      console.error('Error fetching attributes by category:', error);
-      return ResponseHelper.CreateResponse(
-        'Failed to fetch attributes',
-        null,
-        HttpStatus.INTERNAL_SERVER_ERROR,
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Error fetching attributes by category:',
+        error: error,
+      });
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException(
+        `Failed to fetch attributes by category: ${error.message}`,
       );
     }
   }
@@ -317,13 +323,15 @@ export class ProductAttributesService {
 
       // Log results
       if (successfulUpdates > 0) {
-        console.log(`Successfully updated ${successfulUpdates} attributes`);
+        this.logger.info(`Successfully updated ${successfulUpdates} attributes`);
       }
 
       if (errors.length > 0) {
-        console.log(
-          `Failed to update ${errors.length} attributes:`,
-          errors.map((e) => `${e.attributeId}: ${e.error}`),
+        this.logger.error({
+          message:
+            `Failed to update ${errors.length} attributes:`,
+          error: new Error(errors.map((e) => `${e.attributeId}: ${e.error}`).join(', ')),
+        }
         );
       }
 
@@ -346,13 +354,13 @@ export class ProductAttributesService {
 
       // If there were some errors but also some successes, log warning but don't throw
       if (errors.length > 0 && successfulUpdates > 0) {
-        console.warn(
+        this.logger.warn(
           `Partial success: ${successfulUpdates}/${attributeUpdates.length} attributes updated`,
         );
       }
 
       return result;
-    } catch (error) {
+    } catch (error: any) {
       // Only re-throw if it's one of our custom exceptions
       if (
         error instanceof NotFoundException ||
@@ -361,7 +369,7 @@ export class ProductAttributesService {
         throw error;
       }
 
-      console.error('Error updating product attributes:', error);
+      this.logger.error('Error updating product attributes:', error);
       throw new Error('Failed to update product attributes');
     }
   }
@@ -418,6 +426,10 @@ export class ProductAttributesService {
           mapping: updatedMapping,
         };
       } catch (error: any) {
+        this.logger.error({
+          message: `Failed to upsert attribute value for attribute ID ${op.attributeId}`,
+          error: error.message || 'Failed to upsert attribute value',
+        });
         return {
           attributeId: op.attributeId,
           success: false,
@@ -636,8 +648,8 @@ export class ProductAttributesService {
         },
         HttpStatus.CREATED,
       );
-    } catch (error) {
-      console.error('Error creating attribute-category mapping:', error);
+    } catch (error: any) {
+      this.logger.error('Error creating attribute-category mapping:', error);
       return ResponseHelper.CreateResponse(
         'Failed to create mapping',
         null,
