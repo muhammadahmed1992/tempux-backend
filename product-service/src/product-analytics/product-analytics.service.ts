@@ -10,21 +10,19 @@ export class ProductAnalyticsService {
   constructor(
     private readonly globalConfigService: GlobalConfigurationService,
     private readonly repository: ProductAnalyticsRepository,
-  ) {}
+  ) { }
 
   /**
-   * Records a unique product item view for a logged-in user within a configured time window.
-   * If the user has already viewed this item within the window, no new record is created.
+   * Records a unique product view for a logged-in user within a configured time window.
+   * If the user has already viewed this product within the window, no new record is created.
    *
    * @param userId The ID of the logged-in user.
-   * @param productId The ID of the main product.
-   * @param itemId The ID of the specific product item being viewed.
+   * @param productId The ID of the product.
    * @param auditorId The ID of the user performing the action (usually same as userId).
    */
   async recordProductView(
     userId: bigint,
     productId: bigint,
-    itemId: bigint,
     auditorId: bigint,
   ): Promise<ApiResponse<boolean>> {
     // 1. Get the configured time window for unique viewership
@@ -35,12 +33,11 @@ export class ProductAnalyticsService {
     const cutoffTime = new Date();
     cutoffTime.setHours(cutoffTime.getHours() - viewershipWindowHours);
 
-    // 3. Check if a view for this user, product, and item exists within the window
+    // 3. Check if a view for this user and product exists within the window
     const existingView = await this.repository.findFirst({
       where: {
         user_id: userId,
         product_id: productId,
-        product_item_id: itemId,
         viewed_at: {
           gte: cutoffTime, // Greater than or equal to the cutoff time
         },
@@ -56,16 +53,15 @@ export class ProductAnalyticsService {
             id: productId,
           },
         },
-        product_item: {
-          connect: {
-            id: itemId,
-          },
-        },
         created_by: auditorId,
       });
     }
 
-    return ResponseHelper.CreateResponse<boolean>('', true, HttpStatus.OK);
+    return ResponseHelper.CreateResponse<boolean>(
+      'Product view recorded successfully',
+      true,
+      HttpStatus.CREATED,
+    );
   }
 
   /**
@@ -76,7 +72,6 @@ export class ProductAnalyticsService {
   async getProductUniqueViewershipCount(productId: bigint, itemId?: bigint) {
     const count = await this.repository.getViewershipUniqueCount(
       productId,
-      itemId,
     );
     return ResponseHelper.CreateResponse<number>('', count, HttpStatus.OK);
   }

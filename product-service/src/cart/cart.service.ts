@@ -12,33 +12,32 @@ import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { CartDetailsResponseDTO } from '@DTO/cart-details-response.dto';
 import Constants from '@Helper/constants';
 import { AppLoggerService } from '@Common/logging';
-import { ProductItemService } from '@ProductItem/product-item.service';
+import { ProductService } from '@Product/product.service';
 @Injectable()
 export class CartService {
   constructor(
     private readonly repository: CartRepository,
     private readonly logger: AppLoggerService,
-    private readonly productItemService: ProductItemService,
-  ) {}
+    private readonly productService: ProductService,
+  ) { }
 
   /**
    * This method will add user's product to the cart.
-   * @param cart it is typeof AddToCartRequestDTO which contains userId, productId, product_items_id, quantity
+   * @param cart it is typeof AddToCartRequestDTO which contains userId, productId, quantity
    * @returns newly marked cart id
    */
   async addProductToCart(
     cart: AddToCartRequestDTO,
   ): Promise<ApiResponse<number>> {
     const stockExistanceValidation =
-      await this.productItemService.checkIfStockAvailable(
+      await this.productService.checkIfStockAvailable(
         cart.productId,
-        cart.itemId,
         cart.quantity,
       );
 
     if (!stockExistanceValidation)
       throw new BadRequestException(
-        `Specific product/item doesn't have such quantity available in the stock`,
+        `Product doesn't have such quantity available in the stock`,
       );
     const result = (await this.repository.addProductInCart(cart)).id;
     return ResponseHelper.CreateResponse<number>(
@@ -122,7 +121,6 @@ export class CartService {
           productName: item.product_items.product.name,
           productTitle: item.product_items.product.title,
           reference_number: item.product_items.product.reference_number,
-          itemId: item.product_items.id,
           base_image_url: item.product_items.base_image_url,
           price: item.product_items.price.toNumber(),
           size: item.product_items.size.value,

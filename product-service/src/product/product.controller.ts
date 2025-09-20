@@ -28,7 +28,6 @@ import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.ser
 import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
-import { ProductItemService } from '@ProductItem/product-item.service';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
 import { AppLoggerService } from '../common/logging/logger.service';
 import { CreateProductDto } from '@DTO/product.dto';
@@ -43,7 +42,6 @@ export class ProductController {
     private readonly favoriteService: FavoriteService,
     private readonly productAnalyticsService: ProductAnalyticsService,
     private readonly logger: AppLoggerService,
-    private readonly productItemSerice: ProductItemService,
   ) {}
 
   /**
@@ -204,10 +202,9 @@ export class ProductController {
   async favorite(
     @UserId() userId: bigint,
     @Param('id', ParseProductIdPipe) id: bigint,
-    @Param('itemId') itemId: bigint,
     @Body('flag') flag: boolean,
   ) {
-    return this.favoriteService.markProductAsFavorite(userId, id, itemId, flag);
+    return this.favoriteService.markProductAsFavorite(userId, id, flag);
   }
 
   @Post('/analytics')
@@ -220,7 +217,6 @@ export class ProductController {
     return this.productAnalyticsService.recordProductView(
       userId,
       analytics.productId,
-      analytics.itemId,
       userId,
     );
   }
@@ -228,7 +224,7 @@ export class ProductController {
   @Post('/order-summary')
   @UseGuards(HeaderAuthGuard)
   async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
-    return this.productItemSerice.getOrderSummary(summary);
+    return this.productService.getOrderSummary(summary);
   }
 
   /**

@@ -53,7 +53,7 @@ export class ReviewsService {
     const userDetailsMap = await this.fetchUserDetailsInBatch(uniqueUserIds);
 
     // Enrich reviews with user details
-    const enrichedReviews: EnrichedReviewResponseDto[] = data.map((review) => ({
+    const enrichedReviews: EnrichedReviewResponseDto[] = data.map(( review) => ({
       review: review.review,
       ratings: review.ratings,
       user: userDetailsMap.get(review.reviewedBy.toString()) || {
@@ -220,7 +220,7 @@ export class ReviewsService {
         result.updated_at.getTime() - result.created_at.getTime() < 1000);
     return ResponseHelper.CreateResponse<number>(
       Constants.REVIEW_MARKED_SUCCESSFULLy,
-      result.id,
+      Number(result.id),
       isCreated ? HttpStatus.CREATED : HttpStatus.NO_CONTENT,
     );
   }

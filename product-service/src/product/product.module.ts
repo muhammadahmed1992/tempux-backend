@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
 import { ProductRepository } from './product.repository';
-import { ProductItemModule } from '@ProductItem/product-item.module';
 import { ProductAnalyticsModule } from '@ProductAnalytics/product-analytics.module';
 import { ProductIdResolver } from '@Common/resolver/product-id.resolver';
 import { HashidsModule } from '../hash-ids/hash-ids.module';
@@ -22,7 +21,6 @@ import { MIME_TYPES } from 'src/image-upload/constants/image-configs';
   imports: [
     HashidsModule,
     FavoriteModule,
-    ProductItemModule,
     ProductAnalyticsModule,
     LoggingModule,
     ImageUploadModule,

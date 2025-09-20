@@ -89,6 +89,7 @@ export class ProductValidationService {
     const providedAttributeIds = new Set(
       attributesDto.map((attr) => attr.attribute_id),
     );
+    this.logger.info({ message: "debugging mappings", context: mandatoryMappings })
 
     for (const mm of mandatoryMappings) {
       if (!providedAttributeIds.has(mm.attribute_id)) {

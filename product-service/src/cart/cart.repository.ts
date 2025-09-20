@@ -27,16 +27,14 @@ export class CartRepository extends BaseRepository<
   /**
    * This method will add product in cart table by user
    * @param userId Id of the user which is marking the product as favorite
-   * @param productId Parent Id of the currently selected/marked product item
-   * @param itemId Specific Id of that particular item
+   * @param productId Id of the product being added to cart
    */
   async addProductInCart(create: AddToCartRequestDTO) {
     return this.prisma.cart.upsert({
       where: {
-        user_id_product_id_product_item_id: {
+        user_id_product_id: {
           user_id: create.userId,
           product_id: create.productId,
-          product_item_id: create.itemId,
         },
       },
       update: {
@@ -51,11 +49,6 @@ export class CartRepository extends BaseRepository<
             id: create.productId,
           },
         },
-        product_item: {
-          connect: {
-            id: create.itemId,
-          },
-        },
         quantity: create.quantity,
         created_by: create.userId,
         created_at: new Date(),
@@ -68,8 +61,7 @@ export class CartRepository extends BaseRepository<
   /**
    * This method will be un marking or removing the product from Cart. But it will only updated the isDelete flag, won't remove permanently.
    * @param userId Id of the user which is marking the product as favorite
-   * @param productId Parent Id of the currently selected/marked product item
-   * @param itemId Specific Id of that particular item
+   * @param productId Id of the product being removed from cart
    */
   async removeFromCart(
     userId: bigint,
@@ -80,7 +72,6 @@ export class CartRepository extends BaseRepository<
     const orConditions = items.map((item) => ({
       user_id: userId,
       product_id: item.productId,
-      product_item_id: item.product_items_Id,
     }));
     this.logger.info({
       message: 'printing the orCondition for debugging',

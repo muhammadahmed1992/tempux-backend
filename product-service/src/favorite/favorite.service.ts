@@ -16,14 +16,12 @@ export class FavoriteService {
   async markProductAsFavorite(
     userId: bigint,
     productId: bigint,
-    itemId: bigint,
     flag: boolean,
   ): Promise<ApiResponse<number>> {
     const result = (
       await this.repository.markProductAsFavorite(
         userId,
         productId,
-        itemId,
         flag,
       )
     ).id;

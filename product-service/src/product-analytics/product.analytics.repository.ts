@@ -21,17 +21,15 @@ export class ProductAnalyticsRepository extends BaseRepository<
 
   /**
    * @param productId Particular product which is being viewed by the user
-   * @param itemId Particular product item which is being viewed by the user
-   * @returns The unique count against this passed product and item within cut-off time i.e in last 48 hours.
+   * @returns The unique count against this passed product within cut-off time i.e in last 48 hours.
    */
-  async getViewershipUniqueCount(productId: bigint, itemId?: bigint) {
+  async getViewershipUniqueCount(productId: bigint) {
     const viewershipHours = StaticConfiguration.viewershipWindowHours;
     const cutoffTime = new Date();
     cutoffTime.setHours(cutoffTime.getHours() - viewershipHours);
     const res = await this.findMany({
       where: {
         product_id: productId,
-        product_item_id: itemId,
         viewed_at: {
           gte: cutoffTime,
         },
@@ -90,7 +88,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
             productImages: true,
           },
         },
-        product_item: true,
       },
     });
 
@@ -101,7 +98,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         orderBy: { created_at: 'desc' }, // or orderBy: { popularity: "desc" } if you have analytics
         take: limit,
         include: {
-          productItems: { include: { currency: true } },
           brand: true,
           category: true,
         },
@@ -124,7 +120,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
         categoryCount[v.product.category_id] =
           (categoryCount[v.product.category_id] || 0) + 1;
       }
-      const price = this.getNumericPrice(v.product_item?.price);
+      const price = this.getNumericPrice(v.product.sales_price);
       if (price) pricePoints.push(price);
     });
 
@@ -155,7 +151,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         },
         take,
         include: {
-          productItems: { include: { currency: true } },
           brand: true,
           category: true,
         },
@@ -176,7 +171,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         },
         take: take - recommendations.length / 2,
         include: {
-          productItems: { include: { currency: true } },
           brand: true,
           category: true,
         },
@@ -190,15 +184,9 @@ export class ProductAnalyticsRepository extends BaseRepository<
         where: {
           id: { notIn: excludeIds },
           is_deleted: false,
-          productItems: {
-            some: {
-              price: { gte: lowerBound, lte: upperBound },
-            },
-          },
         },
         take: limit - recommendations.length,
         include: {
-          productItems: { include: { currency: true } },
           brand: true,
           category: true,
         },

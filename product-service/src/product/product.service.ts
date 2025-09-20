@@ -23,6 +23,8 @@ import { ProductAttributesService } from 'src/product-attributes/product-attribu
 import { ImageUploadService } from 'src/image-upload/image-upload.service';
 import { ImageUploadDto } from '@DTO/image-upload.dto';
 import { AppLoggerService } from '@Common/logging';
+import { OrderSummaryDTO, OrderSummaryProductDTO, TaxLineDTO } from '@DTO/order-summary-response.dto';
+import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
 
 interface ProductSummaryResult {
   id: bigint;
@@ -69,7 +71,7 @@ interface ProductWithRelations
       productImages: true;
       productOwnership: true;
     };
-  }> {}
+  }> { }
 
 interface ProductInfo {
   title?: string;
@@ -100,7 +102,7 @@ export class ProductService {
     private readonly productValidationService: ProductValidationService,
     private readonly productAttributeService: ProductAttributesService,
     private readonly imageUploadService: ImageUploadService,
-  ) {}
+  ) { }
 
   // 3. Updated createProduct method with image handling
   async createProduct(
@@ -307,8 +309,8 @@ export class ProductService {
       const averageRating =
         product.productReviews.length > 0
           ? parseFloat(
-              (totalRatings / product.productReviews.length).toFixed(1),
-            )
+            (totalRatings / product.productReviews.length).toFixed(1),
+          )
           : 0;
 
       // 2. Determine Price with Currency Symbol
@@ -561,14 +563,14 @@ export class ProductService {
           },
           productFavorite: userId
             ? {
-                where: {
-                  user_id: userId,
-                  is_deleted: false,
-                },
-                select: {
-                  id: true,
-                },
-              }
+              where: {
+                user_id: userId,
+                is_deleted: false,
+              },
+              select: {
+                id: true,
+              },
+            }
             : undefined,
         },
         skip,
@@ -680,6 +682,127 @@ export class ProductService {
         totalCount,
         numberOfTotalPages: Math.ceil(totalCount / pageSize),
       },
+    );
+  }
+
+  async checkIfStockAvailable(
+    productId: bigint,
+    quantity: number,
+  ): Promise<boolean> {
+    const result = await this.prisma.product.findFirst({
+      where: {
+        id: productId,
+        quantity: {
+          gte: quantity,
+        },
+      },
+      select: {
+        quantity: true,
+      },
+    });
+    if (result && result.quantity > 0) return true;
+    return false;
+  }
+  /**
+ * This method prepares the order summary for the selected product(s) on the cart. Basically it just calculate total price, discount, taxes where applicable and shipping cost if any.
+ * @param summary The request dto object which contains selected productId, itemId and the quantity
+ * @returns Promise<ApiResponse<OrderSummaryDTO>>
+ */
+  async getOrderSummary(
+    cartItems: OrderSummaryRequestDTO[],
+  ): Promise<ApiResponse<OrderSummaryDTO>> {
+    if (!cartItems || cartItems?.length === 0)
+      throw new BadRequestException(
+        "Cart is empty. Summary can't be calculated",
+      );
+
+    const uniqueItemIds = cartItems.map((i) => i.productId);
+    const itemsInfo = await this.productRepository.getProductWithTax(
+      uniqueItemIds,
+    );
+
+    if (itemsInfo.length !== uniqueItemIds.length) {
+      throw new BadRequestException('One or more product items not found.');
+    }
+
+    const itemMap = new Map(itemsInfo.map((item) => [item.id, item]));
+    const cartItemMap = new Map(
+      cartItems.map((item) => [BigInt(item.itemId), item]),
+    );
+
+    // TODO: Later will move inside a stored procedure probably
+    // Inventory Check
+    let inventoryValidation = [];
+    for (const item of itemsInfo) {
+      const requestedItem = cartItemMap.get(item.id);
+      if (requestedItem!.quantity > item.quantity)
+        inventoryValidation.push(
+          `Only stocks of ${item.quantity} is available for ${item.id}`,
+        );
+    }
+    if (inventoryValidation.length) {
+      throw new BadRequestException(inventoryValidation);
+    }
+
+    let totalSubtotal = 0;
+    let totalDiscount = 0;
+    const taxMap = new Map<string, number>();
+    const summaryItems: OrderSummaryProductDTO[] = [];
+
+    for (const cartItem of cartItems) {
+      const item = itemMap.get(cartItem.itemId)!;
+      const currency = item.currency;
+      const currencyRate = currency?.exchangeRate?.toFixed(2) || 1;
+      const price = item.price.toFixed(2) * currencyRate;
+      const discount = item.discount.toFixed(2) * currencyRate;
+
+      const taxRate = item.tax?.taxRate.toFixed(2) || 0 * currencyRate;
+      const taxName = item.tax?.description || 'N/A';
+
+      const itemSubtotal = (price - discount) * cartItem.quantity;
+      const itemTaxAmount = itemSubtotal * taxRate;
+      const itemTotal = itemSubtotal + itemTaxAmount;
+
+      totalSubtotal += itemSubtotal * currencyRate;
+      totalDiscount += discount * cartItem.quantity;
+
+      const currentTaxAmount = taxMap.get(taxName) || 0;
+      taxMap.set(taxName, currentTaxAmount + itemTaxAmount);
+
+      summaryItems.push({
+        symb: currency?.curr || '$',
+        productId: cartItem.productId,
+        quantity: cartItem.quantity,
+        sales_price: price,
+        discount: discount,
+        subtotal: itemSubtotal,
+        taxAmount: itemTaxAmount,
+        taxName: taxName,
+        total: itemTotal,
+      });
+    }
+
+    const taxSummary: TaxLineDTO[] = Array.from(
+      taxMap,
+      ([taxName, amount]) => ({
+        taxName: taxName,
+        amount: amount,
+      }),
+    );
+
+    const totalTax = taxSummary.reduce((sum, tax) => sum + tax.amount, 0);
+    const grandTotal = totalSubtotal + totalTax;
+
+    return ResponseHelper.CreateResponse<OrderSummaryDTO>(
+      '',
+      {
+        products: summaryItems,
+        subtotal: totalSubtotal,
+        totalDiscount: totalDiscount,
+        taxSummary: taxSummary,
+        grandTotal: grandTotal,
+      },
+      HttpStatus.OK,
     );
   }
 }
