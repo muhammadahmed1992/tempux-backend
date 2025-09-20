@@ -103,18 +103,18 @@ model model {
 }
 
 model gender {
-  id                   Int             @id @default(autoincrement())
-  title                String          @unique @db.VarChar(50)
-  order                Int?
-  image_url            String?         @db.VarChar(1000)
-  created_at           DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime?       @db.Timestamptz(6)
-  deleted_at           DateTime?       @db.Timestamptz(6)
-  created_by           BigInt
-  updated_by           BigInt?
-  deleted_by           BigInt?
-  is_deleted           Boolean         @default(false)
-  product              product[]       @relation("ProductGender")
+  id         Int       @id @default(autoincrement())
+  title      String    @unique @db.VarChar(50)
+  order      Int?
+  image_url  String?   @db.VarChar(1000)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+  product    product[] @relation("ProductGender")
 }
 
 model category {
@@ -285,7 +285,7 @@ model reviews_ratings {
   id         BigInt    @id @default(autoincrement())
   product_id BigInt
   review     String?   @db.VarChar(500)
-  ratings     Int       @db.Integer
+  ratings    Int       @db.Integer
   reviewedBy BigInt
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @db.Timestamptz(6)
@@ -379,35 +379,33 @@ model excel_batch_import {
 }
 
 model product {
-  id              BigInt   @id @default(autoincrement())
-  name            String   @db.VarChar(150)
-  description     String   @db.VarChar(300)
-  title           String?  @db.VarChar(150)
+  id              BigInt  @id @default(autoincrement())
+  name            String  @db.VarChar(150)
+  description     String  @db.VarChar(300)
+  title           String? @db.VarChar(150)
   brand_id        Int?
   category_id     Int?
   model_id        Int?
   gender_id       Int?
-  is_accessory    Boolean  @default(false)
-  accessory_image String?  @db.VarChar(500)
-  is_used         Boolean  @default(false)
-  product_slug    String   @db.VarChar(255)
-  availability_id  Int?
-  
+  is_accessory    Boolean @default(false)
+  accessory_image String? @db.VarChar(500)
+  is_used         Boolean @default(false)
+  product_slug    String  @db.VarChar(255)
+
   // Fields migrated from product_items
   size_id                            Int?
-  quantity                           Int      @default(0)
-  serial_number                      String?  @db.VarChar(15)
+  quantity                           Int       @default(0)
+  serial_number                      String?   @db.VarChar(15)
   reference_number                   String?
-  approval_status_by_admin           String   @default("PENDING") @db.VarChar(10)
-  approximation                      Boolean  @default(false)
-  buyer_confidence_boost_description String?  @db.VarChar(5000)
-  unknown                            Boolean  @default(false)
+  approval_status_by_admin           String    @default("PENDING") @db.VarChar(10)
+  approximation                      Boolean   @default(false)
+  buyer_confidence_boost_description String?   @db.VarChar(5000)
+  unknown                            Boolean   @default(false)
   release_date                       DateTime? @db.Timestamptz(6)
   country_id                         Int?
   tax_rule_id                        Int?
-  sku                                String?  @unique @db.VarChar(20)
-  discount                           Decimal? @default(0.00) @db.Decimal(10, 2)
-  warranty                           Int?
+  sku                                String?   @unique @db.VarChar(20)
+  discount                           Decimal?  @default(0.00) @db.Decimal(10, 2)
 
   // common fields
   year_of_production Int     @db.Integer
@@ -440,24 +438,23 @@ model product {
   attributeValues   attribute_value_mapping[]               @relation("AttributeValues")
   currency          currency_exchange                       @relation("ProductCurrency", fields: [currency_id], references: [id])
   productImages     product_images[]                        @relation("ProductImages")
-  
+
   // New relations from product_items
-  size              size?                                   @relation("ProductSize", fields: [size_id], references: [id])
-  tax           tax_rule?                               @relation("ProductTax", fields: [tax_rule_id], references: [id])
-  
+  size size?     @relation("ProductSize", fields: [size_id], references: [id])
+  tax  tax_rule? @relation("ProductTax", fields: [tax_rule_id], references: [id])
+
   // Fields for new relations
-  complication_id   Int?
-  case_material_id  Int?
+  complication_id      Int?
+  case_material_id     Int?
   bracelet_material_id Int?
-  crystal_id        Int?
-  
+  crystal_id           Int?
+
   // Relations
-  availability      availability?                           @relation("ProductAvailability", fields: [availability_id], references: [id])
-  complication      complications?                          @relation("ProductComplications", fields: [complication_id], references: [id])
-  caseMaterial      material?                               @relation("CaseMaterial", fields: [case_material_id], references: [id])
-  braceletMaterial  material?                               @relation("BraceletMaterial", fields: [bracelet_material_id], references: [id])
-  crystalType       crystal?                                @relation("ProductCrystal", fields: [crystal_id], references: [id])
-  countryOfOrigin   country?                                @relation("ProductCountry", fields: [country_id], references: [id])
+  complication     complications? @relation("ProductComplications", fields: [complication_id], references: [id])
+  caseMaterial     material?      @relation("CaseMaterial", fields: [case_material_id], references: [id])
+  braceletMaterial material?      @relation("BraceletMaterial", fields: [bracelet_material_id], references: [id])
+  crystalType      crystal?       @relation("ProductCrystal", fields: [crystal_id], references: [id])
+  countryOfOrigin  country?       @relation("ProductCountry", fields: [country_id], references: [id])
 }
 
 model product_images {
@@ -479,32 +476,15 @@ model product_images {
   created_by BigInt
   updated_by BigInt?
   deleted_by BigInt?
-  
-  
-  is_deleted Boolean   @default(false)
-  product    product?  @relation("ProductImages", fields: [product_id], references: [id])
-}
 
-
-
-model availability {
-  id           Int             @id @default(autoincrement())
-  status       String          @db.VarChar(50) // e.g. In Stock, Pre-order
-  products     product[]       @relation("ProductAvailability")
-
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @db.Timestamptz(6)
-  deleted_at DateTime? @db.Timestamptz(6)
-  created_by BigInt
-  updated_by BigInt?
-  deleted_by BigInt?
-  is_deleted Boolean   @default(false)
+  is_deleted Boolean  @default(false)
+  product    product? @relation("ProductImages", fields: [product_id], references: [id])
 }
 
 model complications {
-  id           Int             @id @default(autoincrement())
-  title        String          @db.VarChar(100)
-  products     product[]       @relation("ProductComplications")
+  id       Int       @id @default(autoincrement())
+  title    String    @db.VarChar(100)
+  products product[] @relation("ProductComplications")
 
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @db.Timestamptz(6)
@@ -533,9 +513,9 @@ model material {
 }
 
 model crystal {
-  id           Int             @id @default(autoincrement())
-  title        String          @db.VarChar(50)
-  products     product[]       @relation("ProductCrystal")
+  id       Int       @id @default(autoincrement())
+  title    String    @db.VarChar(50)
+  products product[] @relation("ProductCrystal")
 
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @db.Timestamptz(6)
@@ -547,9 +527,9 @@ model crystal {
 }
 
 model country {
-  id           Int             @id @default(autoincrement())
-  name         String          @db.VarChar(100)
-  products     product[]       @relation("ProductCountry")
+  id       Int       @id @default(autoincrement())
+  name     String    @db.VarChar(100)
+  products product[] @relation("ProductCountry")
 
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @db.Timestamptz(6)
@@ -561,22 +541,22 @@ model country {
 }
 
 model ownership_proof {
-  id             BigInt    @id @default(autoincrement())
-  image_url      String    @db.VarChar(1000)
-  alt_text       String    @db.VarChar(500)
-  order          Int
-  product_id     BigInt
-  user_id        BigInt
-  proof_type     String    @db.VarChar(50)
-  proof_url      String    @db.VarChar(500)
-  is_verified    Boolean   @default(false)
-  created_at     DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime? @db.Timestamptz(6)
-  deleted_at     DateTime? @db.Timestamptz(6)
-  created_by     BigInt
-  updated_by     BigInt?
-  deleted_by     BigInt?
-  is_deleted     Boolean   @default(false)
+  id          BigInt    @id @default(autoincrement())
+  image_url   String    @db.VarChar(1000)
+  alt_text    String    @db.VarChar(500)
+  order       Int
+  product_id  BigInt
+  user_id     BigInt
+  proof_type  String    @db.VarChar(50)
+  proof_url   String    @db.VarChar(500)
+  is_verified Boolean   @default(false)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
 
   // relations
   product product @relation("ProductOwnership", fields: [product_id], references: [id])
@@ -656,24 +636,25 @@ model GlobalConfiguration {
 }
 
 model product_analytics {
-  id              BigInt    @id @default(autoincrement())
-  product_id      BigInt
-  user_id         BigInt
-  view_count      Int       @default(0)
-  cart_count      Int       @default(0)
-  favorite_count  Int       @default(0)
-  purchase_count  Int       @default(0)
-  viewed_at       DateTime  @default(now()) @db.Timestamptz(6)
-  created_at      DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime? @db.Timestamptz(6)
-  deleted_at      DateTime? @db.Timestamptz(6)
-  created_by      BigInt
-  updated_by      BigInt?
-  deleted_by      BigInt?
-  is_deleted      Boolean   @default(false)
+  id             BigInt    @id @default(autoincrement())
+  product_id     BigInt
+  user_id        BigInt
+  view_count     Int       @default(0)
+  cart_count     Int       @default(0)
+  favorite_count Int       @default(0)
+  purchase_count Int       @default(0)
+  viewed_at      DateTime  @default(now()) @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+  deleted_at     DateTime? @db.Timestamptz(6)
+  created_by     BigInt
+  updated_by     BigInt?
+  deleted_by     BigInt?
+  is_deleted     Boolean   @default(false)
 
   // relations
   product product @relation(fields: [product_id], references: [id])
+
   @@unique([user_id])
 }
 

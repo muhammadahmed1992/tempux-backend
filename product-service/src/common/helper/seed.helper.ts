@@ -237,11 +237,11 @@ export default class SeedHelper {
             await this.seedGenders(creatorId, tx);
             await this.seedMovementTypes(creatorId, tx); // Updated: Seed movement types
             await this.seedProductInclusions(creatorId, tx); // New: Seed product inclusions
-            await this.seedCurrenciesAndTaxes(creatorId, tx);
+            await this.seedCurrencies(creatorId, tx);
+            await this.seedTaxes(creatorId, tx);
             await this.seedMaterials(creatorId, tx);
             await this.seedCrystals(creatorId, tx);
             await this.seedCountries(creatorId, tx);
-            await this.seedAvailabilities(creatorId, tx);
             await this.seedComplications(creatorId, tx);
 
             // Seed sign of wear components and conditions
@@ -579,7 +579,7 @@ export default class SeedHelper {
     console.log(`✅ Seeded ${genders.length} genders`);
   }
 
-  private async seedCurrenciesAndTaxes(
+  private async seedCurrencies(
     creatorId: bigint,
     tx: PrismaClient,
   ): Promise<void> {
@@ -604,6 +604,10 @@ export default class SeedHelper {
         },
       });
     }
+  }
+
+  private async seedTaxes(creatorId: bigint, tx: PrismaClient): Promise<void> {
+    console.log('💰 Seeding currencies and taxes...');
 
     await tx.tax_rule.upsert({
       where: { description: 'Standard VAT' },
@@ -691,24 +695,6 @@ export default class SeedHelper {
       });
     }
     console.log(`✅ Seeded ${countries.length} countries`);
-  }
-
-  private async seedAvailabilities(
-    creatorId: bigint,
-    tx: PrismaClient,
-  ): Promise<void> {
-    console.log('📦 Seeding availabilities...');
-    const statuses = ['In Stock', 'Pre-order', 'Out of Stock', 'Discontinued'];
-
-    for (const status of statuses) {
-      await tx.availability.create({
-        data: {
-          status,
-          created_by: creatorId,
-        },
-      });
-    }
-    console.log(`✅ Seeded ${statuses.length} availability statuses`);
   }
 
   private async seedComplications(
