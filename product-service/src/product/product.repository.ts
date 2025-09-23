@@ -67,14 +67,6 @@ export class ProductRepository extends BaseRepository<
             exchangeRate: true,
           },
         },
-        size: {
-          select: {
-            caseWidth: true,
-            caseHeight: true,
-            widthUnit: true,
-            heightUnit: true,
-          },
-        },
         caseMaterial: {
           select: {
             id: true,

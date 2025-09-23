@@ -23,8 +23,13 @@ import { ProductAttributesService } from 'src/product-attributes/product-attribu
 import { ImageUploadService } from 'src/image-upload/image-upload.service';
 import { ImageUploadDto } from '@DTO/image-upload.dto';
 import { AppLoggerService } from '@Common/logging';
-import { OrderSummaryDTO, OrderSummaryProductDTO, TaxLineDTO } from '@DTO/order-summary-response.dto';
+import {
+  OrderSummaryDTO,
+  OrderSummaryProductDTO,
+  TaxLineDTO,
+} from '@DTO/order-summary-response.dto';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
+import { title } from 'process';
 
 interface ProductSummaryResult {
   id: bigint;
@@ -48,7 +53,6 @@ interface ProductSummaryResult {
   }>;
   currency: {
     id: number;
-    symbol: string;
   };
 }
 
@@ -71,7 +75,7 @@ interface ProductWithRelations
       productImages: true;
       productOwnership: true;
     };
-  }> { }
+  }> {}
 
 interface ProductInfo {
   title?: string;
@@ -102,14 +106,14 @@ export class ProductService {
     private readonly productValidationService: ProductValidationService,
     private readonly productAttributeService: ProductAttributesService,
     private readonly imageUploadService: ImageUploadService,
-  ) { }
+  ) {}
 
   // 3. Updated createProduct method with image handling
   async createProduct(
     dto: CreateProductDto,
     userId: bigint,
     imageFiles?: Express.Multer.File[],
-    imageUploadDto?: ImageUploadDto
+    imageUploadDto?: ImageUploadDto,
   ) {
     try {
       const productInfo = dto.product;
@@ -309,8 +313,8 @@ export class ProductService {
       const averageRating =
         product.productReviews.length > 0
           ? parseFloat(
-            (totalRatings / product.productReviews.length).toFixed(1),
-          )
+              (totalRatings / product.productReviews.length).toFixed(1),
+            )
           : 0;
 
       // 2. Determine Price with Currency Symbol
@@ -370,69 +374,215 @@ export class ProductService {
     select?: object,
     customCategoryExpression?: CustomFilter,
   ): Promise<ApiResponse<any[]>> {
+    // Start with base filters from the query parser
     let finalWhere: any = {
-      product: {
-        is_deleted: false,
-        is_accessory: isAccessory,
-      },
-      ...where,
-      currency: {
-        is_deleted: false,
-      },
+      is_deleted: false,
+      is_accessory: isAccessory,
+      // Merge any additional where conditions from the query parser
+      ...(where || {}),
     };
+
     let finalOrderBy: any = { ...order };
 
-    // Filter logic using tags
+    // Handle custom category expression filters
     if (customCategoryExpression) {
       const tagName = CUSTOM_FILTER_TO_TAG[customCategoryExpression];
       if (tagName) {
-        // Filter products that have the tag
-        finalWhere.product = {
-          ...finalWhere.product,
+        // Add tag filter to existing where conditions
+        const tagFilter = {
           productTags: {
             some: {
               tags: {
                 name: tagName,
+                is_deleted: false,
               },
+              is_deleted: false,
             },
           },
         };
+
+        // If where already has AND conditions, merge them
+        if (finalWhere.AND) {
+          finalWhere.AND.push(tagFilter);
+        } else {
+          finalWhere = {
+            ...finalWhere,
+            AND: [tagFilter],
+          };
+        }
       }
-      // For NEW_ARRIVAL, we may also want to filter by created_at (optional)
+
+      // Handle NEW_ARRIVAL special case
       if (customCategoryExpression === CustomFilter.NEW_ARRIVAL) {
         const newArrivalDays = 30; // or configurable
-        finalWhere.product.created_at = {
-          gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
+        const newArrivalFilter = {
+          created_at: {
+            gte: new Date(Date.now() - newArrivalDays * 24 * 60 * 60 * 1000),
+          },
         };
+
+        if (finalWhere.AND) {
+          finalWhere.AND.push(newArrivalFilter);
+        } else {
+          finalWhere = {
+            ...finalWhere,
+            AND: [newArrivalFilter],
+          };
+        }
+
         finalOrderBy = { ...finalOrderBy, created_at: 'desc' };
       }
     }
 
-    // This ensures all necessary related data is fetched.
+    // Build comprehensive select options
     const selectOptions: any = {
       id: true,
       sku: true,
-      base_image_url: true,
-      price: true,
-      product: {
+      name: true,
+      title: true,
+      product_slug: true,
+      sales_price: true,
+      description: true,
+      accessory_image: true,
+      year_of_production: true,
+      created_at: true,
+      updated_at: true,
+
+      // Include any custom select fields from query parser
+      ...select,
+
+      // Relations
+      brand: {
         select: {
           id: true,
-          product_slug: true,
           title: true,
-          ...select,
-          productTags: {
+          image_url: true,
+        },
+      },
+      category: {
+        select: {
+          id: true,
+          title: true,
+          image_url: true,
+        },
+      },
+      model: {
+        select: {
+          id: true,
+          title: true,
+          image_url: true,
+        },
+      },
+      productGender: {
+        select: {
+          id: true,
+          title: true,
+          image_url: true,
+        },
+      },
+      currency: {
+        select: {
+          id: true,
+          curr: true,
+          exchangeRate: true,
+        },
+      },
+      tax: {
+        select: {
+          id: true,
+          taxRate: true,
+          description: true,
+        },
+      },
+      productTags: {
+        select: {
+          id: true,
+          tags: {
             select: {
-              tags: {
+              id: true,
+              key: true,
+              title: true,
+            },
+          },
+        },
+        where: {
+          is_deleted: false,
+          tags: {
+            is_deleted: false,
+          },
+        },
+      },
+      productImages: {
+        select: {
+          id: true,
+          img_url: true,
+          image_type: true,
+        },
+        where: {
+          is_deleted: false,
+        },
+        take: 5,
+      },
+      productReviews: {
+        select: {
+          id: true,
+          ratings: true,
+          review: true,
+          reviewedBy: true,
+        },
+        where: {
+          is_deleted: false,
+        },
+      },
+
+      // EAV attributes
+      attributeValues: {
+        select: {
+          id: true,
+          string_value: true,
+          number_value: true,
+          boolean_value: true,
+          date_value: true,
+          lookup_name: true,
+          lookup_id: true,
+          attributeCategoryMapping: {
+            select: {
+              id: true,
+              data_type: true,
+              attribute: {
                 select: {
-                  title: true,
+                  id: true,
+                  name: true,
+                  display_name: true,
+                  unit: true,
+                },
+              },
+              attributeCategory: {
+                select: {
+                  id: true,
+                  name: true,
                 },
               },
             },
           },
         },
+        where: {
+          is_deleted: false,
+          attributeCategoryMapping: {
+            is_deleted: false,
+            attribute: {
+              is_deleted: false,
+            },
+            attributeCategory: {
+              is_deleted: false,
+            },
+          },
+        },
       },
+
+      // Favorites
       ...(userId && {
-        productItemFavorite: {
+        productFavorite: {
           where: {
             user_id: userId,
             is_deleted: false,
@@ -442,11 +592,6 @@ export class ProductService {
           },
         },
       }),
-      currency: {
-        select: {
-          curr: true,
-        },
-      },
     };
 
     const response = await this.getAllPagedData(
@@ -460,35 +605,115 @@ export class ProductService {
     if (!response.data || response.data?.length === 0) {
       throw new NotFoundException(Constants.NO_DATA_FOUND_FILTER);
     }
-    const result = response.data.map(
-      (pv: {
-        id: bigint;
-        base_image_url: string;
-        product: {
-          id: bigint;
-          name: string;
-          title: string;
-          product_slug: string;
-          productTags: any[];
-        };
-        price: number;
-        description: string;
-        title: string;
-        currency: { curr: string };
-        productItemFavorite: any;
-      }) => ({
-        itemId: pv.id,
-        productId: pv.product.id,
-        slug: pv.product.product_slug,
-        name: pv.product.name,
-        title: pv.product.title,
-        symb: pv.currency.curr,
-        image_url: pv.base_image_url,
-        price: pv.price.toFixed(2),
-        isFavorite: userId ? !!pv.productItemFavorite?.[0]?.id : null,
-        tags: pv.product?.productTags?.map((p) => p.tags),
-      }),
-    );
+
+    // Transform the results with enhanced data structure
+    const result = response.data.map((product: any) => {
+      // Get primary image or first available image
+      const primaryImage =
+        product.productImages?.find((img: any) => img.is_primary) ||
+        product.productImages?.[0];
+
+      // Transform EAV attributes into a more usable format
+      const dynamicAttributes: Record<string, any> = {};
+      if (product.attributeValues) {
+        product.attributeValues.forEach((attr: any) => {
+          const attributeName = attr.attributeCategoryMapping.attribute.name;
+          const dataType = attr.attributeCategoryMapping.data_type;
+
+          let value = null;
+          switch (dataType) {
+            case 'string':
+              value = attr.string_value;
+              break;
+            case 'number':
+              value = attr.number_value;
+              break;
+            case 'boolean':
+              value = attr.boolean_value;
+              break;
+            case 'date':
+              value = attr.date_value;
+              break;
+            case 'lookup':
+              value = attr.lookup_name || attr.lookup_id;
+              break;
+          }
+
+          if (value !== null) {
+            dynamicAttributes[attributeName] = {
+              value,
+              displayName: attr.attributeCategoryMapping.attribute.display_name,
+              unit: attr.attributeCategoryMapping.attribute.unit,
+              dataType,
+            };
+          }
+        });
+      }
+
+      return {
+        // Core product information
+        productId: product.id, // Encode for public use
+        slug: product.product_slug,
+        name: product.name,
+        title: product.title,
+        description: product.description,
+        sku: product.sku,
+        yearOfProduction: product.year_of_production,
+
+        // Pricing and currency
+        price: product.sales_price?.toFixed(2),
+        currency: product.currency?.curr,
+
+        // Images
+        imageUrl: primaryImage?.image_url || product.accessory_image,
+        images:
+          product.productImages?.map((img: any) => ({
+            id: img.id,
+            url: img.image_url,
+            type: img.image_type,
+          })) || [],
+
+        // Brand and category information
+        brand: product.brand
+          ? {
+              id: product.brand.id,
+              name: product.brand.name,
+            }
+          : null,
+
+        category: product.category
+          ? {
+              id: product.category.id,
+              name: product.category.name,
+            }
+          : null,
+
+        model: product.model
+          ? {
+              id: product.model.id,
+              name: product.model.name,
+            }
+          : null,
+
+        // Tags
+        tags:
+          product.productTags?.map((pt: any) => ({
+            id: pt.tags.id,
+            key: pt.tags.key,
+            title: pt.tags.title,
+          })) || [],
+
+        // Dynamic EAV attributes
+        attributes: dynamicAttributes,
+
+        // User-specific data
+        isFavorite: userId ? !!product.productFavorite?.[0]?.id : null,
+
+        // Metadata
+        createdAt: product.created_at,
+        updatedAt: product.updated_at,
+      };
+    });
 
     const meta = response.getMeta ? response.getMeta() : {};
     return ResponseHelper.CreateResponse<any[]>('', result, HttpStatus.OK, {
@@ -563,14 +788,14 @@ export class ProductService {
           },
           productFavorite: userId
             ? {
-              where: {
-                user_id: userId,
-                is_deleted: false,
-              },
-              select: {
-                id: true,
-              },
-            }
+                where: {
+                  user_id: userId,
+                  is_deleted: false,
+                },
+                select: {
+                  id: true,
+                },
+              }
             : undefined,
         },
         skip,
@@ -704,10 +929,10 @@ export class ProductService {
     return false;
   }
   /**
- * This method prepares the order summary for the selected product(s) on the cart. Basically it just calculate total price, discount, taxes where applicable and shipping cost if any.
- * @param summary The request dto object which contains selected productId, itemId and the quantity
- * @returns Promise<ApiResponse<OrderSummaryDTO>>
- */
+   * This method prepares the order summary for the selected product(s) on the cart. Basically it just calculate total price, discount, taxes where applicable and shipping cost if any.
+   * @param summary The request dto object which contains selected productId, itemId and the quantity
+   * @returns Promise<ApiResponse<OrderSummaryDTO>>
+   */
   async getOrderSummary(
     cartItems: OrderSummaryRequestDTO[],
   ): Promise<ApiResponse<OrderSummaryDTO>> {
