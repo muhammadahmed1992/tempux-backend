@@ -61,7 +61,6 @@ export class ProductRepository extends BaseRepository<
         reference_number: true,
         year_of_production: true,
         is_used: true,
-        warranty: true,
         currency: {
           select: {
             curr: true,
@@ -98,12 +97,6 @@ export class ProductRepository extends BaseRepository<
           select: {
             id: true,
             title: true,
-          },
-        },
-        availability: {
-          select: {
-            id: true,
-            status: true,
           },
         },
         productImages: {
