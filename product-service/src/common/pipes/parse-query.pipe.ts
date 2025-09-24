@@ -393,7 +393,7 @@ export class ParseQueryPipe
       case DataType.DATE:
         return 'date_value';
       case DataType.LOOKUP:
-        return 'lookup_name';
+        return 'lookup_id';
       default:
         throw new BadRequestException(`Unsupported data type: ${dataType}`);
     }
@@ -402,9 +402,9 @@ export class ParseQueryPipe
   private parseValueByDataType(value: string, dataType: string): any {
     switch (dataType) {
       case DataType.STRING:
-      case DataType.LOOKUP:
         return value;
       case DataType.NUMBER:
+      case DataType.LOOKUP:
         const num = Number(value);
         if (isNaN(num)) {
           throw new BadRequestException(`Invalid number value: ${value}`);
