@@ -635,7 +635,7 @@ export class ProductService {
               value = attr.date_value;
               break;
             case 'lookup':
-              value = attr.lookup_name || attr.lookup_id;
+              value = attr.lookup_id;
               break;
           }
 

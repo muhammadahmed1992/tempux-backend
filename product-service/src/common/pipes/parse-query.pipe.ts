@@ -8,9 +8,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 
-/**
- * Interface for the raw incoming query parameters (before transformation).
- */
 interface RawQueryParams {
   page?: string;
   pageSize?: string;
@@ -24,9 +21,6 @@ interface RawQueryParams {
   [key: string]: any;
 }
 
-/**
- * Interface for the transformed output object, ready for repository consumption.
- */
 export interface TransformedQuery {
   page: number;
   pageSize: number;
@@ -77,9 +71,6 @@ const operatorMap: Record<string, PrismaOperator> = {
   not: 'NOT',
 };
 
-/**
- * Data types supported in the EAV system
- */
 enum DataType {
   STRING = 'string',
   NUMBER = 'number',
@@ -88,11 +79,6 @@ enum DataType {
   LOOKUP = 'lookup',
 }
 
-/**
- * A comprehensive NestJS pipe to parse and transform various query parameters
- * including EAV (Entity-Attribute-Value) filters into a structured object
- * suitable for Prisma repository methods.
- */
 @Injectable()
 export class ParseQueryPipe
   implements PipeTransform<RawQueryParams, TransformedQuery>
@@ -106,6 +92,8 @@ export class ParseQueryPipe
     if (metadata.type !== 'query' || !value) {
       return value as any;
     }
+
+    console.log('Raw query params:', value);
 
     const {
       page,
@@ -124,7 +112,6 @@ export class ParseQueryPipe
       pageSize: Number(pageSize) || Constants.MAX_PAGE_SIZE,
     };
 
-    // Add type and query if they exist
     if (type) {
       transformed.type = type;
     }
@@ -132,7 +119,7 @@ export class ParseQueryPipe
       transformed.query = query;
     }
 
-    // Parse and transform 'orderBy'
+    // Parse orderBy
     if (sortBy && sortDir) {
       if (sortDir !== 'asc' && sortDir !== 'desc') {
         throw new BadRequestException(
@@ -144,7 +131,7 @@ export class ParseQueryPipe
       transformed.orderBy = { created_at: 'desc' };
     }
 
-    // Parse and transform 'select'
+    // Parse select
     if (select) {
       if (typeof select !== 'string') {
         throw new BadRequestException(
@@ -160,12 +147,14 @@ export class ParseQueryPipe
       }, {});
     }
 
-    // Parse and transform filters
+    // Parse filters
+    console.log('Filter params to process:', filterQueryParams);
     const where = this.parseGroupedFilter(filterQueryParams);
+    console.log('Parsed where object:', JSON.stringify(where, null, 2));
 
     if (Object.keys(where).length > 0) {
       transformed.where = {
-        AND: [where],
+        ...where,
         is_deleted: false,
       };
     } else {
@@ -184,12 +173,14 @@ export class ParseQueryPipe
       transformed.customCategoryExpression = expression;
     }
 
+    console.log(
+      'Final transformed where:',
+      JSON.stringify(transformed.where, null, 2),
+    );
+
     return transformed;
   }
 
-  /**
-   * Recursively builds a nested Prisma filter object from query parameter parts.
-   */
   private buildNestedFilter(
     root: Record<string, any>,
     parts: string[],
@@ -199,6 +190,13 @@ export class ParseQueryPipe
       return;
     }
 
+    console.log(
+      'Building nested filter with parts:',
+      parts,
+      'value:',
+      rawValue,
+    );
+
     const currentPart = parts.shift()!;
 
     // Handle product_id decoding
@@ -206,15 +204,11 @@ export class ParseQueryPipe
       rawValue = this.hashIds.decode(rawValue);
     }
 
-    // Check if this is an EAV attribute filter
-    if (currentPart === 'attribute' && parts.length >= 2) {
-      this.buildEAVFilter(root, parts, rawValue);
-      return;
-    }
+    // Remove the EAV detection from here since we handle it in parseGroupedFilter
 
     const prismaOperator = operatorMap[currentPart];
 
-    // Handle logical operators (AND, OR, NOT)
+    // Handle logical operators
     if (
       prismaOperator === 'AND' ||
       prismaOperator === 'OR' ||
@@ -235,7 +229,7 @@ export class ParseQueryPipe
       return;
     }
 
-    // Handle relation filters (every, some, none)
+    // Handle relation filters
     if (
       prismaOperator === 'every' ||
       prismaOperator === 'some' ||
@@ -255,7 +249,6 @@ export class ParseQueryPipe
       const operator = operatorMap[parts.shift()!];
       let value = this.parseValue(rawValue);
 
-      // Handle 'in' and 'notIn' which take an array
       if (operator === 'in' || operator === 'notIn') {
         value = String(value)
           .split(',')
@@ -264,7 +257,6 @@ export class ParseQueryPipe
 
       const condition: Record<string, any> = { [operator]: value };
 
-      // Handle case-insensitive mode
       if (parts.length > 0 && parts[0] === 'in') {
         if (
           ['equals', 'contains', 'startsWith', 'endsWith'].includes(operator)
@@ -276,39 +268,38 @@ export class ParseQueryPipe
 
       root[currentPart] = condition;
     } else {
-      // Keep going down the chain for nested relations
       root[currentPart] ??= {};
       this.buildNestedFilter(root[currentPart], parts, rawValue);
     }
   }
 
-  /**
-   * Builds EAV (Entity-Attribute-Value) filter for dynamic attributes.
-   *
-   * Expected format:
-   * filter[attribute][{attributeName}][{dataType}][{operator}]={value}
-   *
-   * Examples:
-   * - filter[attribute][CaseDiameter][number][gte]=40
-   * - filter[attribute][Movement][string][contains]=automatic
-   * - filter[attribute][WaterResistance][boolean][eq]=true
-   * - filter[attribute][ReleaseDate][date][gte]=2020-01-01
-   * - filter[attribute][Brand][lookup][eq]=rolex
-   */
+  // Also update the buildEAVFilter method to handle the correct parsing:
+
   private buildEAVFilter(
     root: Record<string, any>,
     parts: string[],
     rawValue: any,
   ) {
+    console.log('Building EAV filter with parts:', parts, 'value:', rawValue);
+
+    // For filter[attribute][10][number][gte]=40
+    // parts should be ['10', 'number', 'gte']
     if (parts.length < 3) {
       throw new BadRequestException(
-        'Invalid EAV filter format. Expected: attribute[{name}][{dataType}][{operator}]',
+        'Invalid EAV filter format. Expected: attribute[{attributeId}][{dataType}][{operator}]',
       );
     }
 
-    const attributeName = parts.shift()!;
-    const dataType = parts.shift()! as DataType;
-    const operator = parts.shift()!;
+    const attributeId = parts.shift()!; // '10'
+    const dataType = parts.shift()! as DataType; // 'number'
+    const operator = parts.shift()!; // 'gte'
+
+    console.log('EAV filter components:', {
+      attributeId,
+      dataType,
+      operator,
+      rawValue,
+    });
 
     // Validate data type
     if (!Object.values(DataType).includes(dataType as DataType)) {
@@ -339,63 +330,58 @@ export class ParseQueryPipe
         .map((v) => this.parseValueByDataType(v.trim(), dataType));
     }
 
-    // Build the EAV filter condition
+    // Get the correct value field for this data type
     const valueField = this.getValueFieldByDataType(dataType);
-    const condition: Record<string, any> = { [prismaOperator]: parsedValue };
+
+    console.log('Value field:', valueField, 'parsed value:', parsedValue);
+
+    // Build the condition for the specific value field
+    const valueCondition: Record<string, any> = {
+      [prismaOperator]: parsedValue,
+    };
 
     // Handle case-insensitive mode for string operations
     if (
       dataType === DataType.STRING &&
-      ['equals', 'contains', 'startsWith', 'endsWith'].includes(
-        prismaOperator,
-      ) &&
-      parts.length > 0 &&
-      parts[0] === 'in'
+      ['equals', 'contains', 'startsWith', 'endsWith'].includes(prismaOperator)
     ) {
-      condition.mode = 'insensitive';
+      valueCondition.mode = 'insensitive';
     }
 
-    // Initialize attributeValues relation filter if not exists
-    root.attributeValues ??= { some: {} };
-
-    // Build the nested filter for EAV structure
+    // Build the complete EAV filter structure
     const eavFilter = {
-      AND: [
-        {
-          attributeCategoryMapping: {
-            attribute: {
-              name: attributeName,
+      attributeValues: {
+        some: {
+          AND: [
+            {
+              attributeCategoryMapping: {
+                attribute: {
+                  id: parseInt(attributeId, 10),
+                  is_deleted: false,
+                },
+                is_deleted: false,
+              },
+            },
+            {
+              [valueField]: valueCondition,
+            },
+            {
               is_deleted: false,
             },
-            is_deleted: false,
-          },
+          ],
         },
-        {
-          [valueField]: condition,
-        },
-        {
-          is_deleted: false,
-        },
-      ],
+      },
     };
 
-    // If there are already EAV filters, combine them with AND
-    if (root.attributeValues.some.AND) {
-      root.attributeValues.some.AND.push(eavFilter);
-    } else if (Object.keys(root.attributeValues.some).length > 0) {
-      // Convert existing filter to AND structure
-      const existingFilter = { ...root.attributeValues.some };
-      root.attributeValues.some = {
-        AND: [existingFilter, eavFilter],
-      };
-    } else {
-      root.attributeValues.some = eavFilter;
+    console.log('Built EAV filter:', JSON.stringify(eavFilter, null, 2));
+
+    // Add to root - always add to AND array for EAV filters
+    if (!root.AND) {
+      root.AND = [];
     }
+    root.AND.push(eavFilter);
   }
 
-  /**
-   * Returns the appropriate value field name based on data type.
-   */
   private getValueFieldByDataType(dataType: string): string {
     switch (dataType) {
       case DataType.STRING:
@@ -407,15 +393,12 @@ export class ParseQueryPipe
       case DataType.DATE:
         return 'date_value';
       case DataType.LOOKUP:
-        return 'lookup_name'; // or 'lookup_id' depending on your needs
+        return 'lookup_name';
       default:
         throw new BadRequestException(`Unsupported data type: ${dataType}`);
     }
   }
 
-  /**
-   * Parses value based on the specified data type.
-   */
   private parseValueByDataType(value: string, dataType: string): any {
     switch (dataType) {
       case DataType.STRING:
@@ -446,9 +429,6 @@ export class ParseQueryPipe
     }
   }
 
-  /**
-   * Parses and transforms the query parameters into a structured 'where' object.
-   */
   private parseGroupedFilter(
     flatFilter: Record<string, any>,
   ): Record<string, any> {
@@ -458,11 +438,25 @@ export class ParseQueryPipe
     for (const [key, rawValue] of Object.entries(flatFilter)) {
       if (!key.startsWith('filter')) continue;
 
+      console.log('Processing filter key:', key, 'value:', rawValue);
+
       const parts = key.match(/\[(.+?)\]/g)?.map((x) => x.slice(1, -1));
       if (!parts) continue;
       parts.shift(); // remove 'filter'
 
-      // Check if the top-level is an implicit array
+      console.log('Filter parts after removing "filter":', parts);
+
+      // IMPORTANT: Check for EAV attribute filter BEFORE processing as array
+      // For filter[attribute][10][number][gte], parts = ['attribute', '10', 'number', 'gte']
+      if (parts.length >= 4 && parts[0] === 'attribute') {
+        console.log('Detected EAV attribute filter:', parts);
+        // Remove 'attribute' and pass the remaining parts
+        const eavParts = parts.slice(1); // ['10', 'number', 'gte']
+        this.buildEAVFilter(root, eavParts, rawValue);
+        continue;
+      }
+
+      // Check if the top-level is an implicit array (numeric index)
       if (!isNaN(Number(parts[0]))) {
         const index = Number(parts.shift());
         andGroup[index] ??= {};
@@ -473,15 +467,16 @@ export class ParseQueryPipe
     }
 
     if (andGroup.length > 0) {
-      root.AND = andGroup;
+      if (root.AND) {
+        root.AND = [...root.AND, ...andGroup];
+      } else {
+        root.AND = andGroup;
+      }
     }
 
     return root;
   }
 
-  /**
-   * Enhanced value parser with better type detection.
-   */
   private parseValue(val: string): any {
     if (val === 'true') return true;
     if (val === 'false') return false;
