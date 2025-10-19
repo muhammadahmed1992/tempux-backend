@@ -9,10 +9,11 @@ import { GlobalConfigurationModule } from '@GlobalConfiguration/global-configura
 import { ShippingModule } from './shipping/shipping.module';
 import { OrderModule } from './order/order.module';
 import { LoggingModule } from './common/logging/logging.module';
-
+import { PaymentModule } from './payments/payment.module';
 
 @Module({
-  imports: [LoggingModule,
+  imports: [
+    LoggingModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -22,6 +23,7 @@ import { LoggingModule } from './common/logging/logging.module';
     AuthProxyModule,
     ShippingModule,
     OrderModule,
+    PaymentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

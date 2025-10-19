@@ -46,7 +46,7 @@ async function bootstrap() {
 
   app.useGlobalInterceptors(new ResponseHandlerInterceptor());
   app.useGlobalInterceptors(new BigIntInterceptor());
-  app.useGlobalInterceptors(new HashidsInterceptor(hashidsService));
+  app.useGlobalInterceptors(new HashidsInterceptor(hashidsService, logger));
   app.useGlobalFilters(new AllExceptionsFilter(logger));
   const port = process.env.PORT ?? 3002;
 
