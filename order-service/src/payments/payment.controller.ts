@@ -507,4 +507,214 @@ export class PaymentController {
       HttpStatus.CREATED,
     );
   }
+
+  /**
+   * Onboard seller with Express account
+   * POST /payments/onboard-seller
+   */
+  @Post('onboard-seller')
+  async onboardSeller(@UserId() userId: bigint): Promise<ApiResponse<any>> {
+    this.logger.info({
+      message: 'Starting seller onboarding process',
+      context: {
+        operation: 'onboard_seller',
+        userId: userId.toString(),
+      },
+    });
+
+    try {
+      // Get user details to check if they already have a Stripe account
+      const userDetails = await this.paymentService.getUserDetails(userId);
+
+      let stripeAccountId = userDetails.stripeAccountId;
+
+      // If user doesn't have a Stripe account, create one
+      if (!stripeAccountId) {
+        this.logger.info({
+          message: 'Creating new Express account for seller',
+          context: {
+            operation: 'onboard_seller',
+            userId: userId.toString(),
+            email: userDetails.email,
+          },
+        });
+
+        const account = await this.paymentService.createExpressAccount(
+          userId,
+          'seller',
+          userDetails.email,
+          userDetails.country || 'US',
+        );
+
+        stripeAccountId = account.id;
+
+        // Update user record with Stripe account ID
+        await this.paymentService.updateUserStripeAccount(
+          userId,
+          stripeAccountId,
+        );
+
+        this.logger.info({
+          message: 'Express account created and linked to user',
+          context: {
+            operation: 'onboard_seller',
+            userId: userId.toString(),
+            stripeAccountId,
+          },
+        });
+      } else {
+        this.logger.info({
+          message:
+            'User already has Stripe account, generating new onboarding link',
+          context: {
+            operation: 'onboard_seller',
+            userId: userId.toString(),
+            stripeAccountId,
+          },
+        });
+      }
+
+      // Generate onboarding link
+      const accountLink = await this.paymentService.generateOnboardingLink(
+        stripeAccountId,
+      );
+
+      this.logger.info({
+        message: 'Seller onboarding link generated successfully',
+        context: {
+          operation: 'onboard_seller',
+          userId: userId.toString(),
+          stripeAccountId,
+          onboardingUrl: accountLink.url,
+        },
+      });
+
+      return ResponseHelper.CreateResponse(
+        'Seller onboarding link generated successfully',
+        {
+          stripeAccountId,
+          onboardingUrl: accountLink.url,
+          expiresAt: accountLink.expires_at,
+        },
+        HttpStatus.CREATED,
+      );
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to onboard seller',
+        context: {
+          operation: 'onboard_seller',
+          userId: userId.toString(),
+          error: error.message,
+        },
+        error,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Onboard shipper with Express account
+   * POST /payments/onboard-shipper
+   */
+  @Post('onboard-shipper')
+  async onboardShipper(@UserId() userId: bigint): Promise<ApiResponse<any>> {
+    this.logger.info({
+      message: 'Starting shipper onboarding process',
+      context: {
+        operation: 'onboard_shipper',
+        userId: userId.toString(),
+      },
+    });
+
+    try {
+      // Get user details to check if they already have a Stripe account
+      const userDetails = await this.paymentService.getUserDetails(userId);
+
+      let stripeAccountId = userDetails.stripeAccountId;
+
+      // If user doesn't have a Stripe account, create one
+      if (!stripeAccountId) {
+        this.logger.info({
+          message: 'Creating new Express account for shipper',
+          context: {
+            operation: 'onboard_shipper',
+            userId: userId.toString(),
+            email: userDetails.email,
+          },
+        });
+
+        const account = await this.paymentService.createExpressAccount(
+          userId,
+          'shipper',
+          userDetails.email,
+          userDetails.country || 'US',
+        );
+
+        stripeAccountId = account.id;
+
+        // Update user record with Stripe account ID
+        await this.paymentService.updateUserStripeAccount(
+          userId,
+          stripeAccountId,
+        );
+
+        this.logger.info({
+          message: 'Express account created and linked to user',
+          context: {
+            operation: 'onboard_shipper',
+            userId: userId.toString(),
+            stripeAccountId,
+          },
+        });
+      } else {
+        this.logger.info({
+          message:
+            'User already has Stripe account, generating new onboarding link',
+          context: {
+            operation: 'onboard_shipper',
+            userId: userId.toString(),
+            stripeAccountId,
+          },
+        });
+      }
+
+      // Generate onboarding link
+      const accountLink = await this.paymentService.generateOnboardingLink(
+        stripeAccountId,
+      );
+
+      this.logger.info({
+        message: 'Shipper onboarding link generated successfully',
+        context: {
+          operation: 'onboard_shipper',
+          userId: userId.toString(),
+          stripeAccountId,
+          onboardingUrl: accountLink.url,
+        },
+      });
+
+      return ResponseHelper.CreateResponse(
+        'Shipper onboarding link generated successfully',
+        {
+          stripeAccountId,
+          onboardingUrl: accountLink.url,
+          expiresAt: accountLink.expires_at,
+        },
+        HttpStatus.CREATED,
+      );
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to onboard shipper',
+        context: {
+          operation: 'onboard_shipper',
+          userId: userId.toString(),
+          error: error.message,
+        },
+        error,
+      });
+
+      throw error;
+    }
+  }
 }

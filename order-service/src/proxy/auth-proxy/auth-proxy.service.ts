@@ -314,4 +314,91 @@ export class AuthProxyService {
       );
     }
   }
+
+  /**
+   * Get user details including Stripe account information
+   */
+  async getUserDetails(userId: bigint): Promise<any> {
+    try {
+      const response: AxiosResponse<{ data: any }> = await firstValueFrom(
+        this.httpService
+          .get<{ data: any }>(`${this.authSvcUrl}/user/${userId.toString()}`, {
+            headers: {
+              'x-user-id': userId.toString(),
+              'x-user-email': 'superadmin@mailinator.com',
+              'x-user-roles': '1',
+            },
+          })
+          .pipe(
+            catchError((error: AxiosError) => {
+              throw new InternalServerErrorException(
+                'Failed to get user details from Auth Service.',
+              );
+            }),
+          ),
+      );
+
+      return response.data.data;
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get user details',
+        context: {
+          operation: 'get_user_details',
+          userId: userId.toString(),
+          error: error.message,
+        },
+      });
+      throw new InternalServerErrorException(
+        `Failed to get user details: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Update user's Stripe account ID
+   */
+  async updateUserStripeAccount(
+    userId: bigint,
+    stripeAccountId: string,
+  ): Promise<any> {
+    try {
+      const requestBody = { stripeAccountId };
+      const response: AxiosResponse<{ data: any }> = await firstValueFrom(
+        this.httpService
+          .patch<{ data: any }>(
+            `${this.authSvcUrl}/user/${userId.toString()}/stripe-account`,
+            requestBody,
+            {
+              headers: {
+                'x-user-id': userId.toString(),
+                'x-user-email': 'superadmin@mailinator.com',
+                'x-user-roles': '1',
+              },
+            },
+          )
+          .pipe(
+            catchError((error: AxiosError) => {
+              throw new InternalServerErrorException(
+                'Failed to update user Stripe account from Auth Service.',
+              );
+            }),
+          ),
+      );
+
+      return response.data.data;
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to update user Stripe account',
+        context: {
+          operation: 'update_user_stripe_account',
+          userId: userId.toString(),
+          stripeAccountId,
+          error: error.message,
+        },
+      });
+      throw new InternalServerErrorException(
+        `Failed to update user Stripe account: ${error.message}`,
+      );
+    }
+  }
 }

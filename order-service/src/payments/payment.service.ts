@@ -2,6 +2,7 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import Stripe from 'stripe';
 import { StripeClient } from './stripeClient';
 import { AppLoggerService } from '../common/logging';
+import { AuthProxyService } from '../proxy/auth-proxy/auth-proxy.service';
 
 /**
  * Payment service for handling Stripe operations
@@ -12,7 +13,10 @@ export class PaymentService {
   private stripe: Stripe;
   private logger: AppLoggerService;
 
-  constructor(logger: AppLoggerService) {
+  constructor(
+    logger: AppLoggerService,
+    private readonly authProxyService: AuthProxyService,
+  ) {
     this.logger = logger;
     this.stripe = StripeClient.initialize(logger);
   }
@@ -421,6 +425,228 @@ export class PaymentService {
       StripeClient.logError(operation, error);
       throw new BadRequestException(
         `Failed to cancel payment intent: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Create an Express account for sellers/shippers
+   * @param userId - User ID
+   * @param role - User role ('seller' or 'shipper')
+   * @param userEmail - User email address
+   * @param country - Country code (default: 'US')
+   * @returns Stripe Account
+   */
+  async createExpressAccount(
+    userId: bigint,
+    role: 'seller' | 'shipper',
+    userEmail: string,
+    country: string = 'US',
+  ): Promise<Stripe.Account> {
+    const operation = 'create_express_account';
+
+    try {
+      StripeClient.logRequest(operation, {
+        userId: userId.toString(),
+        role,
+        userEmail,
+        country,
+      });
+
+      const account = await this.stripe.accounts.create({
+        type: 'express',
+        country,
+        email: userEmail,
+        metadata: {
+          userId: userId.toString(),
+          role,
+          platform: 'tempux',
+        },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        business_type: role === 'seller' ? 'individual' : 'individual',
+      });
+
+      StripeClient.logResponse(operation, account);
+
+      this.logger.info({
+        message: 'Express account created successfully',
+        context: {
+          operation: 'create_express_account',
+          userId: userId.toString(),
+          role,
+          accountId: account.id,
+          email: userEmail,
+          country,
+        },
+      });
+
+      return account;
+    } catch (error: any) {
+      StripeClient.logError(operation, error);
+      throw new BadRequestException(
+        `Failed to create Express account: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Generate onboarding link for Express account
+   * @param accountId - Stripe Account ID
+   * @param refreshUrl - URL to redirect to if link expires
+   * @param returnUrl - URL to redirect to after onboarding
+   * @returns Stripe AccountLink
+   */
+  async generateOnboardingLink(
+    accountId: string,
+    refreshUrl?: string,
+    returnUrl?: string,
+  ): Promise<Stripe.AccountLink> {
+    const operation = 'generate_onboarding_link';
+
+    try {
+      // Use environment variables for URLs if not provided
+      const defaultRefreshUrl =
+        process.env.STRIPE_ONBOARDING_REFRESH_URL ||
+        'http://localhost:3000/onboarding/refresh';
+      const defaultReturnUrl =
+        process.env.STRIPE_ONBOARDING_RETURN_URL ||
+        'http://localhost:3000/onboarding/success';
+
+      const finalRefreshUrl = refreshUrl || defaultRefreshUrl;
+      const finalReturnUrl = returnUrl || defaultReturnUrl;
+
+      StripeClient.logRequest(operation, {
+        accountId,
+        refreshUrl: finalRefreshUrl,
+        returnUrl: finalReturnUrl,
+      });
+
+      const accountLink = await this.stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: finalRefreshUrl,
+        return_url: finalReturnUrl,
+        type: 'account_onboarding',
+      });
+
+      StripeClient.logResponse(operation, accountLink);
+
+      this.logger.info({
+        message: 'Onboarding link generated successfully',
+        context: {
+          operation: 'generate_onboarding_link',
+          accountId,
+          url: accountLink.url,
+          expiresAt: accountLink.expires_at,
+        },
+      });
+
+      return accountLink;
+    } catch (error: any) {
+      StripeClient.logError(operation, error);
+      throw new BadRequestException(
+        `Failed to generate onboarding link: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Get user details from auth-service
+   * @param userId - User ID
+   * @returns User details including Stripe account info
+   */
+  async getUserDetails(userId: bigint): Promise<any> {
+    const operation = 'get_user_details';
+
+    try {
+      this.logger.info({
+        message: 'Getting user details from auth-service',
+        context: {
+          operation: 'get_user_details',
+          userId: userId.toString(),
+        },
+      });
+
+      const userDetails = await this.authProxyService.getUserDetails(userId);
+
+      this.logger.info({
+        message: 'User details retrieved successfully',
+        context: {
+          operation: 'get_user_details',
+          userId: userId.toString(),
+          hasStripeAccount: !!userDetails.stripeAccountId,
+        },
+      });
+
+      return userDetails;
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get user details',
+        context: {
+          operation: 'get_user_details',
+          userId: userId.toString(),
+          error: error.message,
+        },
+        error,
+      });
+      throw new BadRequestException(
+        `Failed to get user details: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Update user's Stripe account ID in auth-service
+   * @param userId - User ID
+   * @param stripeAccountId - Stripe Account ID
+   * @returns Updated user details
+   */
+  async updateUserStripeAccount(
+    userId: bigint,
+    stripeAccountId: string,
+  ): Promise<any> {
+    const operation = 'update_user_stripe_account';
+
+    try {
+      this.logger.info({
+        message: 'Updating user Stripe account ID',
+        context: {
+          operation: 'update_user_stripe_account',
+          userId: userId.toString(),
+          stripeAccountId,
+        },
+      });
+
+      const updatedUser = await this.authProxyService.updateUserStripeAccount(
+        userId,
+        stripeAccountId,
+      );
+
+      this.logger.info({
+        message: 'User Stripe account ID updated successfully',
+        context: {
+          operation: 'update_user_stripe_account',
+          userId: userId.toString(),
+          stripeAccountId,
+        },
+      });
+
+      return updatedUser;
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to update user Stripe account ID',
+        context: {
+          operation: 'update_user_stripe_account',
+          userId: userId.toString(),
+          stripeAccountId,
+          error: error.message,
+        },
+        error,
+      });
+      throw new BadRequestException(
+        `Failed to update user Stripe account ID: ${error.message}`,
       );
     }
   }
