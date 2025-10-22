@@ -20,6 +20,7 @@ import {
   ShippingEstimateProductPricing,
 } from './dtos/shipping-estimate.dto';
 import { AppLoggerService } from '../common/logging';
+import { PaymentService } from '../payments/payment.service';
 
 interface ProductInventory {
   id: bigint;
@@ -33,6 +34,7 @@ export class OrderService {
     private readonly productProxyService: ProductProxyService,
     private readonly authProxyService: AuthProxyService,
     private readonly logger: AppLoggerService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   async createOrder(
@@ -406,6 +408,35 @@ export class OrderService {
         previousStatus: order.order_status,
       },
     });
+
+    // Trigger fund transfers if order is marked as DELIVERED
+    if (status === 'DELIVERED') {
+      this.logger.info({
+        message: 'Order marked as DELIVERED, triggering fund transfers',
+        context: {
+          operation: 'update_order_status_service',
+          orderId: orderId.toString(),
+          userId: userId.toString(),
+        },
+      });
+
+      try {
+        // Process transfers asynchronously to avoid blocking the status update
+        this.processOrderTransfersAsync(orderId);
+      } catch (error: any) {
+        this.logger.error({
+          message: 'Failed to trigger fund transfers after order delivery',
+          context: {
+            operation: 'update_order_status_service',
+            orderId: orderId.toString(),
+            userId: userId.toString(),
+            error: error.message,
+          },
+          error,
+        });
+        // Don't throw error here to avoid blocking the status update
+      }
+    }
 
     return this.mapToOrderResponse(orderWithItems, orderWithItems.order_items);
   }
@@ -1247,6 +1278,60 @@ export class OrderService {
         error,
       });
       throw error;
+    }
+  }
+
+  /**
+   * Process order transfers asynchronously after delivery
+   * @param orderId - Order ID
+   */
+  private async processOrderTransfersAsync(orderId: bigint): Promise<void> {
+    try {
+      this.logger.info({
+        message: 'Starting async fund transfer process',
+        context: {
+          operation: 'process_order_transfers_async',
+          orderId: orderId.toString(),
+        },
+      });
+
+      const transferResults = await this.paymentService.processOrderTransfers(
+        orderId,
+      );
+
+      this.logger.info({
+        message: 'Async fund transfer process completed',
+        context: {
+          operation: 'process_order_transfers_async',
+          orderId: orderId.toString(),
+          overallSuccess: transferResults.overallSuccess,
+          sellerCount: transferResults.transfers.length,
+          shipperTransferId: transferResults.shipperTransfer?.id,
+        },
+      });
+
+      if (!transferResults.overallSuccess) {
+        this.logger.warn({
+          message: 'Some transfers failed during async processing',
+          context: {
+            operation: 'process_order_transfers_async',
+            orderId: orderId.toString(),
+            failedTransfers: transferResults.transfers.filter(
+              (t) => !t.success,
+            ),
+          },
+        });
+      }
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Async fund transfer process failed',
+        context: {
+          operation: 'process_order_transfers_async',
+          orderId: orderId.toString(),
+          error: error.message,
+        },
+        error,
+      });
     }
   }
 }

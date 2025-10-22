@@ -3,13 +3,14 @@ import { PaymentController } from './payment.controller';
 import { PaymentService } from './payment.service';
 import { LoggingModule } from '../common/logging';
 import { AuthProxyModule } from '../proxy/auth-proxy/auth-proxy.module';
+import { PrismaModule } from '../prisma/prisma.module';
 
 /**
  * Payment module for Stripe integration
  * Provides payment processing, account management, and transfer capabilities
  */
 @Module({
-  imports: [LoggingModule, AuthProxyModule],
+  imports: [LoggingModule, AuthProxyModule, PrismaModule],
   controllers: [PaymentController],
   providers: [PaymentService],
   exports: [PaymentService],

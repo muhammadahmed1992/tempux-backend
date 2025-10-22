@@ -717,4 +717,278 @@ export class PaymentController {
       throw error;
     }
   }
+
+  /**
+   * Manual transfer trigger for order funds
+   * POST /payments/transfer
+   */
+  @Post('transfer')
+  async transferOrderFunds(
+    @Body()
+    transferDto: {
+      orderId: string;
+      shipperId?: string;
+      shipperAmount?: number;
+    },
+    @UserId() userId: bigint,
+  ): Promise<ApiResponse<any>> {
+    this.logger.info({
+      message: 'Manual transfer triggered for order',
+      context: {
+        operation: 'transfer_order_funds',
+        userId: userId.toString(),
+        orderId: transferDto.orderId,
+        shipperId: transferDto.shipperId,
+        shipperAmount: transferDto.shipperAmount,
+      },
+    });
+
+    try {
+      const transferResults = await this.paymentService.processOrderTransfers(
+        BigInt(transferDto.orderId),
+        transferDto.shipperId ? BigInt(transferDto.shipperId) : undefined,
+        transferDto.shipperAmount,
+      );
+
+      this.logger.info({
+        message: 'Order transfers processed successfully',
+        context: {
+          operation: 'transfer_order_funds',
+          userId: userId.toString(),
+          orderId: transferDto.orderId,
+          overallSuccess: transferResults.overallSuccess,
+          sellerCount: transferResults.transfers.length,
+          shipperTransferId: transferResults.shipperTransfer?.id,
+        },
+      });
+
+      return ResponseHelper.CreateResponse(
+        'Order transfers processed successfully',
+        {
+          orderId: transferDto.orderId,
+          overallSuccess: transferResults.overallSuccess,
+          sellerTransfers: transferResults.transfers.map((t) => ({
+            sellerId: t.sellerId.toString(),
+            amount: t.amount,
+            transferId: t.transfer?.id,
+            success: t.success,
+            error: t.error,
+          })),
+          shipperTransfer: transferResults.shipperTransfer
+            ? {
+                transferId: transferResults.shipperTransfer.id,
+                amount: transferResults.shipperTransfer.amount,
+                destination: transferResults.shipperTransfer.destination,
+              }
+            : null,
+        },
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to process order transfers',
+        context: {
+          operation: 'transfer_order_funds',
+          userId: userId.toString(),
+          orderId: transferDto.orderId,
+          error: error.message,
+        },
+        error,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Transfer funds for specific seller and shipper
+   * POST /payments/transfer/specific
+   */
+  @Post('transfer/specific')
+  async transferSpecificFunds(
+    @Body()
+    transferDto: {
+      orderId: string;
+      sellerId: string;
+      sellerAmount: number;
+      shipperId?: string;
+      shipperAmount?: number;
+      currency?: string;
+    },
+    @UserId() userId: bigint,
+  ): Promise<ApiResponse<any>> {
+    this.logger.info({
+      message: 'Specific fund transfer initiated',
+      context: {
+        operation: 'transfer_specific_funds',
+        userId: userId.toString(),
+        orderId: transferDto.orderId,
+        sellerId: transferDto.sellerId,
+        sellerAmount: transferDto.sellerAmount,
+        shipperId: transferDto.shipperId,
+        shipperAmount: transferDto.shipperAmount,
+        currency: transferDto.currency,
+      },
+    });
+
+    try {
+      const transferResult = await this.paymentService.transferFunds({
+        orderId: BigInt(transferDto.orderId),
+        sellerId: BigInt(transferDto.sellerId),
+        sellerAmount: transferDto.sellerAmount,
+        shipperId: transferDto.shipperId
+          ? BigInt(transferDto.shipperId)
+          : undefined,
+        shipperAmount: transferDto.shipperAmount,
+        currency: transferDto.currency || 'pkr',
+      });
+
+      this.logger.info({
+        message: 'Specific fund transfer completed',
+        context: {
+          operation: 'transfer_specific_funds',
+          userId: userId.toString(),
+          orderId: transferDto.orderId,
+          success: transferResult.success,
+          sellerTransferId: transferResult.sellerTransfer?.id,
+          shipperTransferId: transferResult.shipperTransfer?.id,
+          errors: transferResult.errors,
+        },
+      });
+
+      return ResponseHelper.CreateResponse(
+        'Fund transfer completed',
+        {
+          orderId: transferDto.orderId,
+          success: transferResult.success,
+          sellerTransfer: transferResult.sellerTransfer
+            ? {
+                transferId: transferResult.sellerTransfer.id,
+                amount: transferResult.sellerTransfer.amount,
+                destination: transferResult.sellerTransfer.destination,
+                status: 'paid', // Stripe transfers are immediately paid
+              }
+            : null,
+          shipperTransfer: transferResult.shipperTransfer
+            ? {
+                transferId: transferResult.shipperTransfer.id,
+                amount: transferResult.shipperTransfer.amount,
+                destination: transferResult.shipperTransfer.destination,
+                status: 'paid', // Stripe transfers are immediately paid
+              }
+            : null,
+          errors: transferResult.errors,
+        },
+        transferResult.success ? HttpStatus.OK : HttpStatus.PARTIAL_CONTENT,
+      );
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to process specific fund transfer',
+        context: {
+          operation: 'transfer_specific_funds',
+          userId: userId.toString(),
+          orderId: transferDto.orderId,
+          error: error.message,
+        },
+        error,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Get transfer status for an order
+   * GET /payments/transfer/:orderId/status
+   */
+  @Get('transfer/:orderId/status')
+  async getTransferStatus(
+    @Param('orderId') orderId: string,
+    @UserId() userId: bigint,
+  ): Promise<ApiResponse<any>> {
+    this.logger.info({
+      message: 'Getting transfer status for order',
+      context: {
+        operation: 'get_transfer_status',
+        userId: userId.toString(),
+        orderId,
+      },
+    });
+
+    try {
+      const order = await this.paymentService.getOrderForTransfer(
+        BigInt(orderId),
+      );
+
+      // Group order items by seller and their payout status
+      const sellerStatuses = new Map<
+        bigint,
+        {
+          sellerId: bigint;
+          totalAmount: number;
+          payoutStatus: string;
+          escrowStatus: string;
+          itemCount: number;
+        }
+      >();
+
+      order.order_items.forEach((item: any) => {
+        const sellerId = item.seller_id;
+        const current = sellerStatuses.get(sellerId) || {
+          sellerId,
+          totalAmount: 0,
+          payoutStatus: item.payout_status,
+          escrowStatus: item.escrow_status,
+          itemCount: 0,
+        };
+
+        current.totalAmount += Number(item.total_price);
+        current.itemCount += 1;
+        sellerStatuses.set(sellerId, current);
+      });
+
+      const transferStatus = {
+        orderId: order.id.toString(),
+        orderStatus: order.order_status,
+        sellerStatuses: Array.from(sellerStatuses.values()).map((status) => ({
+          sellerId: status.sellerId.toString(),
+          totalAmount: status.totalAmount,
+          payoutStatus: status.payoutStatus,
+          escrowStatus: status.escrowStatus,
+          itemCount: status.itemCount,
+        })),
+        createdAt: order.created_at,
+        updatedAt: order.updated_at,
+      };
+
+      this.logger.info({
+        message: 'Transfer status retrieved successfully',
+        context: {
+          operation: 'get_transfer_status',
+          userId: userId.toString(),
+          orderId,
+          sellerCount: sellerStatuses.size,
+        },
+      });
+
+      return ResponseHelper.CreateResponse(
+        'Transfer status retrieved successfully',
+        transferStatus,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get transfer status',
+        context: {
+          operation: 'get_transfer_status',
+          userId: userId.toString(),
+          orderId,
+          error: error.message,
+        },
+        error,
+      });
+
+      throw error;
+    }
+  }
 }

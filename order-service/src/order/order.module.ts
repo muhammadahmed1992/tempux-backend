@@ -8,6 +8,7 @@ import { AuthProxyModule } from '../proxy/auth-proxy/auth-proxy.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { LoggingModule } from '../common/logging';
 import { FedExService } from 'src/shipping/fedex/fedex.service';
+import { PaymentModule } from '../payments/payment.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { FedExService } from 'src/shipping/fedex/fedex.service';
     AuthProxyModule,
     PrismaModule,
     LoggingModule,
+    PaymentModule,
   ],
   controllers: [OrderController],
   providers: [OrderService, OrderRepository, FedExService],

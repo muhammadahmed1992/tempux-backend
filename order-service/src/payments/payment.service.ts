@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { StripeClient } from './stripeClient';
 import { AppLoggerService } from '../common/logging';
 import { AuthProxyService } from '../proxy/auth-proxy/auth-proxy.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 /**
  * Payment service for handling Stripe operations
@@ -16,6 +17,7 @@ export class PaymentService {
   constructor(
     logger: AppLoggerService,
     private readonly authProxyService: AuthProxyService,
+    private readonly prisma: PrismaService,
   ) {
     this.logger = logger;
     this.stripe = StripeClient.initialize(logger);
@@ -647,6 +649,429 @@ export class PaymentService {
       });
       throw new BadRequestException(
         `Failed to update user Stripe account ID: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Transfer funds from escrow to sellers and shippers after order delivery
+   * @param transferData - Transfer details including order, seller, and shipper information
+   * @returns Transfer results for all parties
+   */
+  async transferFunds(transferData: {
+    orderId: bigint;
+    sellerId: bigint;
+    shipperId?: bigint;
+    sellerAmount: number;
+    shipperAmount?: number;
+    currency?: string;
+  }): Promise<{
+    sellerTransfer?: Stripe.Transfer;
+    shipperTransfer?: Stripe.Transfer;
+    success: boolean;
+    errors: string[];
+  }> {
+    const operation = 'transfer_funds';
+    const results = {
+      sellerTransfer: undefined as Stripe.Transfer | undefined,
+      shipperTransfer: undefined as Stripe.Transfer | undefined,
+      success: true,
+      errors: [] as string[],
+    };
+
+    try {
+      StripeClient.logRequest(operation, {
+        orderId: transferData.orderId.toString(),
+        sellerId: transferData.sellerId.toString(),
+        shipperId: transferData.shipperId?.toString(),
+        sellerAmount: transferData.sellerAmount,
+        shipperAmount: transferData.shipperAmount,
+        currency: transferData.currency,
+      });
+
+      // Get seller's Stripe account ID
+      const sellerDetails = await this.getUserDetails(transferData.sellerId);
+      if (!sellerDetails.stripeAccountId) {
+        throw new BadRequestException(
+          `Seller ${transferData.sellerId} does not have a Stripe account`,
+        );
+      }
+
+      // Transfer to seller
+      try {
+        const sellerTransfer = await this.stripe.transfers.create({
+          amount: transferData.sellerAmount,
+          currency: transferData.currency || 'pkr',
+          destination: sellerDetails.stripeAccountId,
+          transfer_group: transferData.orderId.toString(),
+          metadata: {
+            orderId: transferData.orderId.toString(),
+            sellerId: transferData.sellerId.toString(),
+            type: 'seller_payout',
+          },
+        });
+
+        results.sellerTransfer = sellerTransfer;
+
+        this.logger.info({
+          message: 'Seller transfer created successfully',
+          context: {
+            operation: 'transfer_funds',
+            orderId: transferData.orderId.toString(),
+            sellerId: transferData.sellerId.toString(),
+            transferId: sellerTransfer.id,
+            amount: transferData.sellerAmount,
+          },
+        });
+      } catch (error: any) {
+        const errorMsg = `Failed to transfer to seller: ${error.message}`;
+        results.errors.push(errorMsg);
+        this.logger.error({
+          message: errorMsg,
+          context: {
+            operation: 'transfer_funds',
+            orderId: transferData.orderId.toString(),
+            sellerId: transferData.sellerId.toString(),
+            error: error.message,
+          },
+          error,
+        });
+      }
+
+      // Transfer to shipper if applicable
+      if (transferData.shipperId && transferData.shipperAmount) {
+        try {
+          const shipperDetails = await this.getUserDetails(
+            transferData.shipperId,
+          );
+          if (!shipperDetails.stripeAccountId) {
+            throw new BadRequestException(
+              `Shipper ${transferData.shipperId} does not have a Stripe account`,
+            );
+          }
+
+          const shipperTransfer = await this.stripe.transfers.create({
+            amount: transferData.shipperAmount,
+            currency: transferData.currency || 'pkr',
+            destination: shipperDetails.stripeAccountId,
+            transfer_group: transferData.orderId.toString(),
+            metadata: {
+              orderId: transferData.orderId.toString(),
+              shipperId: transferData.shipperId.toString(),
+              type: 'shipper_payout',
+            },
+          });
+
+          results.shipperTransfer = shipperTransfer;
+
+          this.logger.info({
+            message: 'Shipper transfer created successfully',
+            context: {
+              operation: 'transfer_funds',
+              orderId: transferData.orderId.toString(),
+              shipperId: transferData.shipperId.toString(),
+              transferId: shipperTransfer.id,
+              amount: transferData.shipperAmount,
+            },
+          });
+        } catch (error: any) {
+          const errorMsg = `Failed to transfer to shipper: ${error.message}`;
+          results.errors.push(errorMsg);
+          this.logger.error({
+            message: errorMsg,
+            context: {
+              operation: 'transfer_funds',
+              orderId: transferData.orderId.toString(),
+              shipperId: transferData.shipperId.toString(),
+              error: error.message,
+            },
+            error,
+          });
+        }
+      }
+
+      // Update payout status in database
+      await this.updatePayoutStatus(
+        transferData.orderId,
+        transferData.sellerId,
+        results.errors.length === 0 ? 'COMPLETED' : 'FAILED',
+      );
+
+      results.success = results.errors.length === 0;
+
+      StripeClient.logResponse(operation, results);
+
+      this.logger.info({
+        message: 'Fund transfer process completed',
+        context: {
+          operation: 'transfer_funds',
+          orderId: transferData.orderId.toString(),
+          success: results.success,
+          errors: results.errors,
+          sellerTransferId: results.sellerTransfer?.id,
+          shipperTransferId: results.shipperTransfer?.id,
+        },
+      });
+
+      return results;
+    } catch (error: any) {
+      StripeClient.logError(operation, error);
+      results.success = false;
+      results.errors.push(`Transfer process failed: ${error.message}`);
+
+      this.logger.error({
+        message: 'Fund transfer process failed',
+        context: {
+          operation: 'transfer_funds',
+          orderId: transferData.orderId.toString(),
+          error: error.message,
+        },
+        error,
+      });
+
+      return results;
+    }
+  }
+
+  /**
+   * Update payout status for order items
+   * @param orderId - Order ID
+   * @param sellerId - Seller ID
+   * @param status - New payout status
+   */
+  async updatePayoutStatus(
+    orderId: bigint,
+    sellerId: bigint,
+    status: 'PENDING' | 'COMPLETED' | 'FAILED' | 'RETRY',
+  ): Promise<void> {
+    const operation = 'update_payout_status';
+
+    try {
+      await this.prisma.order_item.updateMany({
+        where: {
+          order_id: orderId,
+          seller_id: sellerId,
+        },
+        data: {
+          payout_status: status,
+          updated_at: new Date(),
+        },
+      });
+
+      this.logger.info({
+        message: 'Payout status updated successfully',
+        context: {
+          operation: 'update_payout_status',
+          orderId: orderId.toString(),
+          sellerId: sellerId.toString(),
+          status,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to update payout status',
+        context: {
+          operation: 'update_payout_status',
+          orderId: orderId.toString(),
+          sellerId: sellerId.toString(),
+          status,
+          error: error.message,
+        },
+        error,
+      });
+      throw new BadRequestException(
+        `Failed to update payout status: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Get order details for transfer processing
+   * @param orderId - Order ID
+   * @returns Order details with items and seller information
+   */
+  async getOrderForTransfer(orderId: bigint): Promise<any> {
+    const operation = 'get_order_for_transfer';
+
+    try {
+      const order = await this.prisma.orders.findUnique({
+        where: { id: orderId },
+        include: {
+          order_items: {
+            include: {
+              payout_item_links: true,
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        throw new BadRequestException(`Order ${orderId} not found`);
+      }
+
+      this.logger.info({
+        message: 'Order details retrieved for transfer',
+        context: {
+          operation: 'get_order_for_transfer',
+          orderId: orderId.toString(),
+          orderStatus: order.order_status,
+          itemCount: order.order_items.length,
+        },
+      });
+
+      return order;
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get order for transfer',
+        context: {
+          operation: 'get_order_for_transfer',
+          orderId: orderId.toString(),
+          error: error.message,
+        },
+        error,
+      });
+      throw new BadRequestException(
+        `Failed to get order for transfer: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Process transfers for all sellers in an order
+   * @param orderId - Order ID
+   * @param shipperId - Optional shipper ID
+   * @param shipperAmount - Optional shipper amount
+   * @returns Transfer results for all sellers
+   */
+  async processOrderTransfers(
+    orderId: bigint,
+    shipperId?: bigint,
+    shipperAmount?: number,
+  ): Promise<{
+    transfers: Array<{
+      sellerId: bigint;
+      amount: number;
+      transfer?: Stripe.Transfer;
+      success: boolean;
+      error?: string;
+    }>;
+    shipperTransfer?: Stripe.Transfer;
+    overallSuccess: boolean;
+  }> {
+    const operation = 'process_order_transfers';
+
+    try {
+      const order = await this.getOrderForTransfer(orderId);
+
+      if (order.order_status !== 'DELIVERED') {
+        throw new BadRequestException(
+          `Order ${orderId} is not in DELIVERED status. Current status: ${order.order_status}`,
+        );
+      }
+
+      // Group order items by seller
+      const sellerAmounts = new Map<bigint, number>();
+      order.order_items.forEach((item: any) => {
+        const currentAmount = sellerAmounts.get(item.seller_id) || 0;
+        sellerAmounts.set(
+          item.seller_id,
+          currentAmount + Number(item.total_price),
+        );
+      });
+
+      const transferResults = [];
+      let overallSuccess = true;
+
+      // Process transfers for each seller
+      for (const [sellerId, amount] of sellerAmounts) {
+        try {
+          const transferResult = await this.transferFunds({
+            orderId,
+            sellerId,
+            sellerAmount: Math.round(amount * 100), // Convert to cents
+            currency: 'pkr',
+          });
+
+          transferResults.push({
+            sellerId,
+            amount,
+            transfer: transferResult.sellerTransfer,
+            success: transferResult.success,
+            error: transferResult.errors.join(', '),
+          });
+
+          if (!transferResult.success) {
+            overallSuccess = false;
+          }
+        } catch (error: any) {
+          transferResults.push({
+            sellerId,
+            amount,
+            success: false,
+            error: error.message,
+          });
+          overallSuccess = false;
+        }
+      }
+
+      // Process shipper transfer if applicable
+      let shipperTransfer: Stripe.Transfer | undefined;
+      if (shipperId && shipperAmount) {
+        try {
+          const shipperResult = await this.transferFunds({
+            orderId,
+            sellerId: shipperId, // Reuse the method for shipper
+            sellerAmount: Math.round(shipperAmount * 100),
+            currency: 'pkr',
+          });
+
+          shipperTransfer = shipperResult.sellerTransfer;
+          if (!shipperResult.success) {
+            overallSuccess = false;
+          }
+        } catch (error: any) {
+          this.logger.error({
+            message: 'Failed to process shipper transfer',
+            context: {
+              operation: 'process_order_transfers',
+              orderId: orderId.toString(),
+              shipperId: shipperId.toString(),
+              error: error.message,
+            },
+            error,
+          });
+          overallSuccess = false;
+        }
+      }
+
+      this.logger.info({
+        message: 'Order transfers processed',
+        context: {
+          operation: 'process_order_transfers',
+          orderId: orderId.toString(),
+          overallSuccess,
+          sellerCount: transferResults.length,
+          shipperTransferId: shipperTransfer?.id,
+        },
+      });
+
+      return {
+        transfers: transferResults,
+        shipperTransfer,
+        overallSuccess,
+      };
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to process order transfers',
+        context: {
+          operation: 'process_order_transfers',
+          orderId: orderId.toString(),
+          error: error.message,
+        },
+        error,
+      });
+      throw new BadRequestException(
+        `Failed to process order transfers: ${error.message}`,
       );
     }
   }
