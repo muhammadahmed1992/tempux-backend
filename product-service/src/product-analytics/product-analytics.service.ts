@@ -10,7 +10,7 @@ export class ProductAnalyticsService {
   constructor(
     private readonly globalConfigService: GlobalConfigurationService,
     private readonly repository: ProductAnalyticsRepository,
-  ) { }
+  ) {}
 
   /**
    * Records a unique product view for a logged-in user within a configured time window.
@@ -66,13 +66,10 @@ export class ProductAnalyticsService {
 
   /**
    * @param productId Particular product which is being viewed by the user
-   * @param itemId Particular product item which is being viewed by the user
-   * @returns The unique count against this passed product and item within cut-off time i.e in last 48 hours.
+   * @returns The unique count against this passed product within cut-off time i.e in last 48 hours.
    */
-  async getProductUniqueViewershipCount(productId: bigint, itemId?: bigint) {
-    const count = await this.repository.getViewershipUniqueCount(
-      productId,
-    );
+  async getProductUniqueViewershipCount(productId: bigint) {
+    const count = await this.repository.getViewershipUniqueCount(productId);
     return ResponseHelper.CreateResponse<number>('', count, HttpStatus.OK);
   }
 

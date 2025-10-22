@@ -17,10 +17,6 @@ export class CreateOrderItemDto {
 
   @IsNumber()
   @IsNotEmpty()
-  productVariantId!: number | bigint;
-
-  @IsNumber()
-  @IsNotEmpty()
   sellerId!: number | bigint;
 
   @IsNumber()

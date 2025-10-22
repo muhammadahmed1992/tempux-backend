@@ -21,7 +21,7 @@ import {
 } from './dtos/shipping-estimate.dto';
 import { AppLoggerService } from '../common/logging';
 
-interface ProductVariantInventory {
+interface ProductInventory {
   id: bigint;
   quantity: number;
 }
@@ -56,11 +56,9 @@ export class OrderService {
       // Prisma transaction with pessimistic locking
       return await this.orderRepository.getPrisma().$transaction(
         async (tx) => {
-          // Get all unique product variant IDs that need to be locked
-          const uniqueProductVariantIds = [
-            ...new Set(
-              createOrderDto.orderItems.map((item) => item.productVariantId),
-            ),
+          // Get all unique product IDs that need to be locked
+          const uniqueProductIds = [
+            ...new Set(createOrderDto.orderItems.map((item) => item.productId)),
           ].sort((a, b) => Number(a) - Number(b));
 
           this.logger.info({
@@ -68,15 +66,13 @@ export class OrderService {
             context: {
               operation: 'pessimistic_locking',
               userId: userId.toString(),
-              productVariantIds: uniqueProductVariantIds.map((id) =>
-                id.toString(),
-              ),
+              productIds: uniqueProductIds.map((id) => id.toString()),
             },
           });
 
-          // Lock only the specific product variants we need
-          for (const productVariantId of uniqueProductVariantIds) {
-            await tx.$executeRaw`SELECT * FROM products.product_variants WHERE id = ${productVariantId} FOR UPDATE`;
+          // Lock only the specific products we need
+          for (const productId of uniqueProductIds) {
+            await tx.$executeRaw`SELECT * FROM products.product WHERE id = ${productId} FOR UPDATE`;
           }
 
           this.logger.info({
@@ -84,9 +80,7 @@ export class OrderService {
             context: {
               operation: 'pessimistic_locking',
               userId: userId.toString(),
-              productVariantIds: uniqueProductVariantIds.map((id) =>
-                id.toString(),
-              ),
+              productIds: uniqueProductIds.map((id) => id.toString()),
             },
           });
           // Validate products and inventory within the locked transaction
@@ -199,9 +193,9 @@ export class OrderService {
           // Update inventory quantities within the transaction
           for (const item of validItems) {
             await tx.$executeRaw`
-            UPDATE products.product_variants
+            UPDATE products.product
             SET quantity = quantity - ${item.quantity}
-            WHERE id = ${item.productVariantId}
+            WHERE id = ${item.productId}
           `;
           }
 
@@ -210,8 +204,8 @@ export class OrderService {
             context: {
               operation: 'inventory_update',
               userId: userId.toString(),
-              updatedVariants: validItems.map((item) => ({
-                variantId: item.productVariantId.toString(),
+              updatedProducts: validItems.map((item) => ({
+                productId: item.productId.toString(),
                 quantityReduced: item.quantity,
               })),
             },
@@ -434,40 +428,37 @@ export class OrderService {
         context: {
           operation: 'validate_order_item',
           productId: item.productId.toString(),
-          productVariantId: item.productVariantId.toString(),
           quantity: item.quantity,
         },
       });
 
       // Validate product exists and has sufficient inventory
-      const productVariant = await this.productProxyService.getProductVariant(
-        BigInt(item.productVariantId),
+      const product = await this.productProxyService.getProduct(
+        BigInt(item.productId),
       );
-      if (!productVariant) {
+      if (!product) {
         this.logger.warn({
-          message: 'Product variant not found',
+          message: 'Product not found',
           context: {
             operation: 'validate_order_item',
-            productVariantId: item.productVariantId.toString(),
+            productId: item.productId.toString(),
           },
         });
-        throw new BadRequestException(
-          `Product variant ${item.productVariantId} not found`,
-        );
+        throw new BadRequestException(`Product ${item.productId} not found`);
       }
 
-      if (productVariant.quantity < item.quantity) {
+      if (product.quantity < item.quantity) {
         this.logger.warn({
-          message: 'Insufficient inventory for product variant',
+          message: 'Insufficient inventory for product',
           context: {
             operation: 'validate_order_item',
-            productVariantId: item.productVariantId.toString(),
+            productId: item.productId.toString(),
             requestedQuantity: item.quantity,
-            availableQuantity: productVariant.quantity,
+            availableQuantity: product.quantity,
           },
         });
         throw new BadRequestException(
-          `Insufficient inventory for product variant ${item.productVariantId}`,
+          `Insufficient inventory for product ${item.productId}`,
         );
       }
 
@@ -475,9 +466,9 @@ export class OrderService {
         message: 'Order item validation passed',
         context: {
           operation: 'validate_order_item',
-          productVariantId: item.productVariantId.toString(),
+          productId: item.productId.toString(),
           quantity: item.quantity,
-          availableQuantity: productVariant.quantity,
+          availableQuantity: product.quantity,
         },
       });
     }
@@ -510,44 +501,40 @@ export class OrderService {
         context: {
           operation: 'validate_order_item_transaction',
           productId: item.productId.toString(),
-          productVariantId: item.productVariantId.toString(),
           quantity: item.quantity,
         },
       });
 
       // Validate product exists and has sufficient inventory within the transaction
-      const productVariant = await tx.product_variant.findUnique({
+      const product = await tx.product.findUnique({
         where: {
-          id: BigInt(item.productVariantId),
+          id: BigInt(item.productId),
         },
       });
 
-      if (!productVariant) {
+      if (!product) {
         this.logger.warn({
-          message: 'Product variant not found within transaction',
+          message: 'Product not found within transaction',
           context: {
             operation: 'validate_order_item_transaction',
-            productVariantId: item.productVariantId.toString(),
+            productId: item.productId.toString(),
           },
         });
-        throw new BadRequestException(
-          `Product variant ${item.productVariantId} not found`,
-        );
+        throw new BadRequestException(`Product ${item.productId} not found`);
       }
 
-      if (productVariant.quantity < item.quantity) {
+      if (product.quantity < item.quantity) {
         this.logger.warn({
-          message:
-            'Insufficient inventory for product variant within transaction',
+          message: 'Insufficient inventory for product within transaction',
           context: {
             operation: 'validate_order_item_transaction',
-            productVariantId: item.productVariantId.toString(),
+            productId: item.productId.toString(),
             requestedQuantity: item.quantity,
-            availableQuantity: productVariant.quantity,
+            availableQuantity: product.quantity,
           },
         });
         throw new BadRequestException(
-          `Insufficient inventory for product variant ${item.productVariantId}`,
+          `Insufficient inventory for product ${item.productId}`,
         );
       }
 
@@ -555,9 +542,9 @@ export class OrderService {
         message: 'Order item validation passed within transaction',
         context: {
           operation: 'validate_order_item_transaction',
-          productVariantId: item.productVariantId.toString(),
+          productId: item.productId.toString(),
           quantity: item.quantity,
-          availableQuantity: productVariant.quantity,
+          availableQuantity: product.quantity,
         },
       });
     }
@@ -584,51 +571,48 @@ export class OrderService {
           context: {
             operation: 'validate_order_item_with_exceptions',
             productId: item.productId.toString(),
-            productVariantId: item.productVariantId.toString(),
             quantity: item.quantity,
           },
         });
 
         // Validate product exists and has sufficient inventory within the transaction.
-        // Using raw query because product_variant isn't accessible in order service and we can't use the findUnique method, also if we use proxy then it will create a new transaction which will not be able to access the transaction object
-        // Todo: we might need to replace query
-        const productVariant: ProductVariantInventory[] = await tx.$queryRaw`
+        // Using raw query because product table is accessible in order service
+        const product: ProductInventory[] = await tx.$queryRaw`
         SELECT id, quantity
-        FROM products.product_variants
-        WHERE id = ${BigInt(item.productVariantId)}
+        FROM products.product
+        WHERE id = ${BigInt(item.productId)}
       `;
 
-        if (!productVariant || productVariant.length === 0) {
+        if (!product || product.length === 0) {
           this.logger.warn({
-            message: 'Product variant not found within transaction',
+            message: 'Product not found within transaction',
             context: {
               operation: 'validate_order_item_with_exceptions',
-              productVariantId: item.productVariantId.toString(),
+              productId: item.productId.toString(),
             },
           });
           exceptions.push({
             productId: BigInt(item.productId),
-            message: `Product variant ${item.productVariantId} not found`,
+            message: `Product ${item.productId} not found`,
           });
           continue;
         }
-        // Get the first and only product variant
-        const variant = productVariant[0];
+        // Get the first and only product
+        const productData = product[0];
 
-        if (variant.quantity < item.quantity) {
+        if (productData.quantity < item.quantity) {
           this.logger.warn({
-            message:
-              'Insufficient inventory for product variant within transaction',
+            message: 'Insufficient inventory for product within transaction',
             context: {
               operation: 'validate_order_item_with_exceptions',
-              productVariantId: item.productVariantId.toString(),
+              productId: item.productId.toString(),
               requestedQuantity: item.quantity,
-              availableQuantity: variant.quantity,
+              availableQuantity: productData.quantity,
             },
           });
           exceptions.push({
             productId: BigInt(item.productId),
-            message: `Insufficient inventory for product variant ${item.productVariantId}`,
+            message: `Insufficient inventory for product ${item.productId}`,
           });
           continue;
         }
@@ -637,9 +621,9 @@ export class OrderService {
           message: 'Order item validation passed within transaction',
           context: {
             operation: 'validate_order_item_with_exceptions',
-            productVariantId: item.productVariantId.toString(),
+            productId: item.productId.toString(),
             quantity: item.quantity,
-            availableQuantity: variant.quantity,
+            availableQuantity: productData.quantity,
           },
         });
       } catch (error: any) {
@@ -691,7 +675,6 @@ export class OrderService {
         orderId: item.order_id,
         sellerId: item.seller_id,
         productId: item.product_Id,
-        productVariantId: item.product_variant_id,
         quantity: item.quantity,
         price: Number(item.price),
         discount: Number(item.discount),
@@ -719,7 +702,6 @@ export class OrderService {
         itemCount: items.map((item) => ({
           sellerId: item.sellerId,
           productId: item.productId,
-          productVariantId: item.productVariantId,
           quantity: item.quantity,
         })),
       },
@@ -986,7 +968,6 @@ export class OrderService {
       >[] = sellerItems.map((item: CreateOrderItemDto) => ({
         seller_id: BigInt(item.sellerId),
         product_Id: BigInt(item.productId),
-        product_variant_id: BigInt(item.productVariantId),
         quantity: item.quantity,
         price: item.price,
         discount: item.discount,
@@ -1055,7 +1036,6 @@ export class OrderService {
         orderId: item.order_id,
         sellerId: item.seller_id,
         productId: item.product_Id,
-        productVariantId: item.product_variant_id,
         quantity: item.quantity,
         price: Number(item.price),
         discount: Number(item.discount),
@@ -1088,7 +1068,6 @@ export class OrderService {
         orderId: item.order_id,
         sellerId: item.seller_id,
         productId: item.product_Id,
-        productVariantId: item.product_variant_id,
         quantity: item.quantity,
         price: Number(item.price),
         discount: Number(item.discount),
@@ -1161,25 +1140,24 @@ export class OrderService {
 
       for (const product of estimateDto.products) {
         try {
-          const productVariant =
-            await this.productProxyService.getProductVariant(
-              BigInt(product.productId),
-            );
+          const productData = await this.productProxyService.getProduct(
+            BigInt(product.productId),
+          );
 
-          if (productVariant) {
-            const subtotal = productVariant.price * product.quantity;
+          if (productData) {
+            const subtotal = productData.price * product.quantity;
             productsPricing.push({
               productId: product.productId,
-              unitPrice: productVariant.price,
+              unitPrice: productData.price,
               quantity: product.quantity,
               subtotal,
             });
             productsTotal += subtotal;
-            sellers.add(BigInt(productVariant.sellerId || 0));
+            sellers.add(BigInt(productData.sellerId || 0));
           }
         } catch (error: any) {
           this.logger.warn({
-            message: 'Failed to get product variant for shipping estimate',
+            message: 'Failed to get product for shipping estimate',
             context: {
               operation: 'get_shipping_estimate_service',
               productId: product.productId.toString(),

@@ -158,22 +158,23 @@ export class ProductRepository extends BaseRepository<
       },
     });
   }
-    /**
-   * This method will returns the price, discount & tax information against particular item
-   * @param product_items_Id[] specific item id which is going to check
-   * @returns Returns the product_items entit(ies) against id(s)
+  /**
+   * This method will returns the price, discount & tax information against particular product
+   * @param productIds[] specific product id which is going to check
+   * @returns Returns the product entit(ies) against id(s)
    */
-  async getProductWithTax(product_items_Ids: bigint[]): Promise<any[]> {
+  async getProductWithTax(productIds: bigint[]): Promise<any[]> {
     return this.model.findMany({
       where: {
         id: {
-          in: product_items_Ids,
+          in: productIds,
         },
       },
       select: {
         id: true,
         sales_price: true,
         discount: true,
+        quantity: true,
         tax: {
           select: {
             description: true,

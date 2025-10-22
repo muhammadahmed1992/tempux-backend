@@ -114,27 +114,29 @@ export class CartRepository extends BaseRepository<
       {
         id: true,
         quantity: true,
-        product_items: {
+        product: {
           select: {
             id: true,
-            price: true,
-            base_image_url: true,
-            color: {
+            name: true,
+            title: true,
+            reference_number: true,
+            sales_price: true,
+            productImages: {
               select: {
-                name: true,
+                img_url: true,
+                order: true,
               },
-            },
-            size: {
-              select: {
-                value: true,
+              where: {
+                is_deleted: false,
               },
+              orderBy: {
+                order: 'asc',
+              },
+              take: 1,
             },
-            product: {
+            currency: {
               select: {
-                id: true,
-                name: true,
-                title: true,
-                reference_number: true,
+                curr: true,
               },
             },
           },

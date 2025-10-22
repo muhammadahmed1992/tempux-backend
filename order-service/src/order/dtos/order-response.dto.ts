@@ -3,7 +3,6 @@ export class OrderItemResponseDto {
   orderId!: bigint;
   sellerId!: bigint;
   productId!: bigint;
-  productVariantId!: bigint;
   quantity!: number;
   price!: number;
   discount!: number;

@@ -177,11 +177,14 @@ export class ProductController {
     let altTexts: string[] | undefined;
     if (createProductDto.altTexts) {
       try {
-        altTexts = typeof createProductDto.altTexts === 'string'
-          ? JSON.parse(createProductDto.altTexts)
-          : createProductDto.altTexts;
+        altTexts =
+          typeof createProductDto.altTexts === 'string'
+            ? JSON.parse(createProductDto.altTexts)
+            : createProductDto.altTexts;
       } catch (error) {
-        throw new BadRequestException('Invalid altTexts format. Expected JSON array.');
+        throw new BadRequestException(
+          'Invalid altTexts format. Expected JSON array.',
+        );
       }
     }
 
@@ -194,10 +197,15 @@ export class ProductController {
       imageUploadDto.altTexts = altTexts;
     }
 
-    return this.productService.createProduct(createProductDto, userId, imageFiles, imageUploadDto);
+    return this.productService.createProduct(
+      createProductDto,
+      userId,
+      imageFiles,
+      imageUploadDto,
+    );
   }
 
-  @Post('favorite/:id/:itemId')
+  @Post('favorite/:id')
   @UseGuards(HeaderAuthGuard)
   async favorite(
     @UserId() userId: bigint,
@@ -212,7 +220,7 @@ export class ProductController {
   async createViewerShipAnalytics(
     @UserId() userId: bigint,
     @Body()
-    analytics: { productId: bigint; itemId: bigint },
+    analytics: { productId: bigint },
   ) {
     return this.productAnalyticsService.recordProductView(
       userId,

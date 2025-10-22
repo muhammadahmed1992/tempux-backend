@@ -19,7 +19,7 @@ export class CartService {
     private readonly repository: CartRepository,
     private readonly logger: AppLoggerService,
     private readonly productService: ProductService,
-  ) { }
+  ) {}
 
   /**
    * This method will add user's product to the cart.
@@ -49,7 +49,7 @@ export class CartService {
 
   /**
    * This method is removing item from cart.
-   * @param cart it is typeof RemoveCartItemRequestDTO which contains userId, productId, product_items_id
+   * @param cart it is typeof RemoveCartItemRequestDTO which contains userId, productId
    * @returns currently removed item from cart
    */
   async removeFromCart(
@@ -101,15 +101,13 @@ export class CartService {
         // Perform null/undefined checks for nested relations to ensure data integrity
         // These checks are crucial for type safety and preventing runtime errors
         if (
-          !item.product_items ||
-          !item.product_items.product ||
-          !item.product_items.color ||
-          !item.product_items.size
+          !item.product ||
+          !item.product.productImages ||
+          !item.product.productImages[0]
         ) {
           // Log a warning if data is inconsistent, or handle as per application's error policy
           this.logger.warn(
-            `Cart item ${item.id} has missing product, variant, color, or size data.`,
-
+            `Cart item ${item.id} has missing product or image data.`,
           );
           return null; // Return null for this item, which will be filtered out later
         }
@@ -117,14 +115,14 @@ export class CartService {
         // Return the shaped object conforming to CartDetailsResponseDTO
         return {
           id: item.id, // This is the ID of the cart entry itself
-          productId: item.product_items.product.id,
-          productName: item.product_items.product.name,
-          productTitle: item.product_items.product.title,
-          reference_number: item.product_items.product.reference_number,
-          base_image_url: item.product_items.base_image_url,
-          price: item.product_items.price.toNumber(),
-          size: item.product_items.size.value,
-          color: item.product_items.color.name,
+          productId: item.product.id,
+          productName: item.product.name,
+          productTitle: item.product.title,
+          reference_number: item.product.reference_number,
+          base_image_url: item.product.productImages[0].img_url,
+          price: item.product.sales_price.toNumber(),
+          size: 'N/A', // Size information not available in simplified schema
+          color: 'N/A', // Color information not available in simplified schema
           quantity: item.quantity,
         };
       })
