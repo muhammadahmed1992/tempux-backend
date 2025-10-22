@@ -941,18 +941,18 @@ export class ProductService {
         "Cart is empty. Summary can't be calculated",
       );
 
-    const uniqueItemIds = cartItems.map((i) => i.productId);
+    const uniqueProductIds = cartItems.map((i) => i.productId);
     const itemsInfo = await this.productRepository.getProductWithTax(
-      uniqueItemIds,
+      uniqueProductIds,
     );
 
-    if (itemsInfo.length !== uniqueItemIds.length) {
-      throw new BadRequestException('One or more product items not found.');
+    if (itemsInfo.length !== uniqueProductIds.length) {
+      throw new BadRequestException('One or more products not found.');
     }
 
     const itemMap = new Map(itemsInfo.map((item) => [item.id, item]));
     const cartItemMap = new Map(
-      cartItems.map((item) => [BigInt(item.itemId), item]),
+      cartItems.map((item) => [BigInt(item.productId), item]),
     );
 
     // TODO: Later will move inside a stored procedure probably
@@ -975,7 +975,7 @@ export class ProductService {
     const summaryItems: OrderSummaryProductDTO[] = [];
 
     for (const cartItem of cartItems) {
-      const item = itemMap.get(cartItem.itemId)!;
+      const item = itemMap.get(cartItem.productId)!;
       const currency = item.currency;
       const currencyRate = currency?.exchangeRate?.toFixed(2) || 1;
       const price = item.price.toFixed(2) * currencyRate;
