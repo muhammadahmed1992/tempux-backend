@@ -2,6 +2,7 @@ import { initializeTracing } from './tracing';
 initializeTracing();
 
 import { NestFactory } from '@nestjs/core';
+import { json, raw } from 'express';
 
 import { AppModule } from './app.module';
 import ResponseHandlerInterceptor from './common/interceptor/response-handler.interceptor';
@@ -48,6 +49,11 @@ async function bootstrap() {
   app.useGlobalInterceptors(new BigIntInterceptor());
   app.useGlobalInterceptors(new HashidsInterceptor(hashidsService, logger));
   app.useGlobalFilters(new AllExceptionsFilter(logger));
+
+  // Configure raw body parsing for Stripe webhooks
+  app.use('/payments/webhook', raw({ type: 'application/json' }));
+  app.use(json());
+
   const port = process.env.PORT ?? 3002;
 
   logger.info({
