@@ -248,6 +248,9 @@ export class OrderService {
             validationResult.exceptions,
           );
 
+          // Create payment intent for the order after successful creation
+          await this.createPaymentIntentForOrder(result, userId);
+
           this.logger.info({
             message: 'Multi-seller order creation completed successfully',
             context: {
@@ -1332,6 +1335,239 @@ export class OrderService {
         },
         error,
       });
+    }
+  }
+
+  /**
+   * Create payment intent for order after successful creation
+   * @param orderResult - Order creation result
+   * @param userId - User ID
+   */
+  private async createPaymentIntentForOrder(
+    orderResult: OrderResponseDto,
+    userId: bigint,
+  ): Promise<void> {
+    try {
+      this.logger.info({
+        message: 'Creating payment intent for order',
+        context: {
+          operation: 'create_payment_intent_for_order',
+          userId: userId.toString(),
+          totalAmount: orderResult.totalAmount,
+          sellerOrderCount: orderResult.sellerOrders?.length || 0,
+        },
+      });
+
+      // Calculate total amount in cents (PKR)
+      const amountInCents = Math.round(orderResult.totalAmount * 100);
+
+      // Create payment intent with escrow (application fee)
+      const paymentIntent =
+        await this.paymentService.createPaymentIntentWithEscrow(
+          amountInCents,
+          Math.round(amountInCents * 0.025), // 2.5% platform fee
+          {
+            destination: process.env.STRIPE_CONNECT_ACCOUNT_ID || '',
+          },
+          'pkr',
+          {
+            orderId: orderResult.id.toString(),
+            userId: userId.toString(),
+            sellerCount: orderResult.sellerOrders?.length?.toString() || '1',
+            totalItems: orderResult.orderItems.length.toString(),
+          },
+        );
+
+      this.logger.info({
+        message: 'Payment intent created successfully for order',
+        context: {
+          operation: 'create_payment_intent_for_order',
+          userId: userId.toString(),
+          orderId: orderResult.id.toString(),
+          paymentIntentId: paymentIntent.id,
+          amount: amountInCents,
+          platformFee: Math.round(amountInCents * 0.025),
+        },
+      });
+
+      // Update order with payment intent ID (if you have a payment_intent_id field)
+      // await this.updateOrderPaymentIntentId(orderResult.id, paymentIntent.id);
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to create payment intent for order',
+        context: {
+          operation: 'create_payment_intent_for_order',
+          userId: userId.toString(),
+          orderId: orderResult.id.toString(),
+          error: error.message,
+        },
+        error,
+      });
+      // Don't throw error here to avoid breaking order creation
+      // Payment can be handled separately
+    }
+  }
+
+  /**
+   * Handle payment failure and update order status
+   * @param orderId - Order ID
+   * @param paymentIntentId - Payment Intent ID
+   * @param failureReason - Reason for payment failure
+   */
+  async handlePaymentFailure(
+    orderId: bigint,
+    paymentIntentId: string,
+    failureReason: string,
+  ): Promise<void> {
+    try {
+      this.logger.info({
+        message: 'Handling payment failure for order',
+        context: {
+          operation: 'handle_payment_failure',
+          orderId: orderId.toString(),
+          paymentIntentId,
+          failureReason,
+        },
+      });
+
+      // Update order status to PaymentFailed
+      await this.orderRepository.updateOrderStatus(
+        orderId,
+        'PAYMENT_FAILED',
+        BigInt(1), // System user ID
+      );
+
+      // Update escrow status for order items
+      await this.orderRepository.getPrisma().order_item.updateMany({
+        where: {
+          order_id: orderId,
+        },
+        data: {
+          escrow_status: 'FAILED',
+          payout_status: 'FAILED',
+          updated_at: new Date(),
+        },
+      });
+
+      this.logger.info({
+        message: 'Order marked as payment failed',
+        context: {
+          operation: 'handle_payment_failure',
+          orderId: orderId.toString(),
+          paymentIntentId,
+          failureReason,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to handle payment failure',
+        context: {
+          operation: 'handle_payment_failure',
+          orderId: orderId.toString(),
+          paymentIntentId,
+          error: error.message,
+        },
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Handle delivery confirmation and trigger fund transfers
+   * @param orderId - Order ID
+   * @param userId - User ID who confirmed delivery
+   */
+  async confirmDelivery(orderId: bigint, userId: bigint): Promise<void> {
+    try {
+      this.logger.info({
+        message: 'Processing delivery confirmation',
+        context: {
+          operation: 'confirm_delivery',
+          orderId: orderId.toString(),
+          userId: userId.toString(),
+        },
+      });
+
+      // Update order status to DELIVERED
+      await this.updateOrderStatus(orderId, 'DELIVERED', userId);
+
+      // The transfer logic is already handled in updateOrderStatus
+      // when status is set to DELIVERED
+
+      this.logger.info({
+        message: 'Delivery confirmed and transfers initiated',
+        context: {
+          operation: 'confirm_delivery',
+          orderId: orderId.toString(),
+          userId: userId.toString(),
+        },
+      });
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to confirm delivery',
+        context: {
+          operation: 'confirm_delivery',
+          orderId: orderId.toString(),
+          userId: userId.toString(),
+          error: error.message,
+        },
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update seller/shipper onboarding status
+   * @param userId - User ID
+   * @param stripeAccountId - Stripe Account ID
+   * @param onboardingStatus - Onboarding status
+   */
+  async updateOnboardingStatus(
+    userId: bigint,
+    stripeAccountId: string,
+    onboardingStatus: 'PENDING' | 'COMPLETED' | 'FAILED',
+  ): Promise<void> {
+    try {
+      this.logger.info({
+        message: 'Updating user onboarding status',
+        context: {
+          operation: 'update_onboarding_status',
+          userId: userId.toString(),
+          stripeAccountId,
+          onboardingStatus,
+        },
+      });
+
+      // Update user's Stripe account status via auth-service
+      await this.paymentService.updateUserStripeAccount(
+        userId,
+        stripeAccountId,
+      );
+
+      this.logger.info({
+        message: 'User onboarding status updated successfully',
+        context: {
+          operation: 'update_onboarding_status',
+          userId: userId.toString(),
+          stripeAccountId,
+          onboardingStatus,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to update onboarding status',
+        context: {
+          operation: 'update_onboarding_status',
+          userId: userId.toString(),
+          stripeAccountId,
+          onboardingStatus,
+          error: error.message,
+        },
+        error,
+      });
+      throw error;
     }
   }
 }

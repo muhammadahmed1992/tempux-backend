@@ -116,6 +116,10 @@ export class PaymentWebhookController {
         await this.handlePaymentIntentSucceeded(event);
         break;
 
+      case 'payment_intent.payment_failed':
+        await this.handlePaymentIntentFailed(event);
+        break;
+
       case 'account.updated':
         await this.handleAccountUpdated(event);
         break;
@@ -202,6 +206,91 @@ export class PaymentWebhookController {
   }
 
   /**
+   * Handle payment_intent.payment_failed event
+   * Mark order as payment failed
+   */
+  private async handlePaymentIntentFailed(event: Stripe.Event): Promise<void> {
+    const paymentIntent = event.data.object as Stripe.PaymentIntent;
+
+    this.logger.info({
+      message: 'Processing payment_intent.payment_failed event',
+      context: {
+        operation: 'handle_payment_intent_failed',
+        eventId: event.id,
+        paymentIntentId: paymentIntent.id,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        orderId: paymentIntent.metadata?.orderId,
+        failureCode: paymentIntent.last_payment_error?.code,
+        failureMessage: paymentIntent.last_payment_error?.message,
+      },
+    });
+
+    try {
+      // Extract order ID from metadata
+      const orderId = paymentIntent.metadata?.orderId;
+      if (!orderId) {
+        this.logger.warn({
+          message: 'Payment intent missing orderId metadata',
+          context: {
+            operation: 'handle_payment_intent_failed',
+            paymentIntentId: paymentIntent.id,
+            metadata: paymentIntent.metadata,
+          },
+        });
+        return;
+      }
+
+      const failureReason =
+        paymentIntent.last_payment_error?.message || 'Payment failed';
+
+      // Update order status to PaymentFailed
+      await this.prisma.orders.updateMany({
+        where: {
+          id: BigInt(orderId),
+        },
+        data: {
+          order_status: 'PAYMENT_FAILED',
+          updated_at: new Date(),
+        },
+      });
+
+      // Update escrow status for order items
+      await this.prisma.order_item.updateMany({
+        where: {
+          order_id: BigInt(orderId),
+        },
+        data: {
+          escrow_status: 'FAILED',
+          payout_status: 'FAILED',
+          updated_at: new Date(),
+        },
+      });
+
+      this.logger.info({
+        message: 'Payment intent failed processed successfully',
+        context: {
+          operation: 'handle_payment_intent_failed',
+          paymentIntentId: paymentIntent.id,
+          orderId,
+          failureReason,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to process payment_intent.payment_failed',
+        context: {
+          operation: 'handle_payment_intent_failed',
+          paymentIntentId: paymentIntent.id,
+          error: error.message,
+        },
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Handle account.updated event
    * Update seller/shipper onboarding status
    */
@@ -236,12 +325,11 @@ export class PaymentWebhookController {
         return;
       }
 
-      // Update user's Stripe account status
-      await this.updateUserStripeAccountStatus(BigInt(userId), account.id, {
-        chargesEnabled: account.charges_enabled,
-        payoutsEnabled: account.payouts_enabled,
-        detailsSubmitted: account.details_submitted,
-      });
+      // Update user's Stripe account status via auth-service
+      await this.paymentService.updateUserStripeAccount(
+        BigInt(userId),
+        account.id,
+      );
 
       this.logger.info({
         message: 'Account updated processed successfully',

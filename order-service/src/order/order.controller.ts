@@ -207,4 +207,76 @@ export class OrderController {
       HttpStatus.OK,
     );
   }
+
+  @Put(':id/confirm-delivery')
+  async confirmDelivery(
+    @Param('id') orderId: string,
+    @UserId() userId: bigint,
+  ): Promise<ApiResponse<any>> {
+    this.logger.info({
+      message: 'Delivery confirmation started',
+      context: {
+        operation: 'confirm_delivery',
+        orderId,
+        userId: userId.toString(),
+      },
+    });
+
+    await this.orderService.confirmDelivery(BigInt(orderId), userId);
+
+    this.logger.info({
+      message: 'Delivery confirmed successfully',
+      context: {
+        operation: 'confirm_delivery',
+        orderId,
+        userId: userId.toString(),
+      },
+    });
+
+    return ResponseHelper.CreateResponse(
+      'Delivery confirmed and fund transfers initiated',
+      { message: 'Delivery confirmed and fund transfers initiated' },
+      HttpStatus.OK,
+    );
+  }
+
+  @Put(':id/payment-failed')
+  async handlePaymentFailure(
+    @Param('id') orderId: string,
+    @Body() body: { paymentIntentId: string; failureReason: string },
+    @UserId() userId: bigint,
+  ): Promise<ApiResponse<any>> {
+    this.logger.info({
+      message: 'Payment failure handling started',
+      context: {
+        operation: 'handle_payment_failure',
+        orderId,
+        userId: userId.toString(),
+        paymentIntentId: body.paymentIntentId,
+        failureReason: body.failureReason,
+      },
+    });
+
+    await this.orderService.handlePaymentFailure(
+      BigInt(orderId),
+      body.paymentIntentId,
+      body.failureReason,
+    );
+
+    this.logger.info({
+      message: 'Payment failure handled successfully',
+      context: {
+        operation: 'handle_payment_failure',
+        orderId,
+        userId: userId.toString(),
+        paymentIntentId: body.paymentIntentId,
+      },
+    });
+
+    return ResponseHelper.CreateResponse(
+      'Payment failure handled successfully',
+      { message: 'Order marked as payment failed' },
+      HttpStatus.OK,
+    );
+  }
 }
