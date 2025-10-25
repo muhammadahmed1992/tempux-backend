@@ -9,6 +9,7 @@ import {
   MinLength,
   Matches,
   IsNotEmpty,
+  IsBoolean,
 } from 'class-validator';
 
 export class UpdateProfileDto {
@@ -65,6 +66,7 @@ export class ProfileResponseDto {
   aboutMe?: string;
   googleId?: string | null;
   facebookId?: string | null;
+  isNewsletterSubscribed?: boolean;
   createdAt!: Date;
   updatedAt!: Date;
 }
@@ -81,6 +83,17 @@ export class SocialAccountDto {
   provider!: 'google' | 'facebook';
   isLinked!: boolean;
   email?: string | null;
+}
+
+export class NewsletterSubscriptionDto {
+  @IsBoolean()
+  isSubscribed!: boolean;
+}
+
+export class NewsletterStatusDto {
+  isSubscribed!: boolean;
+  email!: string;
+  lastUpdated!: Date;
 }
 
 export class SocialAccountsResponseDto {

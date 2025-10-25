@@ -17,7 +17,10 @@ import { AppLoggerService } from '../../common/logging/logger.service';
 
 @Injectable()
 export class AddressService {
-  constructor(private readonly prisma: PrismaService, private readonly logger: AppLoggerService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: AppLoggerService,
+  ) {}
 
   /**
    * Creates a new address for a user
@@ -168,6 +171,135 @@ export class AddressService {
     } catch (error: any) {
       throw new InternalServerErrorException(
         `Failed to find addresses for user ${userId}: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Gets all addresses for a user
+   */
+  async getAllUserAddresses(userId: bigint): Promise<AddressResponseDto[]> {
+    try {
+      const addresses = await this.prisma.address.findMany({
+        where: {
+          user_id: userId,
+          is_active: true,
+          is_deleted: false,
+        },
+        include: {
+          address_type: true,
+        },
+        orderBy: [
+          { is_default: 'desc' },
+          { address_type: { name: 'asc' } },
+          { created_at: 'desc' },
+        ],
+      });
+
+      return addresses.map((address) =>
+        AddressMapperHelper.toAddressResponseDto(address),
+      );
+    } catch (error: any) {
+      throw new InternalServerErrorException(
+        `Failed to get all addresses for user ${userId}: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Gets all available address types
+   */
+  async getAddressTypes(): Promise<any[]> {
+    try {
+      const addressTypes = await this.prisma.addressType.findMany({
+        where: { is_deleted: false },
+        select: {
+          id: true,
+          name: true,
+          created_at: true,
+          updated_at: true,
+        },
+        orderBy: {
+          name: 'asc',
+        },
+      });
+
+      return addressTypes.map((type) => ({
+        id: type.id,
+        name: type.name,
+        createdAt: type.created_at,
+        updatedAt: type.updated_at,
+      }));
+    } catch (error: any) {
+      throw new InternalServerErrorException(
+        `Failed to retrieve address types: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Gets address for a specific user and address type ID
+   */
+  async getAddressByTypeId(
+    userId: bigint,
+    addressTypeId: bigint,
+  ): Promise<AddressResponseDto | null> {
+    try {
+      // First verify that the address type exists
+      const addressTypeRecord = await this.prisma.addressType.findFirst({
+        where: { id: addressTypeId, is_deleted: false },
+      });
+
+      if (!addressTypeRecord) {
+        throw new NotFoundException(
+          `Address type with ID ${addressTypeId} not found`,
+        );
+      }
+
+      let address = await this.prisma.address.findFirst({
+        where: {
+          user_id: userId,
+          address_type_id: addressTypeId,
+          is_active: true,
+          is_deleted: false,
+          is_default: true,
+        },
+        include: {
+          address_type: true,
+        },
+      });
+
+      // If no default found, get the first available address of that type
+      if (!address) {
+        address = await this.prisma.address.findFirst({
+          where: {
+            user_id: userId,
+            address_type_id: addressTypeId,
+            is_active: true,
+            is_deleted: false,
+          },
+          include: {
+            address_type: true,
+          },
+          orderBy: {
+            created_at: 'desc',
+          },
+        });
+      }
+
+      if (!address) {
+        throw new NotFoundException(
+          `No address found for user ${userId} with address type ID ${addressTypeId}`,
+        );
+      }
+
+      return AddressMapperHelper.toAddressResponseDto(address);
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to find address for user ${userId} with address type ID ${addressTypeId}: ${error.message}`,
       );
     }
   }

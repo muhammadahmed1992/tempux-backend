@@ -827,6 +827,62 @@ export class UserService {
   // PROFILE METHODS
 
   /**
+   * Get current user's complete profile
+   */
+  async getCompleteProfile(userId: bigint): Promise<ApiResponse<any>> {
+    try {
+      const user = await this.userRepository.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          full_name: true,
+          telephone: true,
+          googleId: true,
+          facebookId: true,
+          is_newsletter_subscribed: true,
+          created_at: true,
+          updated_at: true,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const profile = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        fullName: user.full_name,
+        telephone: user.telephone,
+        googleId: user.googleId,
+        facebookId: user.facebookId,
+        isNewsletterSubscribed: user.is_newsletter_subscribed,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+      };
+
+      return ResponseHelper.CreateResponse<any>(
+        'Profile retrieved successfully',
+        profile,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error({
+        message: 'Failed to get user profile',
+        context: { userId: userId.toString(), operation: 'get_profile' },
+        error: error as Error,
+      });
+      throw new InternalServerErrorException('Failed to retrieve profile');
+    }
+  }
+
+  /**
    * Update user profile
    */
   async updateProfile(
@@ -863,6 +919,7 @@ export class UserService {
           telephone: true,
           googleId: true,
           facebookId: true,
+          is_newsletter_subscribed: true,
           created_at: true,
           updated_at: true,
         },
@@ -876,6 +933,7 @@ export class UserService {
         telephone: updatedUser.telephone,
         googleId: updatedUser.googleId,
         facebookId: updatedUser.facebookId,
+        isNewsletterSubscribed: updatedUser.is_newsletter_subscribed,
         createdAt: updatedUser.created_at,
         updatedAt: updatedUser.updated_at,
       };
@@ -989,7 +1047,6 @@ export class UserService {
     }
   }
 
-
   /**
    * Get user's linked social accounts
    */
@@ -1040,6 +1097,145 @@ export class UserService {
       });
       throw new InternalServerErrorException(
         'Failed to retrieve social accounts',
+      );
+    }
+  }
+
+  // ========== NEWSLETTER SUBSCRIPTION METHODS ==========
+
+  /**
+   * Subscribe user to newsletter
+   */
+  async subscribeToNewsletter(userId: bigint): Promise<ApiResponse<any>> {
+    try {
+      const updatedUser =
+        await this.userRepository.updateNewsletterSubscription(userId, true);
+
+      const response = {
+        isSubscribed: true,
+        email: updatedUser.email,
+        subscribedAt: updatedUser.updated_at,
+        preferences: {}, // Can be extended later
+      };
+
+      this.logger.log({
+        message: 'User subscribed to newsletter',
+        context: {
+          userId: userId.toString(),
+          email: updatedUser.email,
+          operation: 'newsletter_subscribe',
+        },
+      });
+
+      return ResponseHelper.CreateResponse<any>(
+        'Newsletter subscription successful',
+        response,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      if (error.message && error.message.includes('not found')) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      this.logger.error({
+        message: 'Failed to subscribe to newsletter',
+        context: {
+          userId: userId.toString(),
+          operation: 'newsletter_subscribe',
+        },
+        error: error as Error,
+      });
+      throw new InternalServerErrorException(
+        'Failed to subscribe to newsletter',
+      );
+    }
+  }
+
+  /**
+   * Unsubscribe user from newsletter
+   */
+  async unsubscribeFromNewsletter(userId: bigint): Promise<ApiResponse<any>> {
+    try {
+      const updatedUser =
+        await this.userRepository.updateNewsletterSubscription(userId, false);
+
+      const response = {
+        isSubscribed: false,
+        email: updatedUser.email,
+        unsubscribedAt: updatedUser.updated_at,
+      };
+
+      this.logger.log({
+        message: 'User unsubscribed from newsletter',
+        context: {
+          userId: userId.toString(),
+          email: updatedUser.email,
+          operation: 'newsletter_unsubscribe',
+        },
+      });
+
+      return ResponseHelper.CreateResponse<any>(
+        'Newsletter unsubscription successful',
+        response,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      if (error.message && error.message.includes('not found')) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      this.logger.error({
+        message: 'Failed to unsubscribe from newsletter',
+        context: {
+          userId: userId.toString(),
+          operation: 'newsletter_unsubscribe',
+        },
+        error: error as Error,
+      });
+      throw new InternalServerErrorException(
+        'Failed to unsubscribe from newsletter',
+      );
+    }
+  }
+
+  /**
+   * Get user's newsletter subscription status
+   */
+  async getNewsletterSubscriptionStatus(
+    userId: bigint,
+  ): Promise<ApiResponse<any>> {
+    try {
+      const user = await this.userRepository.getNewsletterSubscriptionStatus(
+        userId,
+      );
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const response = {
+        isSubscribed: user.is_newsletter_subscribed,
+        email: user.email,
+        lastUpdated: user.updated_at,
+      };
+
+      return ResponseHelper.CreateResponse<any>(
+        'Newsletter subscription status retrieved successfully',
+        response,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error({
+        message: 'Failed to get newsletter subscription status',
+        context: {
+          userId: userId.toString(),
+          operation: 'get_newsletter_status',
+        },
+        error: error as Error,
+      });
+      throw new InternalServerErrorException(
+        'Failed to retrieve newsletter subscription status',
       );
     }
   }

@@ -401,6 +401,108 @@ export class UserController {
   }
 
   @UseGuards(HeaderAuthGuard)
+  @Get('profile/addresses')
+  async getAllUserAddresses(
+    @Req() request: Request & { user?: JwtUser },
+  ): Promise<ApiResponse<any[]>> {
+    if (!request.user) throw new UnauthorizedException();
+
+    try {
+      const addresses = await this.addressService.getAllUserAddresses(
+        request.user.id,
+      );
+
+      return ResponseHelper.CreateResponse<any[]>(
+        'User addresses retrieved successfully',
+        addresses,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get user addresses',
+        context: {
+          userId: request.user.id.toString(),
+          operation: 'get_user_addresses',
+        },
+        error: error as Error,
+      });
+      throw new InternalServerErrorException(
+        'Failed to retrieve user addresses',
+      );
+    }
+  }
+
+  @UseGuards(HeaderAuthGuard)
+  @Get('profile/address-types')
+  async getAddressTypes(
+    @Req() request: Request & { user?: JwtUser },
+  ): Promise<ApiResponse<any[]>> {
+    if (!request.user) throw new UnauthorizedException();
+
+    try {
+      const addressTypes = await this.addressService.getAddressTypes();
+
+      return ResponseHelper.CreateResponse<any[]>(
+        'Address types retrieved successfully',
+        addressTypes,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      this.logger.error({
+        message: 'Failed to get address types',
+        context: {
+          userId: request.user.id.toString(),
+          operation: 'get_address_types',
+        },
+        error: error as Error,
+      });
+      throw new InternalServerErrorException(
+        'Failed to retrieve address types',
+      );
+    }
+  }
+
+  @UseGuards(HeaderAuthGuard)
+  @Get('profile/addresses/:addressTypeId')
+  async getAddressByTypeId(
+    @Req() request: Request & { user?: JwtUser },
+    @Param('addressTypeId') addressTypeId: string,
+  ): Promise<ApiResponse<any>> {
+    if (!request.user) throw new UnauthorizedException();
+
+    try {
+      const address = await this.addressService.getAddressByTypeId(
+        request.user.id,
+        BigInt(addressTypeId),
+      );
+
+      return ResponseHelper.CreateResponse<any>(
+        'Address retrieved successfully',
+        address,
+        HttpStatus.OK,
+      );
+    } catch (error: any) {
+      if (error instanceof NotFoundException) {
+        return ResponseHelper.CreateResponse<any>(
+          'No address found for this type',
+          null,
+          HttpStatus.OK,
+        );
+      }
+      this.logger.error({
+        message: 'Failed to get address by type ID',
+        context: {
+          userId: request.user.id.toString(),
+          addressTypeId,
+          operation: 'get_address_by_type_id',
+        },
+        error: error as Error,
+      });
+      throw new InternalServerErrorException('Failed to retrieve address');
+    }
+  }
+
+  @UseGuards(HeaderAuthGuard)
   @Get('profile/billing-address')
   async getBillingAddress(
     @Req() request: Request & { user?: JwtUser },
@@ -488,7 +590,6 @@ export class UserController {
     return this.userService.getLoginInfo(request.user.id);
   }
 
-
   @UseGuards(HeaderAuthGuard)
   @Get('profile/social-accounts')
   async getSocialAccounts(
@@ -498,7 +599,7 @@ export class UserController {
     return this.userService.getSocialAccounts(request.user.id);
   }
 
-  // ========== SAVED SEARCHES ENDPOINTS ==========
+  // SEARCHES ENDPOINTS
 
   @UseGuards(HeaderAuthGuard)
   @Get('profile/saved-searches')
@@ -715,91 +816,31 @@ export class UserController {
   }
 
   // NEWSLETTER ENDPOINTS
-  // TODO : will implement it dynamically
   @UseGuards(HeaderAuthGuard)
   @Post('profile/newsletter/subscribe')
   async subscribeNewsletter(
     @Req() request: Request & { user?: JwtUser },
-    @Body() subscriptionData: any,
   ): Promise<ApiResponse<any>> {
     if (!request.user) throw new UnauthorizedException();
-
-    try {
-      const response = {
-        isSubscribed: true,
-        email: subscriptionData.email,
-        subscribedAt: new Date(),
-        preferences: subscriptionData.preferences
-          ? JSON.parse(subscriptionData.preferences)
-          : {},
-      };
-
-      this.logger.log({
-        message: 'Newsletter subscription request',
-        context: {
-          userId: request.user.id.toString(),
-          email: subscriptionData.email,
-          operation: 'newsletter_subscribe',
-        },
-      });
-
-      return ResponseHelper.CreateResponse<any>(
-        'Newsletter subscription successful',
-        response,
-        HttpStatus.OK,
-      );
-    } catch (error: any) {
-      this.logger.error({
-        message: 'Failed to subscribe to newsletter',
-        context: {
-          userId: request.user.id.toString(),
-          operation: 'newsletter_subscribe',
-        },
-        error: error as Error,
-      });
-      throw new InternalServerErrorException(
-        'Failed to subscribe to newsletter',
-      );
-    }
+    return this.userService.subscribeToNewsletter(request.user.id);
   }
 
   @UseGuards(HeaderAuthGuard)
-  @Delete('profile/newsletter/unsubscribe')
+  @Post('profile/newsletter/unsubscribe')
   async unsubscribeNewsletter(
     @Req() request: Request & { user?: JwtUser },
-    @Body() body: { email: string },
-  ): Promise<ApiResponse<boolean>> {
+  ): Promise<ApiResponse<any>> {
     if (!request.user) throw new UnauthorizedException();
+    return this.userService.unsubscribeFromNewsletter(request.user.id);
+  }
 
-    try {
-
-      this.logger.log({
-        message: 'Newsletter unsubscription request',
-        context: {
-          userId: request.user.id.toString(),
-          email: body.email,
-          operation: 'newsletter_unsubscribe',
-        },
-      });
-
-      return ResponseHelper.CreateResponse<boolean>(
-        'Newsletter unsubscription successful',
-        true,
-        HttpStatus.OK,
-      );
-    } catch (error: any) {
-      this.logger.error({
-        message: 'Failed to unsubscribe from newsletter',
-        context: {
-          userId: request.user.id.toString(),
-          operation: 'newsletter_unsubscribe',
-        },
-        error: error as Error,
-      });
-      throw new InternalServerErrorException(
-        'Failed to unsubscribe from newsletter',
-      );
-    }
+  @UseGuards(HeaderAuthGuard)
+  @Get('profile/newsletter/status')
+  async getNewsletterStatus(
+    @Req() request: Request & { user?: JwtUser },
+  ): Promise<ApiResponse<any>> {
+    if (!request.user) throw new UnauthorizedException();
+    return this.userService.getNewsletterSubscriptionStatus(request.user.id);
   }
 
   // TODO: Will fix typings
