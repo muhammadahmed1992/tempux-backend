@@ -59,4 +59,50 @@ export class UserRepository extends BaseRepository<
       select,
     });
   }
+
+  /**
+   * Update user's newsletter subscription status
+   * @param userId - The user's ID
+   * @param isSubscribed - Newsletter subscription status
+   * @returns Updated user object
+   */
+  async updateNewsletterSubscription(userId: bigint, isSubscribed: boolean) {
+    // First check if user exists
+    const existingUser = await this.model.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+
+    if (!existingUser) {
+      throw new Error(`User with ID ${userId} not found`);
+    }
+
+    return this.model.update({
+      where: { id: userId },
+      data: { is_newsletter_subscribed: isSubscribed },
+      select: {
+        id: true,
+        email: true,
+        is_newsletter_subscribed: true,
+        updated_at: true,
+      },
+    });
+  }
+
+  /**
+   * Get user's newsletter subscription status
+   * @param userId - The user's ID
+   * @returns User's newsletter subscription status
+   */
+  async getNewsletterSubscriptionStatus(userId: bigint) {
+    return this.model.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        is_newsletter_subscribed: true,
+        updated_at: true,
+      },
+    });
+  }
 }
