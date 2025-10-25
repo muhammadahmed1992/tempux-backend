@@ -83,9 +83,9 @@ export class AddressResponseDto {
   id!: bigint;
   userId!: bigint;
   addressType!: string;
-  label?: string;
+  label?: string | null;
   addressLine1!: string;
-  addressLine2?: string;
+  addressLine2?: string | null;
   city!: string;
   state!: string;
   postalCode!: string;
