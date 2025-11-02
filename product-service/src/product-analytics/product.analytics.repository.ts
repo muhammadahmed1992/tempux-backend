@@ -21,17 +21,15 @@ export class ProductAnalyticsRepository extends BaseRepository<
 
   /**
    * @param productId Particular product which is being viewed by the user
-   * @param variantId Particular product variant which is being viewed by the user
-   * @returns The unique count against this passed product and variant within cut-off time i.e in last 48 hours.
+   * @returns The unique count against this passed product within cut-off time i.e in last 48 hours.
    */
-  async getViewershipUniqueCount(productId: bigint, variantId?: bigint) {
+  async getViewershipUniqueCount(productId: bigint) {
     const viewershipHours = StaticConfiguration.viewershipWindowHours;
     const cutoffTime = new Date();
     cutoffTime.setHours(cutoffTime.getHours() - viewershipHours);
     const res = await this.findMany({
       where: {
         product_id: productId,
-        product_variant_id: variantId,
         viewed_at: {
           gte: cutoffTime,
         },
@@ -106,11 +104,11 @@ export class ProductAnalyticsRepository extends BaseRepository<
           include: {
             brand: true,
             category: true,
-            model: true,
-            productVariants: { include: { currency: true } },
+            currency: true,
+            productImages: true,
+
           },
         },
-        productVariant: true,
       },
     });
 
@@ -121,7 +119,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         orderBy: { created_at: 'desc' }, // or orderBy: { popularity: "desc" } if you have analytics
         take: limit,
         include: {
-          productVariants: { include: { currency: true } },
           brand: true,
           category: true,
           model: true,
@@ -146,11 +143,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
         categoryCount[v.product.category_id] =
           (categoryCount[v.product.category_id] || 0) + 1;
       }
-      if (v.product.model_id) {
-        modelCount[v.product.model_id] =
-          (modelCount[v.product.model_id] || 0) + 1;
-      }
-      const price = this.getNumericPrice(v.productVariant?.price);
+      const price = this.getNumericPrice(v.product.sales_price);
       if (price) pricePoints.push(price);
     });
 
@@ -182,10 +175,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         },
         take,
         include: {
-          productVariants: {
-            include: { currency: true },
-            select: { product_id: true },
-          },
           brand: true,
           category: true,
           model: true,
@@ -207,7 +196,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         },
         take: take - recommendations.length / 2,
         include: {
-          productVariants: { include: { currency: true } },
           brand: true,
           category: true,
           model: true,
@@ -244,15 +232,9 @@ export class ProductAnalyticsRepository extends BaseRepository<
         where: {
           id: { notIn: excludeIds },
           is_deleted: false,
-          productVariants: {
-            some: {
-              price: { gte: lowerBound, lte: upperBound },
-            },
-          },
         },
         take: limit - recommendations.length,
         include: {
-          productVariants: { include: { currency: true } },
           brand: true,
           category: true,
           model: true,
@@ -278,14 +260,14 @@ export class ProductAnalyticsRepository extends BaseRepository<
   }
 
   private mapProductToRecommendation = (product: any) => {
-    // pick cheapest variant
-    const variant = product.productVariants?.reduce(
+    // pick cheapest item
+    const item = product.productItems?.reduce(
       (min: { price: any }, v: { price: any }) => {
         const price = this.getNumericPrice(v.price);
         const minPrice = this.getNumericPrice(min.price);
         return price! < minPrice! ? v : min;
       },
-      product.productVariants?.[0],
+      product.productItems?.[0],
     );
 
     return {
@@ -296,14 +278,10 @@ export class ProductAnalyticsRepository extends BaseRepository<
       category_id: product.category_id,
       slug: product.product_slug,
       title: product.title,
-      symb: variant?.currency?.curr,
-      image_url: variant?.base_image_url || null,
-      price: this.getNumericPrice(variant?.price)?.toFixed(2),
-      tags: [
-        product.brand?.title,
-        product.category?.title,
-        product.model?.title,
-      ].filter(Boolean),
+      symb: item?.currency?.curr,
+      image_url: item?.base_image_url || null,
+      price: this.getNumericPrice(item?.price)?.toFixed(2),
+      tags: [product.brand?.title, product.category?.title].filter(Boolean),
     };
   };
 }

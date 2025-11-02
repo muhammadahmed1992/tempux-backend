@@ -11,12 +11,14 @@ import { mergeMap } from 'rxjs/operators';
 import { Response, Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { UserCookieHandlerService } from '@User/services/user-cookie.handler.service';
+import { AppLoggerService } from '../../common/logging/logger.service';
 
 @Injectable()
 export class AuthCookieInterceptor implements NestInterceptor {
   constructor(
     private readonly configService: ConfigService,
     private readonly userCookieHanlder: UserCookieHandlerService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -33,12 +35,18 @@ export class AuthCookieInterceptor implements NestInterceptor {
           origin = (req.headers['x-client-origin'] || '') as string;
         }
 
-        console.log(`Logging origin: ${origin}`);
+        this.logger.debug({
+          message: 'Auth cookie origin',
+          context: { operation: 'oauth_cookie', origin },
+        });
 
         const frontendUrl =
           origin || this.configService.get<string>('FRONTEND_URL')!;
 
-        console.log(`Logging frontend url auth.cookie: ${frontendUrl}`);
+        this.logger.debug({
+          message: 'Auth cookie frontend URL',
+          context: { operation: 'oauth_cookie', frontendUrl },
+        });
 
         const dns = this.configService.get<string>('DNS')!;
 

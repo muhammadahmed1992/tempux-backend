@@ -1,5 +1,6 @@
 // src/prisma/prisma.service.ts
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { AppLoggerService } from '../common/logging/logger.service';
 import { PrismaClient, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -7,7 +8,7 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  constructor() {
+  constructor(private readonly logger: AppLoggerService) {
     super({
       log: [{ level: 'query', emit: 'event' }],
     });
@@ -15,9 +16,15 @@ export class PrismaService
     //TODO: Need to fix
     this.$on('query' as never, (e: Prisma.QueryEvent) => {
       if (process.env.NODE_ENV === 'development') {
-        console.log(`QUERY: ${e.query}`);
-        console.log(`PARAMS: ${e.params}`);
-        console.log(`DURATION: ${e.duration}ms`);
+        this.logger.info({
+          message: 'Prisma query',
+          context: {
+            operation: 'db_query',
+            query: e.query,
+            params: e.params,
+            duration: e.duration,
+          },
+        });
       }
     });
 
@@ -26,9 +33,16 @@ export class PrismaService
       const result = await next(params);
       const after = Date.now();
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Middleware Query: ${params.model}.${params.action}`);
-        console.log(`Middleware Params: ${params.args}`);
-        console.log(`Middleware Duration: ${after - before}ms`);
+        this.logger.info({
+          message: 'Prisma middleware',
+          context: {
+            operation: 'db_middleware',
+            model: params.model,
+            action: params.action,
+            args: params.args,
+            duration: after - before,
+          },
+        });
       }
       return result;
     });
@@ -36,7 +50,10 @@ export class PrismaService
 
   async onModuleInit() {
     // TODO: Need to make sure PrismaService calls only at once
-    console.log('PrismaService connected!');
+    this.logger.log({
+      message: 'PrismaService connected',
+      context: { operation: 'startup' },
+    });
     await this.$connect();
   }
 

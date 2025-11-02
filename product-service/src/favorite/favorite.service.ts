@@ -9,21 +9,19 @@ export class FavoriteService {
   /**
    *
    * @param userId Id of the user which is marking the product as favorite
-   * @param productId Parent Id of the currently selected/marked product variant
-   * @param itemId Specific Id of that particular variant
+   * @param productId Parent Id of the currently selected/marked product item
+   * @param itemId Specific Id of that particular item
    * @param flag will determine if user wants to mark as favorite or not
    */
   async markProductAsFavorite(
     userId: bigint,
     productId: bigint,
-    itemId: bigint,
     flag: boolean,
   ): Promise<ApiResponse<number>> {
     const result = (
       await this.repository.markProductAsFavorite(
         userId,
         productId,
-        itemId,
         flag,
       )
     ).id;

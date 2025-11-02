@@ -20,22 +20,19 @@ export class FavoriteRepository extends BaseRepository<
   /**
    *
    * @param userId Id of the user which is marking the product as favorite
-   * @param productId Parent Id of the currently selected/marked product variant
-   * @param itemId Specific Id of that particular variant
+   * @param productId Id of the product being marked as favorite
    * @return
    */
   async markProductAsFavorite(
     userId: bigint,
     productId: bigint,
-    itemId: bigint,
     flag: boolean,
   ) {
     return this.prisma.favorite.upsert({
       where: {
-        user_id_product_id_product_variant_id: {
+        user_id_product_id: {
           user_id: userId,
           product_id: productId,
-          product_variant_id: itemId,
         },
       },
       create: {
@@ -43,11 +40,6 @@ export class FavoriteRepository extends BaseRepository<
         product: {
           connect: {
             id: productId,
-          },
-        },
-        product_variant: {
-          connect: {
-            id: itemId,
           },
         },
         created_by: userId,
@@ -58,11 +50,6 @@ export class FavoriteRepository extends BaseRepository<
         product: {
           connect: {
             id: productId,
-          },
-        },
-        product_variant: {
-          connect: {
-            id: itemId,
           },
         },
         updated_by: userId,

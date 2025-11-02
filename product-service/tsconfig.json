@@ -35,7 +35,7 @@
       "@Prisma/*": ["src/prisma/*"],
       "@Product/*": ["src/product/*"],
       "@ProductAnalytics/*": ["src/product-analytics/*"],
-      "@ProductVariant/*": ["src/product-variant/*"],
+      "@ProductItem/*": ["src/product-item/*"],
       "@Reviews/*": ["src/reviews/*"],
       "@Size/*": ["src/size/*"],
       "@Type/*": ["src/type/*"],

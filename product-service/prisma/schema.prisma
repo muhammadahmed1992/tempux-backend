@@ -7,55 +7,79 @@ datasource db {
   url      = env("DATABASE_URL_DEV_PRODUCT")
 }
 
-model color {
-  id                   Int                @id @default(autoincrement())
-  name                 String             @unique @db.VarChar(15)
-  colorCode            String             @db.VarChar(8)
-  description          String             @db.VarChar(15)
-  created_at           DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime?          @db.Timestamptz(6)
-  deleted_at           DateTime?          @db.Timestamptz(6)
-  created_by           BigInt
-  updated_by           BigInt?
-  deleted_by           BigInt?
-  is_deleted           Boolean            @default(false)
-  variantBraceletColor product_variants[] @relation("BraceletVariantColor")
-  variantColor         product_variants[] @relation("VariantColor")
-  variantDialColor     product_variants[] @relation("DialVariantColor")
-}
-
-model size {
-  id          Int                @id @default(autoincrement())
-  value       Int
-  widthUnit   String             @default("MM") @db.VarChar(2)
-  height      Int
-  heightUnit  String             @default("MM") @db.VarChar(2)
-  created_at  DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime?          @db.Timestamptz(6)
-  deleted_at  DateTime?          @db.Timestamptz(6)
+// Movement types for watches/products
+model movement_type {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(50)
+  description String    @db.VarChar(200)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
   created_by  BigInt
   updated_by  BigInt?
   deleted_by  BigInt?
-  is_deleted  Boolean            @default(false)
-  variantSize product_variants[] @relation("VariantSize")
-
-  @@unique([value, height])
+  is_deleted  Boolean   @default(false)
 }
 
-model brand {
-  id         Int          @id @default(autoincrement())
-  title      String       @unique @db.VarChar(25)
-  order      Int?
-  image_url  String?      @db.VarChar(1000)
-  created_at DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at DateTime?    @db.Timestamptz(6)
-  deleted_at DateTime?    @db.Timestamptz(6)
+// Product inclusions/accessories
+model product_inclusion {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  description String    @db.VarChar(200)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
+}
+
+model color {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(15)
+  colorCode   String    @db.VarChar(8)
+  description String    @db.VarChar(15)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
+}
+
+model size {
+  id         Int       @id @default(autoincrement())
+  caseWidth  Int
+  widthUnit  String    @default("MM") @db.VarChar(2)
+  caseHeight Int
+  heightUnit String    @default("MM") @db.VarChar(2)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
   created_by BigInt
   updated_by BigInt?
   deleted_by BigInt?
-  is_deleted Boolean      @default(false)
-  model      model[] @relation("BrandModel")
-  product    product[]    @relation("ProductBrand")
+  is_deleted Boolean   @default(false)
+
+  @@unique([caseWidth, caseHeight])
+}
+
+model brand {
+  id         Int       @id @default(autoincrement())
+  title      String    @unique @db.VarChar(25)
+  order      Int?
+  image_url  String?   @db.VarChar(1000)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+  model      model[]   @relation("BrandModel")
+  product    product[] @relation("ProductBrand")
 }
 
 model model {
@@ -108,39 +132,159 @@ model category {
 }
 
 model currency_exchange {
-  id              Int                @id @default(autoincrement())
-  curr            String             @unique @db.VarChar(5)
-  description     String             @db.VarChar(25)
-  exchangeRate    Decimal            @default(1.00) @db.Decimal(15, 2)
-  created_at      DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?          @db.Timestamptz(6)
-  deleted_at      DateTime?          @db.Timestamptz(6)
-  created_by      BigInt
-  updated_by      BigInt?
-  deleted_by      BigInt?
-  is_deleted      Boolean            @default(false)
-  productVariants product_variants[] @relation("VariantCurrency")
+  id           Int       @id @default(autoincrement())
+  curr         String    @unique @db.VarChar(5)
+  description  String    @db.VarChar(25)
+  exchangeRate Decimal   @default(1.00) @db.Decimal(15, 2)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @db.Timestamptz(6)
+  deleted_at   DateTime? @db.Timestamptz(6)
+  created_by   BigInt
+  updated_by   BigInt?
+  deleted_by   BigInt?
+  is_deleted   Boolean   @default(false)
+  product      product[] @relation("ProductCurrency")
 }
 
 model tax_rule {
-  id              Int                @id @default(autoincrement())
-  taxRate         Decimal            @default(1.00) @db.Decimal(15, 2)
-  description     String             @unique @db.VarChar(100)
-  created_at      DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?          @db.Timestamptz(6)
-  deleted_at      DateTime?          @db.Timestamptz(6)
-  created_by      BigInt
-  updated_by      BigInt?
-  deleted_by      BigInt?
-  is_deleted      Boolean            @default(false)
-  productVariants product_variants[] @relation("VariantTax")
+  id          Int       @id @default(autoincrement())
+  taxRate     Decimal   @default(1.00) @db.Decimal(15, 2)
+  description String    @unique @db.VarChar(100)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
+  products    product[] @relation("ProductTax")
+}
+
+model attribute_categories {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique @db.VarChar(50) // e.g., "Watch", "Case", "Strap", "Bezel"
+  is_active  Boolean   @default(true)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+
+  // Relations
+  attributeMappings attribute_category_mapping[]
+
+  @@map("attribute_categories")
+}
+
+model attributes {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique @db.VarChar(50) // e.g., "Movement", "CaseDiameter", "Size"
+  display_name String    @db.VarChar(100) // User-friendly display name
+  description  String?   @db.VarChar(200)
+  unit         String?   @db.VarChar(10) // e.g., "mm", "hours", "g" for numeric attributes
+  is_active    Boolean   @default(true)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @db.Timestamptz(6)
+  deleted_at   DateTime? @db.Timestamptz(6)
+  created_by   BigInt
+  updated_by   BigInt?
+  deleted_by   BigInt?
+  is_deleted   Boolean   @default(false)
+
+  // Relations
+  categoryMappings attribute_category_mapping[]
+
+  @@map("attributes")
+}
+
+model attribute_category_mapping {
+  id                    Int       @id @default(autoincrement())
+  attribute_category_id Int
+  attribute_id          Int
+  data_type             String    @db.VarChar(20)
+  is_mandatory          Boolean   @default(false)
+  is_active             Boolean   @default(true)
+  control_type          String?   @default("textbox")
+  created_at            DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime? @db.Timestamptz(6)
+  deleted_at            DateTime? @db.Timestamptz(6)
+  created_by            BigInt
+  updated_by            BigInt?
+  deleted_by            BigInt?
+  is_deleted            Boolean   @default(false)
+
+  // Relations
+  attributeCategory attribute_categories      @relation(fields: [attribute_category_id], references: [id])
+  attribute         attributes                @relation(fields: [attribute_id], references: [id])
+  attributeValues   attribute_value_mapping[]
+
+  @@unique([attribute_category_id, attribute_id])
+  @@map("attribute_category_mapping")
+}
+
+model attribute_value_mapping {
+  id                            BigInt    @id @default(autoincrement())
+  attribute_category_mapping_id Int
+  product_id                    BigInt
+  string_value                  String?   @db.VarChar(500)
+  number_value                  Decimal?  @db.Decimal(15, 4)
+  boolean_value                 Boolean?
+  date_value                    DateTime? @db.Timestamptz(6)
+  // For attributes that reference a predefined list of values, No strict foreign key constraint here, will be validated in service level
+  lookup_name                   String?   @db.VarChar(100)
+  lookup_id                     Int?
+  created_at                    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime? @db.Timestamptz(6)
+  deleted_at                    DateTime? @db.Timestamptz(6)
+  created_by                    BigInt
+  updated_by                    BigInt?
+  deleted_by                    BigInt?
+  is_deleted                    Boolean   @default(false)
+
+  // Relations
+  attributeCategoryMapping attribute_category_mapping @relation(fields: [attribute_category_mapping_id], references: [id])
+  product                  product                    @relation("AttributeValues", fields: [product_id], references: [id])
+
+  @@unique([attribute_category_mapping_id, product_id])
+  @@map("attribute_value_mapping")
+}
+
+model watch_inclusions {
+  id         Int       @id @default(autoincrement())
+  title      String    @unique @db.VarChar(100)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+
+  @@map("watch_inclusions")
+}
+
+model Condition {
+  id          Int       @id @default(autoincrement())
+  condition   String    @unique @db.VarChar(100)
+  description String    @unique @db.VarChar(200)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
+
+  @@map("condition")
 }
 
 model reviews_ratings {
-  id         Int       @id @default(autoincrement())
+  id         BigInt    @id @default(autoincrement())
   product_id BigInt
   review     String?   @db.VarChar(500)
-  ratings    Int       @db.SmallInt
+  ratings    Int       @db.Integer
   reviewedBy BigInt
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @db.Timestamptz(6)
@@ -155,26 +299,24 @@ model reviews_ratings {
 }
 
 model favorite {
-  id                 Int              @id @default(autoincrement())
-  user_id            BigInt
-  product_id         BigInt
-  product_variant_id BigInt
-  created_at         DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?        @db.Timestamptz(6)
-  deleted_at         DateTime?        @db.Timestamptz(6)
-  created_by         BigInt
-  updated_by         BigInt?
-  deleted_by         BigInt?
-  is_deleted         Boolean          @default(false)
-  product            product          @relation("FavoriteProducts", fields: [product_id], references: [id])
-  product_variant    product_variants @relation("FavoriteProductVariants", fields: [product_variant_id], references: [id])
+  id         Int       @id @default(autoincrement())
+  user_id    BigInt
+  product_id BigInt
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+  product    product   @relation("FavoriteProducts", fields: [product_id], references: [id])
 
-  @@unique([user_id, product_id, product_variant_id])
+  @@unique([user_id, product_id])
 }
 
 model tags {
   id          Int           @id @default(autoincrement())
-  key         String?        @db.VarChar(20)
+  key         String?       @db.VarChar(20)
   title       String        @unique @db.VarChar(20)
   description String        @db.VarChar(100)
   valid_from  DateTime?     @db.Timestamptz(6)
@@ -207,22 +349,20 @@ model product_tag {
 }
 
 model cart {
-  id                 Int              @id @default(autoincrement())
-  product_id         BigInt
-  product_variant_id BigInt
-  user_id            BigInt
-  quantity           Int
-  created_at         DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?        @db.Timestamptz(6)
-  deleted_at         DateTime?        @db.Timestamptz(6)
-  created_by         BigInt
-  updated_by         BigInt?
-  deleted_by         BigInt?
-  is_deleted         Boolean          @default(false)
-  product            product          @relation("ProductCart", fields: [product_id], references: [id])
-  product_variant    product_variants @relation("ProductVariantCart", fields: [product_variant_id], references: [id])
+  id         Int       @id @default(autoincrement())
+  product_id BigInt
+  user_id    BigInt
+  quantity   Int
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+  product    product   @relation("ProductCart", fields: [product_id], references: [id])
 
-  @@unique([user_id, product_id, product_variant_id])
+  @@unique([user_id, product_id])
 }
 
 model excel_batch_import {
@@ -238,165 +378,249 @@ model excel_batch_import {
 }
 
 model product {
-  id                                 BigInt              @id @default(autoincrement())
-  name                               String              @db.VarChar(150)
-  description                        String              @db.VarChar(300)
-  title                              String?             @db.VarChar(150)
-  brand_id                           Int?
-  category_id                        Int?
-  model_id                           Int?
-  gender_id                          Int?
-  is_accessory                       Boolean             @default(false)
-  year_of_production                 Int
-  serial_number                      String              @db.VarChar(15)
-  reference_number                   BigInt
-  created_at                         DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at                         DateTime?           @db.Timestamptz(6)
-  deleted_at                         DateTime?           @db.Timestamptz(6)
-  created_by                         BigInt
-  updated_by                         BigInt?
-  deleted_by                         BigInt?
-  is_deleted                         Boolean             @default(false)
-  approval_status_by_admin           String              @default("PENDING") @db.VarChar(10)
-  approximation                      Boolean             @default(false)
-  buyer_confidence_boost_description String?             @db.VarChar(5000)
-  unknown                            Boolean             @default(false)
-  product_slug                       String              @db.VarChar(255)
-  productCart                        cart[]              @relation("ProductCart")
-  productFavorite                    favorite[]          @relation("FavoriteProducts")
-  productOwnership                   ownership_proof[]   @relation("ProductOwnership")
-  brand                              brand?               @relation("ProductBrand", fields: [brand_id], references: [id])
-  category                           category?            @relation("ProductCategory", fields: [category_id], references: [id])
-  model                              model?         @relation("ProductModel", fields: [model_id], references: [id])
-  gender                             gender?              @relation("ProductGender", fields: [gender_id], references: [id])
-  productAnalytics                   product_analytics[]
-  productTags                        product_tag[]       @relation("ProductTags")
-  productVariants                    product_variants[]  @relation("ProductVariants")
-  productReviews                     reviews_ratings[]   @relation("ProductReviews")
-  productSignOfWear                  sign_of_wear[]      @relation("ProductSignOfWear")
+  id              BigInt  @id @default(autoincrement())
+  name            String  @db.VarChar(150)
+  description     String  @db.VarChar(300)
+  title           String? @db.VarChar(150)
+  brand_id        Int?
+  category_id     Int?
+  model_id        Int?
+  gender_id       Int?
+  is_accessory    Boolean @default(false)
+  accessory_image String? @db.VarChar(500)
+  is_used         Boolean @default(false)
+  product_slug    String  @db.VarChar(255)
+
+  // Fields migrated from product_items
+  quantity                           Int       @default(0)
+  serial_number                      String?   @db.VarChar(15)
+  reference_number                   String?
+  approval_status_by_admin           String    @default("PENDING") @db.VarChar(10)
+  approximation                      Boolean   @default(false)
+  buyer_confidence_boost_description String?   @db.VarChar(5000)
+  unknown                            Boolean   @default(false)
+  release_date                       DateTime? @db.Timestamptz(6)
+  country_id                         Int?
+  tax_rule_id                        Int?
+  sku                                String?   @unique @db.VarChar(20)
+  discount                           Decimal?  @default(0.00) @db.Decimal(10, 2)
+
+  // common fields
+  year_of_production Int     @db.Integer
+  seller_id          BigInt  @db.BigInt
+  currency_id        Int     @default(1) @db.Integer // Default to USD
+  sales_price        Decimal @db.Decimal(10, 2)
+  commission_fee     Decimal @default(0.00) @db.Decimal(10, 2)
+  payout_price       Decimal @db.Decimal(10, 2)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+
+  // relations
+  productCart       cart[]                                  @relation("ProductCart")
+  productFavorite   favorite[]                              @relation("FavoriteProducts")
+  productOwnership  ownership_proof[]                       @relation("ProductOwnership")
+  brand             brand?                                  @relation("ProductBrand", fields: [brand_id], references: [id])
+  category          category?                               @relation("ProductCategory", fields: [category_id], references: [id])
+  model             model?                                  @relation("ProductModel", fields: [model_id], references: [id])
+  productAnalytics  product_analytics[]
+  productGender     gender?                                 @relation("ProductGender", fields: [gender_id], references: [id])
+  productTags       product_tag[]                           @relation("ProductTags")
+  productReviews    reviews_ratings[]                       @relation("ProductReviews")
+  productSignOfWear wear_sign_component_condition_mapping[] @relation("ProductSignOfWear")
+  attributeValues   attribute_value_mapping[]               @relation("AttributeValues")
+  currency          currency_exchange                       @relation("ProductCurrency", fields: [currency_id], references: [id])
+  productImages     product_images[]                        @relation("ProductImages")
+
+  // New relations from product_items
+  tax  tax_rule? @relation("ProductTax", fields: [tax_rule_id], references: [id])
+
+  // Fields for new relations
+  complication_id      Int?
+  case_material_id     Int?
+  bracelet_material_id Int?
+  crystal_id           Int?
+
+  // Relations
+  complication     complications? @relation("ProductComplications", fields: [complication_id], references: [id])
+  caseMaterial     material?      @relation("CaseMaterial", fields: [case_material_id], references: [id])
+  braceletMaterial material?      @relation("BraceletMaterial", fields: [bracelet_material_id], references: [id])
+  crystalType      crystal?       @relation("ProductCrystal", fields: [crystal_id], references: [id])
+  countryOfOrigin  country?       @relation("ProductCountry", fields: [country_id], references: [id])
 }
 
 model product_images {
-  id                 Int               @id @default(autoincrement())
-  img_url            String            @db.VarChar(2000)
-  alt_text           String            @db.VarChar(500)
-  order              Int
-  color_id           Int
-  size_id            Int
-  created_at         DateTime          @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?         @db.Timestamptz(6)
-  deleted_at         DateTime?         @db.Timestamptz(6)
-  created_by         BigInt
-  updated_by         BigInt?
-  deleted_by         BigInt?
-  is_deleted         Boolean           @default(false)
-  product_variant_id BigInt?
-  product_variant    product_variants? @relation("VariantImages", fields: [product_variant_id], references: [id])
+  id            Int     @id @default(autoincrement())
+  img_url       String  @db.VarChar(2000)
+  alt_text      String? @db.VarChar(500)
+  order         Int     @default(0)
+  type          String  @db.VarChar(50) // e.g. "listing", "ownership", "sign-of-wear"
+  image_type    String  @db.VarChar(50) // e.g. "thumbnail", "gallery", "detail"
+  file_size     Int // in bytes
+  mime_type     String  @db.VarChar(100)
+  original_name String  @db.VarChar(255)
+
+  product_id BigInt?
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+
+  is_deleted Boolean  @default(false)
+  product    product? @relation("ProductImages", fields: [product_id], references: [id])
 }
 
-model product_variants {
-  id                       BigInt              @id @default(autoincrement())
-  product_id               BigInt
-  color_id                 Int
-  bracelet_color_id        Int
-  dial_color_id            Int
-  size_id                  Int
-  movement_id              BigInt
-  price                    Decimal             @db.Decimal(10, 2)
-  cost_price               Decimal             @db.Decimal(10, 2)
-  quantity                 Int                 @default(0)
-  original_box_and_paper   Boolean
-  original_box             Boolean
-  original_paper           Boolean
-  accessories              Boolean
-  case_material            String?             @db.VarChar(15)
-  bracelet_material        String?             @db.VarChar(15)
-  currency_id              Int
-  tax_rule_id              Int
-  seller_id                BigInt?
-  base_image_url           String              @db.VarChar(1000)
-  sku                      String              @unique @db.VarChar(20)
-  created_at               DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at               DateTime?           @db.Timestamptz(6)
-  deleted_at               DateTime?           @db.Timestamptz(6)
-  created_by               BigInt
-  updated_by               BigInt?
-  deleted_by               BigInt?
-  is_deleted               Boolean             @default(false)
-  discount                 Decimal?            @default(0.00) @db.Decimal(10, 2)
-  productVariantCart       cart[]              @relation("ProductVariantCart")
-  productVariantFavorite   favorite[]          @relation("FavoriteProductVariants")
-  productVariantOwnership  ownership_proof[]   @relation("ProductVariantOwnership")
-  productAnalytics         product_analytics[]
-  image                    product_images[]    @relation("VariantImages")
-  bracelet_color           color               @relation("BraceletVariantColor", fields: [bracelet_color_id], references: [id])
-  color                    color               @relation("VariantColor", fields: [color_id], references: [id])
-  currency                 currency_exchange   @relation("VariantCurrency", fields: [currency_id], references: [id])
-  dial_color               color               @relation("DialVariantColor", fields: [dial_color_id], references: [id])
-  movement                 movement            @relation("VariantMovement", fields: [movement_id], references: [id])
-  product                  product             @relation("ProductVariants", fields: [product_id], references: [id])
-  size                     size                @relation("VariantSize", fields: [size_id], references: [id])
-  tax                      tax_rule            @relation("VariantTax", fields: [tax_rule_id], references: [id])
-  productVariantSignOfWear sign_of_wear[]      @relation("ProductVariantSignOfWear")
+model complications {
+  id       Int       @id @default(autoincrement())
+  title    String    @db.VarChar(100)
+  products product[] @relation("ProductComplications")
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
 }
 
-model movement {
-  id              BigInt             @id @default(autoincrement())
-  title           String             @unique @db.VarChar(20)
-  created_at      DateTime           @default(now()) @db.Timestamptz(6)
-  updated_at      DateTime?          @db.Timestamptz(6)
-  deleted_at      DateTime?          @db.Timestamptz(6)
-  created_by      BigInt
-  updated_by      BigInt?
-  deleted_by      BigInt?
-  is_deleted      Boolean            @default(false)
-  productVariants product_variants[] @relation("VariantMovement")
+model material {
+  id    Int    @id @default(autoincrement())
+  title String @db.VarChar(50)
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+
+  // Relations
+  caseProducts     product[] @relation("CaseMaterial")
+  braceletProducts product[] @relation("BraceletMaterial")
+}
+
+model crystal {
+  id       Int       @id @default(autoincrement())
+  title    String    @db.VarChar(50)
+  products product[] @relation("ProductCrystal")
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+}
+
+model country {
+  id       Int       @id @default(autoincrement())
+  name     String    @db.VarChar(100)
+  products product[] @relation("ProductCountry")
+
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
 }
 
 model ownership_proof {
-  id                 BigInt           @id @default(autoincrement())
-  image_url          String           @db.VarChar(1000)
-  alt_text           String           @db.VarChar(500)
-  order              Int
-  product_id         BigInt
-  product_variant_id BigInt
-  created_at         DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?        @db.Timestamptz(6)
-  deleted_at         DateTime?        @db.Timestamptz(6)
-  created_by         BigInt
-  updated_by         BigInt?
-  deleted_by         BigInt?
-  is_deleted         Boolean          @default(false)
-  product            product          @relation("ProductOwnership", fields: [product_id], references: [id])
-  product_variant    product_variants @relation("ProductVariantOwnership", fields: [product_variant_id], references: [id])
+  id          BigInt    @id @default(autoincrement())
+  image_url   String    @db.VarChar(1000)
+  alt_text    String    @db.VarChar(500)
+  order       Int
+  product_id  BigInt
+  user_id     BigInt
+  proof_type  String    @db.VarChar(50)
+  proof_url   String    @db.VarChar(500)
+  is_verified Boolean   @default(false)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
 
-  @@unique([product_id, product_variant_id])
+  // relations
+  product product @relation("ProductOwnership", fields: [product_id], references: [id])
 }
 
-model sign_of_wear {
-  id                 BigInt           @id @default(autoincrement())
-  image_url          String           @db.VarChar(1000)
-  alt_text           String           @db.VarChar(500)
-  order              Int
+model watchComponents {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique @db.VarChar(50)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  created_by BigInt
+  updated_by BigInt?
+  deleted_by BigInt?
+  is_deleted Boolean   @default(false)
+
+  wearSignMappings wear_sign_component_condition_mapping[] @relation("WearSignWatchComponent")
+
+  @@map("watch_components")
+}
+
+model condition_of_wear {
+  id          Int       @id @default(autoincrement())
+  condition   String    @unique @db.VarChar(100)
+  description String    @unique @db.VarChar(200)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime? @db.Timestamptz(6)
+  deleted_at  DateTime? @db.Timestamptz(6)
+  created_by  BigInt
+  updated_by  BigInt?
+  deleted_by  BigInt?
+  is_deleted  Boolean   @default(false)
+
+  wearSignMappings wear_sign_component_condition_mapping[] @relation("WearSignCondition")
+
+  @@map("condition_of_wear")
+}
+
+model wear_sign_component_condition_mapping {
+  id                 BigInt    @id @default(autoincrement())
+  image_url          String?   @db.VarChar(1000)
+  alt_text           String?   @db.VarChar(500)
+  order              Int?
   product_id         BigInt
-  product_variant_id BigInt
-  created_at         DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?        @db.Timestamptz(6)
-  deleted_at         DateTime?        @db.Timestamptz(6)
+  watch_component_id Int
+  condition_id       Int
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime? @db.Timestamptz(6)
+  deleted_at         DateTime? @db.Timestamptz(6)
   created_by         BigInt
   updated_by         BigInt?
   deleted_by         BigInt?
-  is_deleted         Boolean          @default(false)
-  product            product          @relation("ProductSignOfWear", fields: [product_id], references: [id])
-  productVariant     product_variants @relation("ProductVariantSignOfWear", fields: [product_variant_id], references: [id])
+  is_deleted         Boolean   @default(false)
 
-  @@unique([product_id, product_variant_id])
+  // Clean relations (remove all the duplicate ones)
+  product         product           @relation("ProductSignOfWear", fields: [product_id], references: [id])
+  watchComponent  watchComponents   @relation("WearSignWatchComponent", fields: [watch_component_id], references: [id])
+  conditionOfWear condition_of_wear @relation("WearSignCondition", fields: [condition_id], references: [id])
+
+  @@unique([product_id, watch_component_id, condition_id])
+  @@map("wear_sign_component_condition_mapping")
 }
 
 model GlobalConfiguration {
   id         BigInt    @id @default(autoincrement())
   key        String    @unique @db.VarChar(50)
-  value      Decimal  @db.Decimal(10,2)
+  value      Decimal   @db.Decimal(10, 2)
   created_at DateTime  @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @db.Timestamptz(6)
   deleted_at DateTime? @db.Timestamptz(6)
@@ -409,19 +633,50 @@ model GlobalConfiguration {
 }
 
 model product_analytics {
-  id                 BigInt           @id @default(autoincrement())
-  user_id            BigInt
-  product_id         BigInt
-  viewed_at          DateTime         @default(now()) @db.Timestamptz(6)
-  created_by         BigInt
-  created_at         DateTime         @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime?        @db.Timestamptz(6)
-  is_deleted         Boolean          @default(false)
-  product_variant_id BigInt
-  product            product          @relation(fields: [product_id], references: [id])
-  productVariant     product_variants @relation(fields: [product_variant_id], references: [id])
+  id             BigInt    @id @default(autoincrement())
+  product_id     BigInt
+  user_id        BigInt
+  view_count     Int       @default(0)
+  cart_count     Int       @default(0)
+  favorite_count Int       @default(0)
+  purchase_count Int       @default(0)
+  viewed_at      DateTime  @default(now()) @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+  deleted_at     DateTime? @db.Timestamptz(6)
+  created_by     BigInt
+  updated_by     BigInt?
+  deleted_by     BigInt?
+  is_deleted     Boolean   @default(false)
 
-  @@unique([user_id, product_id, viewed_at])
-  @@index([user_id, product_id, viewed_at])
+  // relations
+  product product @relation(fields: [product_id], references: [id])
+
+  @@unique([user_id])
 }
 
+model product_listings {
+  id                Int      @id @default(autoincrement())
+  brand             String
+  category          String
+  modelName         String
+  referenceNo       String
+  priceUsd          Float
+  currency          String
+  releaseDate       DateTime
+  gender            String
+  caseMaterial      String
+  caseDiameterMm    Float
+  caseThicknessMm   Float
+  dialColor         String
+  strapMaterial     String
+  strapColor        String
+  waterResistanceM  Int
+  crystalType       String
+  movementType      String
+  powerReserveHours Int
+  complications     String
+  availability      String
+  warrantyYears     Int
+  countryOfOrigin   String
+}

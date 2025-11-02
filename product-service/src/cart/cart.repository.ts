@@ -4,6 +4,8 @@ import { BaseRepository } from '@Common/db/base.repository';
 import { AddToCartRequestDTO } from '@DTO/add-to-cart-request.dto';
 import { RemoveCartItemRequestDTO } from '@DTO/remove-cart-request.dto';
 import { PrismaService } from '@Prisma/prisma.service';
+import { AppLoggerService } from '@Common/logging';
+import { context } from '@opentelemetry/api';
 
 @Injectable()
 export class CartRepository extends BaseRepository<
@@ -16,22 +18,23 @@ export class CartRepository extends BaseRepository<
   Prisma.cartFindManyArgs,
   Prisma.cartFindFirstArgs
 > {
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly logger: AppLoggerService,
+  ) {
     super(prisma, prisma.cart);
   }
   /**
    * This method will add product in cart table by user
    * @param userId Id of the user which is marking the product as favorite
-   * @param productId Parent Id of the currently selected/marked product variant
-   * @param itemId Specific Id of that particular variant
+   * @param productId Id of the product being added to cart
    */
   async addProductInCart(create: AddToCartRequestDTO) {
     return this.prisma.cart.upsert({
       where: {
-        user_id_product_id_product_variant_id: {
+        user_id_product_id: {
           user_id: create.userId,
           product_id: create.productId,
-          product_variant_id: create.itemId,
         },
       },
       update: {
@@ -46,11 +49,6 @@ export class CartRepository extends BaseRepository<
             id: create.productId,
           },
         },
-        product_variant: {
-          connect: {
-            id: create.itemId,
-          },
-        },
         quantity: create.quantity,
         created_by: create.userId,
         created_at: new Date(),
@@ -63,8 +61,7 @@ export class CartRepository extends BaseRepository<
   /**
    * This method will be un marking or removing the product from Cart. But it will only updated the isDelete flag, won't remove permanently.
    * @param userId Id of the user which is marking the product as favorite
-   * @param productId Parent Id of the currently selected/marked product variant
-   * @param itemId Specific Id of that particular variant
+   * @param productId Id of the product being removed from cart
    */
   async removeFromCart(
     userId: bigint,
@@ -75,10 +72,13 @@ export class CartRepository extends BaseRepository<
     const orConditions = items.map((item) => ({
       user_id: userId,
       product_id: item.productId,
-      product_variant_id: item.product_variant_Id,
     }));
-    console.log(`printing the orCondition for debugging`);
-    console.log(orConditions);
+    this.logger.info({
+      message: 'printing the orCondition for debugging',
+      context: {
+        orConditions,
+      },
+    });
     return this.prisma.cart.deleteMany({
       where: {
         OR: orConditions,
@@ -114,27 +114,29 @@ export class CartRepository extends BaseRepository<
       {
         id: true,
         quantity: true,
-        product_variant: {
+        product: {
           select: {
             id: true,
-            price: true,
-            base_image_url: true,
-            color: {
+            name: true,
+            title: true,
+            reference_number: true,
+            sales_price: true,
+            productImages: {
               select: {
-                name: true,
+                img_url: true,
+                order: true,
               },
-            },
-            size: {
-              select: {
-                value: true,
+              where: {
+                is_deleted: false,
               },
+              orderBy: {
+                order: 'asc',
+              },
+              take: 1,
             },
-            product: {
+            currency: {
               select: {
-                id: true,
-                name: true,
-                title: true,
-                reference_number: true,
+                curr: true,
               },
             },
           },

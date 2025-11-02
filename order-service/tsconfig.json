@@ -1,8 +1,32 @@
 {
-  "extends": "../tsconfig.base.json",
   "compilerOptions": {
+    "types": ["node"],
+    "lib": ["es2020"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2023",
+    "module": "commonjs",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@Repository/*": ["src/common/db/*"],
+      "@DTO/*": ["src/common/dto/*"],
+      "@Helper/*": ["src/common/helper/*"],
+      "@Auth/*": ["src/auth/*"],
+      "@GlobalConfiguration/*": ["src/global-configuration/*"],
+      "@Prisma/*": ["src/prisma/*"],
+      "@Proxy/*": ["src/proxy/*"],
+      "@Decorators/*": ["src/auth/decorators/*"],
+      "@HashIds/*": ["src/hash-ids/*"],
+      "@Pipes/*": ["src/common/pipes/*"],
+      "@Common/*": ["src/common/*"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

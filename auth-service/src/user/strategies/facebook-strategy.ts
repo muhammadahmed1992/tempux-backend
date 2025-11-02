@@ -1,6 +1,7 @@
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-facebook';
 import { Injectable } from '@nestjs/common';
+import { AppLoggerService } from '../../common/logging/logger.service';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../services/user.service';
 import { Request } from 'express'; // Import Request from express for type hinting
@@ -10,6 +11,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   constructor(
     private configService: ConfigService,
     private userService: UserService,
+    private readonly logger: AppLoggerService,
   ) {
     super({
       clientID: configService.get<string>('FACEBOOK_APP_ID')!,
@@ -38,7 +40,10 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     profile: any, // Contains user profile data from Facebook
     done: any,
   ): Promise<any> {
-    console.log('--- FacebookStrategy.validate() called ---');
+    this.logger.debug({
+      message: 'FacebookStrategy.validate called',
+      context: { operation: 'oauth_validate', provider: 'facebook' },
+    });
 
     const { id, emails, displayName, name } = profile; // Destructure profile data
     const userEmail = emails && emails.length > 0 ? emails[0].value : null;
@@ -51,7 +56,11 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
         : 'Facebook User');
 
     if (!userEmail) {
-      console.error('Facebook profile missing email:', profile);
+      this.logger.error({
+        message: 'Facebook profile missing email',
+        context: { operation: 'oauth_validate', provider: 'facebook' },
+        error: new Error('Missing email'),
+      });
       return done(new Error('Facebook profile missing email.'), null);
     }
 
@@ -63,8 +72,12 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       );
       done(null, { user, provider: 'facebook', socialEmail: userEmail });
     } catch (err) {
-      console.error('Error during Facebook social user validation:', err);
-      done(err, false); // Pass the error to Passport, indicating authentication failure
+      this.logger.error({
+        message: 'Error during Facebook social user validation',
+        context: { operation: 'oauth_validate', provider: 'facebook' },
+        error: err as any,
+      });
+      done(err, false);
     }
   }
 }

@@ -1,5 +1,6 @@
 export interface ProductImageOutput {
-  url: string;
-  altText: string;
-  order: number;
+  id: bigint;
+  img_url: string;
+  altText: string | null;
+  product_id: bigint;
 }

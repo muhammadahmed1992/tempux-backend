@@ -133,12 +133,12 @@ export class ProxyMiddleware implements NestMiddleware {
           };
 
           if (!(response instanceof Socket)) {
-            (response as Response)
+            response
               .status(status)
               .header('Content-Type', 'application/json')
               .send(JSON.stringify(errorPayload));
           } else {
-            (response as Socket).destroy();
+            response.destroy();
           }
         },
       },

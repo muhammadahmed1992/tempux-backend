@@ -1,12 +1,12 @@
-import { HttpStatus } from "@nestjs/common";
-import Meta from "./meta";
+import { HttpStatus } from '@nestjs/common';
+import Meta from './meta';
 
 export default class ApiResponse<T> {
   constructor(
-    response: T,
     statusCode: number = HttpStatus.OK,
     message: string | string[],
-    meta?: Meta
+    response: T,
+    meta?: Meta,
   ) {
     this.message = message;
     this.data = response;

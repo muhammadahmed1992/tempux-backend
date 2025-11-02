@@ -3,10 +3,14 @@ import { GlobalConfigKeys } from '@Common/enums/global-config-keys';
 import { StaticConfiguration } from '@Common/static.configurations.keys';
 import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { GlobalConfigurationRepository } from './global.configuration.repository';
+import { AppLoggerService } from '@Common/logging';
 
 @Injectable()
 export class GlobalConfigurationService implements OnModuleInit {
-  constructor(private readonly repository: GlobalConfigurationRepository) {}
+  constructor(
+    private readonly repository: GlobalConfigurationRepository,
+    private readonly logger: AppLoggerService,
+  ) { }
 
   async onModuleInit() {
     this.loadInitialConfigs();
@@ -34,12 +38,15 @@ export class GlobalConfigurationService implements OnModuleInit {
       StaticConfiguration.set(c.key, Number(c.value));
     });
 
-    console.log(`Configs loaded`, {
-      viewership: StaticConfiguration.viewershipWindowHours,
-      newArrival: StaticConfiguration.newArrivalWindowHours,
-      popular: StaticConfiguration.popularWindowHours,
-      bestSeller: StaticConfiguration.bestSellerWindowHours,
-      platfromCommission: StaticConfiguration.platformCommission,
+    this.logger.info({
+      message: `Configs loaded`,
+      context: {
+        viewership: StaticConfiguration.viewershipWindowHours,
+        newArrival: StaticConfiguration.newArrivalWindowHours,
+        popular: StaticConfiguration.popularWindowHours,
+        bestSeller: StaticConfiguration.bestSellerWindowHours,
+        platfromCommission: StaticConfiguration.platformCommission,
+      },
     });
   }
 

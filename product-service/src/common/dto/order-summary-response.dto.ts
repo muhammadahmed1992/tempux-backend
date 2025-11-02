@@ -1,8 +1,7 @@
-export interface OrderSummaryItemDTO {
+export interface OrderSummaryProductDTO {
   productId: bigint;
-  itemId: bigint;
   quantity: number;
-  price: number;
+  sales_price: number;
   discount: number;
   subtotal: number;
   taxAmount: number;
@@ -10,14 +9,14 @@ export interface OrderSummaryItemDTO {
   total: number;
   symb: string;
 }
-export interface TaxLineItemDTO {
+export interface TaxLineDTO {
   taxName: string;
   amount: number;
 }
 export interface OrderSummaryDTO {
-  items: OrderSummaryItemDTO[];
+  products: OrderSummaryProductDTO[];
   subtotal: number;
   totalDiscount: number;
-  taxSummary: TaxLineItemDTO[];
+  taxSummary: TaxLineDTO[];
   grandTotal: number;
 }

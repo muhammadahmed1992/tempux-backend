@@ -22,6 +22,30 @@ function generateOTPAndExpiry() {
 async function main() {
   console.log('🚀 Starting database seeding...');
 
+  // Seed address types first
+  const addressTypes = [
+    { id: 1n, name: 'PRIMARY'   },
+    { id: 2n, name: 'SHIPPING'  },
+    { id: 3n, name: 'BILLING'  },
+    { id: 4n, name: 'WAREHOUSE' },
+  ];
+
+  console.log('Seeding Address Types...');
+  for (const addressType of addressTypes) {
+    await prisma.addressType.upsert({
+      where: { id: addressType.id },
+      update: { name: addressType.name },
+      create: {
+        id: addressType.id,
+        name: addressType.name,
+      },
+    });
+    console.log(
+      `- Upserted Address Type: ${addressType.name} (ID: ${addressType.id})`,
+    );
+  }
+  console.log('Address Types seeding complete.');
+
   // Seed roles
   const roles = [
     { id: 1n, name: 'Super Admin' },
@@ -172,7 +196,14 @@ async function main() {
   }
   console.log('Role Access Management seeding complete.');
 
-  // Seed example users
+  // Get address type IDs for mapping
+  const addressTypeMap = new Map();
+  const addressTypeRecords = await prisma.addressType.findMany();
+  for (const addressType of addressTypeRecords) {
+    addressTypeMap.set(addressType.name, addressType.id);
+  }
+
+  // Seed example users with addresses
   const users = [
     {
       email: 'superadmin@mailinator.com',
@@ -180,6 +211,19 @@ async function main() {
       fullName: 'Super Admin Full',
       roleId: 1n, // Super Admin
       password: 'SuperAdmin!123',
+      addresses: [
+        {
+          address_type: 'PRIMARY',
+          label: 'Main Office',
+          address_line1: '123 Admin Street',
+          address_line2: 'Suite 100',
+          city: 'New York',
+          state: 'NY',
+          postal_code: '10001',
+          country_code: 'US',
+          is_default: true,
+        },
+      ],
     },
     {
       email: 'admin@mailinator.com',
@@ -187,6 +231,28 @@ async function main() {
       fullName: 'Admin Full',
       roleId: 2n, // Admin
       password: 'AdminUser@456',
+      addresses: [
+        {
+          address_type: 'PRIMARY',
+          label: 'Home',
+          address_line1: '456 Admin Avenue',
+          city: 'Los Angeles',
+          state: 'CA',
+          postal_code: '90210',
+          country_code: 'US',
+          is_default: true,
+        },
+        {
+          address_type: 'SHIPPING',
+          label: 'Work',
+          address_line1: '789 Business Blvd',
+          city: 'Los Angeles',
+          state: 'CA',
+          postal_code: '90211',
+          country_code: 'US',
+          is_default: false,
+        },
+      ],
     },
     {
       email: 'buyer@mailinator.com',
@@ -194,6 +260,49 @@ async function main() {
       fullName: 'Buyer Full',
       roleId: 3n, // Buyer
       password: 'BuyerPass#789',
+      addresses: [
+        {
+          address_type: 'PRIMARY',
+          label: 'Home',
+          address_line1: '321 Buyer Lane',
+          city: 'Chicago',
+          state: 'IL',
+          postal_code: '60601',
+          country_code: 'US',
+          is_default: true,
+        },
+        {
+          address_type: 'SHIPPING',
+          label: 'Home Delivery',
+          address_line1: '321 Buyer Lane',
+          city: 'Chicago',
+          state: 'IL',
+          postal_code: '60601',
+          country_code: 'US',
+          is_default: true,
+        },
+        {
+          address_type: 'SHIPPING',
+          label: 'Office',
+          address_line1: '654 Work Plaza',
+          address_line2: 'Floor 5',
+          city: 'Chicago',
+          state: 'IL',
+          postal_code: '60602',
+          country_code: 'US',
+          is_default: false,
+        },
+        {
+          address_type: 'BILLING',
+          label: 'Billing Address',
+          address_line1: '321 Buyer Lane',
+          city: 'Chicago',
+          state: 'IL',
+          postal_code: '60601',
+          country_code: 'US',
+          is_default: true,
+        },
+      ],
     },
     {
       email: 'seller@mailinator.com',
@@ -201,10 +310,63 @@ async function main() {
       fullName: 'Seller Full',
       roleId: 4n, // Seller
       password: 'SellerPwd$012',
+      addresses: [
+        {
+          address_type: 'PRIMARY',
+          label: 'Home',
+          address_line1: '987 Seller Street',
+          city: 'Miami',
+          state: 'FL',
+          postal_code: '33101',
+          country_code: 'US',
+          is_default: true,
+        },
+        {
+          address_type: 'WAREHOUSE',
+          label: 'Warehouse',
+          address_line1: '111 Storage Way',
+          address_line2: 'Unit B',
+          city: 'Miami',
+          state: 'FL',
+          postal_code: '33102',
+          country_code: 'US',
+          is_default: true,
+        },
+        {
+          address_type: 'WAREHOUSE',
+          label: 'Store Location',
+          address_line1: '222 Retail Road',
+          city: 'Miami',
+          state: 'FL',
+          postal_code: '33103',
+          country_code: 'US',
+          is_default: false,
+        },
+        {
+          address_type: 'SHIPPING',
+          label: 'Personal Delivery',
+          address_line1: '987 Seller Street',
+          city: 'Miami',
+          state: 'FL',
+          postal_code: '33101',
+          country_code: 'US',
+          is_default: true,
+        },
+        {
+          address_type: 'BILLING',
+          label: 'Business Billing',
+          address_line1: '333 Business Center',
+          city: 'Miami',
+          state: 'FL',
+          postal_code: '33104',
+          country_code: 'US',
+          is_default: true,
+        },
+      ],
     },
   ];
 
-  console.log('Seeding Users...');
+  console.log('Seeding Users and Addresses...');
   for (const user of users) {
     const hashedPassword = await bcrypt.hash(user.password, SALT_ROUND);
     const otpResponse = generateOTPAndExpiry();
@@ -246,9 +408,92 @@ async function main() {
       },
     });
 
-    console.log(`- Upserted User: ${user.email} with Role ID: ${user.roleId}`);
+    // Delete existing addresses for this user (for clean re-seeding)
+    await prisma.address.deleteMany({
+      where: { user_id: createdUser.id },
+    });
+
+    // Create addresses for the user
+    for (const addressData of user.addresses) {
+      const addressTypeId = addressTypeMap.get(addressData.address_type);
+      if (!addressTypeId) {
+        console.error(`Address type '${addressData.address_type}' not found!`);
+        continue;
+      }
+
+      await prisma.address.create({
+        data: {
+          user_id: createdUser.id,
+          address_type_id: addressTypeId,
+          label: addressData.label,
+          address_line1: addressData.address_line1,
+          address_line2: addressData.address_line2 || null,
+          city: addressData.city,
+          state: addressData.state,
+          postal_code: addressData.postal_code,
+          country_code: addressData.country_code,
+          is_default: addressData.is_default,
+        },
+      });
+      console.log(
+        `  - Created ${addressData.address_type} address: ${addressData.label}`,
+      );
+    }
+
+    console.log(
+      `- Upserted User: ${user.email} with Role ID: ${user.roleId} and ${user.addresses.length} addresses`,
+    );
   }
-  console.log('Users seeding complete.');
+  console.log('Users and Addresses seeding complete.');
+
+  // Seed some seller profile details for sellers
+  const sellerUsers = await prisma.user.findMany({
+    where: {
+      user_roles: {
+        some: {
+          role: {
+            name: 'Seller',
+          },
+        },
+      },
+    },
+  });
+
+  console.log('Seeding Seller Profile Details...');
+  for (const seller of sellerUsers) {
+    // Check if seller profile already exists
+    const existingProfile = await prisma.sellerProfileDetail.findFirst({
+      where: { user_id: seller.id },
+    });
+
+    if (!existingProfile) {
+      await prisma.sellerProfileDetail.create({
+        data: {
+          user_id: seller.id,
+          brand_name: `${seller.name}'s Store`,
+          brand_description: `Quality products from ${seller.name}`,
+          vat_number: `VAT${seller.id}123456`,
+          location_from: `${seller.name}'s Location`,
+          is_private: false,
+        },
+      });
+      console.log(`- Created seller profile for: ${seller.name}`);
+    } else {
+      // Update existing profile
+      await prisma.sellerProfileDetail.update({
+        where: { id: existingProfile.id },
+        data: {
+          brand_name: `${seller.name}'s Store`,
+          brand_description: `Quality products from ${seller.name}`,
+          vat_number: `VAT${seller.id}123456`,
+          location_from: `${seller.name}'s Location`,
+          is_private: false,
+        },
+      });
+      console.log(`- Updated seller profile for: ${seller.name}`);
+    }
+  }
+  console.log('Seller Profile Details seeding complete.');
 
   console.log('✅ All seeding operations complete!');
 }
