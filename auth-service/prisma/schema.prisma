@@ -8,15 +8,15 @@ datasource db {
 }
 
 model RoleAccessManagement {
-  id                BigInt    @id @default(autoincrement())
-  role_id           BigInt    @db.BigInt
-  access_management_id BigInt @db.BigInt
-  description       String?   @db.VarChar(200)
-  created_at        DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
-  is_deleted        Boolean   @default(false)
+  id                   BigInt   @id @default(autoincrement())
+  role_id              BigInt   @db.BigInt
+  access_management_id BigInt   @db.BigInt
+  description          String?  @db.VarChar(200)
+  created_at           DateTime @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime @default(now()) @db.Timestamptz(6)
+  is_deleted           Boolean  @default(false)
 
-  role              Roles     @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role              Roles            @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   access_management AccessManagement @relation(fields: [access_management_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([role_id, access_management_id])
@@ -24,12 +24,12 @@ model RoleAccessManagement {
 }
 
 model AccessManagement {
-  id           BigInt    @id @default(autoincrement())
-  access       String    @db.VarChar(50)
-  description  String?   @db.VarChar(200)
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
-  is_deleted   Boolean   @default(false)
+  id          BigInt   @id @default(autoincrement())
+  access      String   @db.VarChar(50)
+  description String?  @db.VarChar(200)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @default(now()) @db.Timestamptz(6)
+  is_deleted  Boolean  @default(false)
 
   role_access_management RoleAccessManagement[]
 
@@ -38,7 +38,7 @@ model AccessManagement {
 
 model SavedSearch {
   id           BigInt    @id @default(autoincrement())
-  user_id      BigInt     @db.BigInt
+  user_id      BigInt    @db.BigInt
   search_query Json
   created_at   DateTime? @default(now()) @db.Timestamptz(6)
   is_deleted   Boolean   @default(false)
@@ -64,73 +64,118 @@ model SellerProfileDetail {
 }
 
 model SellerProfileRating {
-  id               BigInt   @id @default(autoincrement())
-  rating_name      String   @db.VarChar(50)
-  rating_value     Decimal? @db.Decimal(2, 1)
-  seller_id        BigInt?  @db.BigInt
-  reviewed_by      BigInt?  @db.BigInt
-  created_at       DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime? @db.Timestamptz(6)
-  is_deleted       Boolean   @default(false)
-  reviewedByUser   User?     @relation("seller_profile_rating_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  sellerUser       User?     @relation("seller_profile_rating_seller_idTousers", fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id             BigInt    @id @default(autoincrement())
+  rating_name    String    @db.VarChar(50)
+  rating_value   Decimal?  @db.Decimal(2, 1)
+  seller_id      BigInt?   @db.BigInt
+  reviewed_by    BigInt?   @db.BigInt
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+  is_deleted     Boolean   @default(false)
+  reviewedByUser User?     @relation("seller_profile_rating_reviewed_byTousers", fields: [reviewed_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sellerUser     User?     @relation("seller_profile_rating_seller_idTousers", fields: [seller_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("seller_profile_rating")
 }
 
 model Roles {
-  id             BigInt    @id @default(autoincrement())
-  name           String    @unique @db.VarChar(20)
-  created_at     DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at     DateTime  @default(now()) @db.Timestamptz(6)
-  is_deleted     Boolean   @default(false)
+  id         BigInt   @id @default(autoincrement())
+  name       String   @unique @db.VarChar(20)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  is_deleted Boolean  @default(false)
 
-  user_roles     UserRoles[]
+  user_roles             UserRoles[]
   role_access_management RoleAccessManagement[]
 
   @@map("roles")
 }
 
 model UserRoles {
-  id           BigInt    @id @default(autoincrement())
-  user_id      BigInt     @db.BigInt
-  role_id      BigInt    @db.BigInt
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
-  is_deleted   Boolean   @default(false)
+  id         BigInt   @id @default(autoincrement())
+  user_id    BigInt   @db.BigInt
+  role_id    BigInt   @db.BigInt
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  is_deleted Boolean  @default(false)
 
-  user         User      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  role         Roles     @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user User  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  role Roles @relation(fields: [role_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([user_id, role_id])
   @@map("user_roles")
 }
 
+// New Address Types Table
+model AddressType {
+  id         BigInt   @id @default(autoincrement())
+  name       String   @unique @db.VarChar(20) // PRIMARY, SHIPPING, BILLING, WAREHOUSE
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  is_deleted Boolean  @default(false)
+
+  addresses Address[]
+
+  @@map("address_types")
+}
+
+// Updated Address Model
+model Address {
+  id              BigInt  @id @default(autoincrement())
+  user_id         BigInt  @db.BigInt
+  address_type_id BigInt  @db.BigInt
+  label           String? @db.VarChar(50) // e.g., "Home", "Office", "Warehouse"
+
+  // Address fields
+  address_line1 String  @db.VarChar(200)
+  address_line2 String? @db.VarChar(200)
+  city          String  @db.VarChar(100)
+  state         String  @db.VarChar(100)
+  postal_code   String  @db.VarChar(20)
+  country_code  String  @db.VarChar(10)
+
+  // Additional fields
+  is_default Boolean  @default(false)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  is_deleted Boolean  @default(false)
+
+  // Relations
+  user         User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  address_type AddressType @relation(fields: [address_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("addresses")
+}
+
 model User {
-  id           BigInt     @id @default(autoincrement())
-  name         String     @db.VarChar(100)
-  email        String     @db.VarChar(254) @unique
-  full_name    String?    @db.VarChar(100)
-  password     String     @db.VarChar(150)
-  telephone    String?    @db.VarChar(15)
-  address      String?    @db.VarChar(150)
-  created_at   DateTime   @default(now()) @db.Timestamptz(6)
-  updated_at   DateTime   @default(now()) @db.Timestamptz(6)
-  is_deleted   Boolean    @default(false)
-  otp          String?    @db.Char(60)
-  otp_expires_at DateTime?  @db.Timestamptz(6)
-  otp_verified Boolean    @default(false)
-  parent_Id    BigInt?
-  googleId     String?    @db.VarChar(254)
-  facebookId   String?    @db.VarChar(254)
-  onboarded    Boolean    @default(false)
-  is_seller_approved  Boolean   @default(false)
+  id                       BigInt    @id @default(autoincrement())
+  name                     String    @db.VarChar(100)
+  email                    String    @unique @db.VarChar(254)
+  full_name                String?   @db.VarChar(100)
+  password                 String    @db.VarChar(150)
+  telephone                String?   @db.VarChar(15)
+  address                  String?   @db.VarChar(150)
+  created_at               DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime  @default(now()) @db.Timestamptz(6)
+  is_deleted               Boolean   @default(false)
+  otp                      String?   @db.Char(60)
+  otp_expires_at           DateTime? @db.Timestamptz(6)
+  otp_verified             Boolean   @default(false)
+  parent_Id                BigInt?
+  googleId                 String?   @db.VarChar(254)
+  facebookId               String?   @db.VarChar(254)
+  onboarded                Boolean   @default(false)
+  is_seller_approved       Boolean   @default(false)
+  is_newsletter_subscribed Boolean   @default(false)
 
   saved_searches        SavedSearch[]
   seller_profile_detail SellerProfileDetail[]
   reviewedRatings       SellerProfileRating[] @relation("seller_profile_rating_reviewed_byTousers")
   sellerRatings         SellerProfileRating[] @relation("seller_profile_rating_seller_idTousers")
   user_roles            UserRoles[]
+
+  addresses Address[]
 
   @@map("users")
 }

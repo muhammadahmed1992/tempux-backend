@@ -9,7 +9,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { HashidsService } from '@HashIds/hashids.service';
-
+import { AppLoggerService } from '@Common/logging';
 /**
  * A generic interceptor to handle Hashids decoding on incoming requests
  * and encoding on outgoing responses. This centralizes ID obfuscation logic,
@@ -17,7 +17,10 @@ import { HashidsService } from '@HashIds/hashids.service';
  */
 @Injectable()
 export class HashidsInterceptor implements NestInterceptor {
-  constructor(private readonly hashidsService: HashidsService) {}
+  constructor(
+    private readonly hashidsService: HashidsService,
+    private readonly logger: AppLoggerService,
+  ) { }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
@@ -78,8 +81,13 @@ export class HashidsInterceptor implements NestInterceptor {
           const decodedId = this.hashidsService.decode(value);
           // Only replace the ID if the decoding was successful
           // TODO: Implement appropriate logging.
-          console.log(`for logging purpose`);
-          console.log(`key: ${key} value: ${decodedId}`);
+          this.logger.info({
+            message: 'Decoded ID for logging purpose',
+            context: {
+              key,
+              value: decodedId,
+            },
+          });
           if (decodedId !== null) {
             data[key] = decodedId;
           }

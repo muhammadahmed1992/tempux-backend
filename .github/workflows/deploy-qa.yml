@@ -45,6 +45,7 @@ jobs:
             cd "$PROJECT_DIR/api-gateway" && npm install && npm run build || { echo "Error: api-gateway failed. Exiting."; exit 1; }
             cd "$PROJECT_DIR/auth-service" && npm install || { echo "Error: auth-service failed. Exiting."; exit 1; }
             cd "$PROJECT_DIR/product-service" && npm install || { echo "Error: product-service failed. Exiting."; exit 1; }
+            cd "$PROJECT_DIR/order-service" && npm install || { echo "Error: order-service failed. Exiting."; exit 1; }
             cd "$PROJECT_DIR"
 
             ECOSYSTEM_FILE="ecosystem.config.js"
@@ -77,8 +78,24 @@ jobs:
             sed -i.bak "s#INJECT_DATABASE_URL_DEV_USERS#${{ secrets.DATABASE_URL_DEV_USERS }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_DATABASE_URL_DEV_PRODUCT#${{ secrets.DATABASE_URL_DEV_PRODUCT }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_HASHIDS_SALT#${{ secrets.HASHIDS_SALT }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INECT_ALLOWED_ORIGINS#${{ secrets.ALLOWED_ORIGINS }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_ALLOWED_ORIGINS#${{ secrets.ALLOWED_ORIGINS }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_DNS#${{ secrets.DNS }}#g" "$ECOSYSTEM_FILE"
+
+            # Order Service environment variables
+            sed -i.bak "s#INJECT_ORDER_SERVICE_BASE_URL#${{ secrets.ORDER_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_ORDER_PORT#${{ secrets.ORDER_PORT }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_AUTH_SERVICE_URL#${{ secrets.AUTH_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_PRODUCT_SERVICE_URL#${{ secrets.PRODUCT_SERVICE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_DATABASE_URL_DEV_ORDER#${{ secrets.DATABASE_URL_DEV_ORDER }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_STRIPE_SECRET_KEY#${{ secrets.STRIPE_SECRET_KEY }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_STRIPE_WEBHOOK_SECRET#${{ secrets.STRIPE_WEBHOOK_SECRET }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_STRIPE_CONNECT_ACCOUNT_ID#${{ secrets.STRIPE_CONNECT_ACCOUNT_ID }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FEDEX_CLIENT_ID#${{ secrets.FEDEX_CLIENT_ID }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FEDEX_CLIENT_SECRET#${{ secrets.FEDEX_CLIENT_SECRET }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FEDEX_ACCOUNT_NUMBER#${{ secrets.FEDEX_ACCOUNT_NUMBER }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FEDEX_API_BASE_URL#${{ secrets.FEDEX_API_BASE_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_FEDEX_OAUTH_URL#${{ secrets.FEDEX_OAUTH_URL }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_LOG_FILE_PATH#${{ secrets.LOG_FILE_PATH }}#g" "$ECOSYSTEM_FILE"
 
             BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
             TIMESTAMP=$(date +%Y%m%d%H%M%S)
@@ -138,5 +155,36 @@ jobs:
             npm run build
             cd "$PROJECT_DIR"
 
-            echo "👉 Start/Reload PM2 processes"
+
+            echo "👉 Prisma migrate + seed for order-service"
+            cd "$PROJECT_DIR/order-service"
+
+            # Step 1: Reset the DB only if flag is true
+            if [ "${{ secrets.RESET_DB }}" = "true" ]; then
+              echo "🔁 Resetting and reseeding order-service database..."
+              DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+              npx prisma migrate reset --force --skip-seed --schema prisma/schema.prisma || exit 1
+            fi
+
+            # Step 2: Run migrate deploy (for applying migrations on existing DB)
+            DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+            npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
+
+            # Step 3: Generate Prisma client
+            DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+            npx prisma generate --schema prisma/schema.prisma || exit 1
+
+            # Step 4: Seed only if RE_RUN_SEED is true
+            if [ "${{ secrets.RE_RUN_SEED }}" = "true" ]; then
+              echo "🌱 Seeding order-service database..."
+              DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+              npx prisma db seed --schema prisma/schema.prisma || exit 1
+            fi
+
+            # Step 5: Build
+            npm run build
+            cd "$PROJECT_DIR"
+
+            echo "👉
+            Start/Reload PM2 processes"
             pm2 start "$ECOSYSTEM_FILE" --update-env --env production || exit 1

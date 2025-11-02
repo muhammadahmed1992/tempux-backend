@@ -8,29 +8,19 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 
-/**
- * Interface for the raw incoming query parameters (before transformation).
- * This helps with type safety for the input to the pipe.
- */
 interface RawQueryParams {
   page?: string;
   pageSize?: string;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
   select?: string;
-  // The filter parameter is automatically an object from the query parser
-  // when using NestJS, but we can also handle a JSON string just in case.
   filter?: string | Record<string, any>;
   expression?: CustomFilter;
   type?: string;
   query?: string;
-  // This captures all other query parameters that don't match the above
   [key: string]: any;
 }
 
-/**
- * Interface for the transformed output object, ready for repository consumption.
- */
 export interface TransformedQuery {
   page: number;
   pageSize: number;
@@ -81,15 +71,20 @@ const operatorMap: Record<string, PrismaOperator> = {
   not: 'NOT',
 };
 
-/**
- * A comprehensive NestJS pipe to parse and transform various query parameters
- * into a structured object suitable for Prisma repository methods.
- */
+enum DataType {
+  STRING = 'string',
+  NUMBER = 'number',
+  BOOLEAN = 'boolean',
+  DATE = 'date',
+  LOOKUP = 'lookup',
+}
+
 @Injectable()
 export class ParseQueryPipe
   implements PipeTransform<RawQueryParams, TransformedQuery>
 {
   constructor(private readonly hashIds: HashidsService) {}
+
   transform(
     value: RawQueryParams,
     metadata: ArgumentMetadata,
@@ -98,7 +93,8 @@ export class ParseQueryPipe
       return value as any;
     }
 
-    // Capture everything not explicitly defined
+    console.log('Raw query params:', value);
+
     const {
       page,
       pageSize,
@@ -116,7 +112,6 @@ export class ParseQueryPipe
       pageSize: Number(pageSize) || Constants.MAX_PAGE_SIZE,
     };
 
-    // Add type and query if they exist
     if (type) {
       transformed.type = type;
     }
@@ -124,7 +119,7 @@ export class ParseQueryPipe
       transformed.query = query;
     }
 
-    // 1. Parse and transform 'orderBy'
+    // Parse orderBy
     if (sortBy && sortDir) {
       if (sortDir !== 'asc' && sortDir !== 'desc') {
         throw new BadRequestException(
@@ -133,11 +128,10 @@ export class ParseQueryPipe
       }
       transformed.orderBy = { [sortBy]: sortDir };
     } else {
-      // Default ordering to descending by created_at, which is more common
       transformed.orderBy = { created_at: 'desc' };
     }
 
-    // 2. Parse and transform 'select'
+    // Parse select
     if (select) {
       if (typeof select !== 'string') {
         throw new BadRequestException(
@@ -153,21 +147,21 @@ export class ParseQueryPipe
       }, {});
     }
 
-    // 3. Parse and transform 'filter'
+    // Parse filters
+    console.log('Filter params to process:', filterQueryParams);
     const where = this.parseGroupedFilter(filterQueryParams);
+    console.log('Parsed where object:', JSON.stringify(where, null, 2));
 
     if (Object.keys(where).length > 0) {
-      // Assign the transformed filter to 'where'. Also appending is_deleted: false by default.
       transformed.where = {
-        AND: [where], // Wrap existing filters in an AND for clean combination
+        ...where,
         is_deleted: false,
       };
     } else {
-      // If no custom filters, just apply the default 'is_deleted: false'
       transformed.where = { is_deleted: false };
     }
 
-    // 4. Parse custom category expression
+    // Parse custom category expression
     if (expression) {
       if (!Object.values(CustomFilter).includes(expression)) {
         throw new BadRequestException(
@@ -179,15 +173,14 @@ export class ParseQueryPipe
       transformed.customCategoryExpression = expression;
     }
 
+    console.log(
+      'Final transformed where:',
+      JSON.stringify(transformed.where, null, 2),
+    );
+
     return transformed;
   }
 
-  /**
-   * Recursively builds a nested Prisma filter object from query parameter parts.
-   * @param root The current object being built.
-   * @param parts The remaining parts of the filter key (e.g., ['product', 'productTags', 'every', 'tag_id', 'eq']).
-   * @param rawValue The value from the query parameter.
-   */
   private buildNestedFilter(
     root: Record<string, any>,
     parts: string[],
@@ -197,31 +190,37 @@ export class ParseQueryPipe
       return;
     }
 
-    /**
-     * Here I'm replacing product_id's value from obfuscated product_public_id with actual DB value by
-     * decoding using hashIds for now.
-     */
+    console.log(
+      'Building nested filter with parts:',
+      parts,
+      'value:',
+      rawValue,
+    );
 
     const currentPart = parts.shift()!;
+
+    // Handle product_id decoding
     if (currentPart === 'product_id' || currentPart === 'productId') {
       rawValue = this.hashIds.decode(rawValue);
     }
+
+    // Remove the EAV detection from here since we handle it in parseGroupedFilter
+
     const prismaOperator = operatorMap[currentPart];
 
-    // Check for logical operators (AND, OR, NOT)
+    // Handle logical operators
     if (
       prismaOperator === 'AND' ||
       prismaOperator === 'OR' ||
       prismaOperator === 'NOT'
     ) {
-      const isArray = !isNaN(Number(parts[0])); // Check if the next part is a number index
+      const isArray = !isNaN(Number(parts[0]));
       if (isArray) {
         const index = Number(parts.shift());
         root[prismaOperator] ??= [];
         root[prismaOperator][index] ??= {};
         this.buildNestedFilter(root[prismaOperator][index], parts, rawValue);
       } else {
-        // This handles ?filter[or][title][eq]=...
         root[prismaOperator] ??= [];
         const newObj = {};
         root[prismaOperator].push(newObj);
@@ -230,7 +229,7 @@ export class ParseQueryPipe
       return;
     }
 
-    // Check for relation filters (every, some, none)
+    // Handle relation filters
     if (
       prismaOperator === 'every' ||
       prismaOperator === 'some' ||
@@ -241,16 +240,15 @@ export class ParseQueryPipe
       return;
     }
 
-    // This is the final field or nested relation
+    // Handle final field or nested relation
     const nextPartIsOperator = parts.length === 1 && operatorMap[parts[0]];
     const nextPartIsMode =
-      parts.length === 2 && operatorMap[parts[0]] && parts[1] === 'in'; // e.g., 'eq' + 'in' for insensitive mode
+      parts.length === 2 && operatorMap[parts[0]] && parts[1] === 'in';
 
     if (nextPartIsOperator || nextPartIsMode) {
       const operator = operatorMap[parts.shift()!];
       let value = this.parseValue(rawValue);
 
-      // Handle 'in' and 'notIn' which take an array
       if (operator === 'in' || operator === 'notIn') {
         value = String(value)
           .split(',')
@@ -259,30 +257,178 @@ export class ParseQueryPipe
 
       const condition: Record<string, any> = { [operator]: value };
 
-      // Handle case-insensitive mode
       if (parts.length > 0 && parts[0] === 'in') {
-        // This is for `[eq][in]` syntax
         if (
           ['equals', 'contains', 'startsWith', 'endsWith'].includes(operator)
         ) {
           condition.mode = 'insensitive';
         }
-        parts.shift(); // consume the mode part
+        parts.shift();
       }
 
-      // Assign the final condition to the field
       root[currentPart] = condition;
     } else {
-      // Keep going down the chain for nested relations
       root[currentPart] ??= {};
       this.buildNestedFilter(root[currentPart], parts, rawValue);
     }
   }
 
-  /**
-   * Parses and transforms the query parameters into a structured 'where' object.
-   * This is the entry point for filter parsing.
-   */
+  // Also update the buildEAVFilter method to handle the correct parsing:
+
+  private buildEAVFilter(
+    root: Record<string, any>,
+    parts: string[],
+    rawValue: any,
+  ) {
+    console.log('Building EAV filter with parts:', parts, 'value:', rawValue);
+
+    // For filter[attribute][10][number][gte]=40
+    // parts should be ['10', 'number', 'gte']
+    if (parts.length < 3) {
+      throw new BadRequestException(
+        'Invalid EAV filter format. Expected: attribute[{attributeId}][{dataType}][{operator}]',
+      );
+    }
+
+    const attributeId = parts.shift()!; // '10'
+    const dataType = parts.shift()! as DataType; // 'number'
+    const operator = parts.shift()!; // 'gte'
+
+    console.log('EAV filter components:', {
+      attributeId,
+      dataType,
+      operator,
+      rawValue,
+    });
+
+    // Validate data type
+    if (!Object.values(DataType).includes(dataType as DataType)) {
+      throw new BadRequestException(
+        `Invalid data type "${dataType}". Allowed values are: ${Object.values(
+          DataType,
+        ).join(', ')}`,
+      );
+    }
+
+    // Validate operator
+    const prismaOperator = operatorMap[operator];
+    if (!prismaOperator) {
+      throw new BadRequestException(
+        `Invalid operator "${operator}". Allowed values are: ${Object.keys(
+          operatorMap,
+        ).join(', ')}`,
+      );
+    }
+
+    // Parse value based on data type
+    let parsedValue = this.parseValueByDataType(rawValue, dataType);
+
+    // Handle array operators
+    if (prismaOperator === 'in' || prismaOperator === 'notIn') {
+      parsedValue = String(rawValue)
+        .split(',')
+        .map((v) => this.parseValueByDataType(v.trim(), dataType));
+    }
+
+    // Get the correct value field for this data type
+    const valueField = this.getValueFieldByDataType(dataType);
+
+    console.log('Value field:', valueField, 'parsed value:', parsedValue);
+
+    // Build the condition for the specific value field
+    const valueCondition: Record<string, any> = {
+      [prismaOperator]: parsedValue,
+    };
+
+    // Handle case-insensitive mode for string operations
+    if (
+      dataType === DataType.STRING &&
+      ['equals', 'contains', 'startsWith', 'endsWith'].includes(prismaOperator)
+    ) {
+      valueCondition.mode = 'insensitive';
+    }
+
+    // Build the complete EAV filter structure
+    const eavFilter = {
+      attributeValues: {
+        some: {
+          AND: [
+            {
+              attributeCategoryMapping: {
+                attribute: {
+                  id: parseInt(attributeId, 10),
+                  is_deleted: false,
+                },
+                is_deleted: false,
+              },
+            },
+            {
+              [valueField]: valueCondition,
+            },
+            {
+              is_deleted: false,
+            },
+          ],
+        },
+      },
+    };
+
+    console.log('Built EAV filter:', JSON.stringify(eavFilter, null, 2));
+
+    // Add to root - always add to AND array for EAV filters
+    if (!root.AND) {
+      root.AND = [];
+    }
+    root.AND.push(eavFilter);
+  }
+
+  private getValueFieldByDataType(dataType: string): string {
+    switch (dataType) {
+      case DataType.STRING:
+        return 'string_value';
+      case DataType.NUMBER:
+        return 'number_value';
+      case DataType.BOOLEAN:
+        return 'boolean_value';
+      case DataType.DATE:
+        return 'date_value';
+      case DataType.LOOKUP:
+        return 'lookup_id';
+      default:
+        throw new BadRequestException(`Unsupported data type: ${dataType}`);
+    }
+  }
+
+  private parseValueByDataType(value: string, dataType: string): any {
+    switch (dataType) {
+      case DataType.STRING:
+        return value;
+      case DataType.NUMBER:
+      case DataType.LOOKUP:
+        const num = Number(value);
+        if (isNaN(num)) {
+          throw new BadRequestException(`Invalid number value: ${value}`);
+        }
+        return num;
+      case DataType.BOOLEAN:
+        if (value === 'true') return true;
+        if (value === 'false') return false;
+        throw new BadRequestException(
+          `Invalid boolean value: ${value}. Must be 'true' or 'false'.`,
+        );
+      case DataType.DATE:
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          throw new BadRequestException(
+            `Invalid date value: ${value}. Must be a valid ISO date string.`,
+          );
+        }
+        return date;
+      default:
+        throw new BadRequestException(`Unsupported data type: ${dataType}`);
+    }
+  }
+
   private parseGroupedFilter(
     flatFilter: Record<string, any>,
   ): Record<string, any> {
@@ -292,24 +438,40 @@ export class ParseQueryPipe
     for (const [key, rawValue] of Object.entries(flatFilter)) {
       if (!key.startsWith('filter')) continue;
 
+      console.log('Processing filter key:', key, 'value:', rawValue);
+
       const parts = key.match(/\[(.+?)\]/g)?.map((x) => x.slice(1, -1));
       if (!parts) continue;
       parts.shift(); // remove 'filter'
 
-      // Check if the top-level is an implicit array (e.g., `filter[0]...`)
+      console.log('Filter parts after removing "filter":', parts);
+
+      // IMPORTANT: Check for EAV attribute filter BEFORE processing as array
+      // For filter[attribute][10][number][gte], parts = ['attribute', '10', 'number', 'gte']
+      if (parts.length >= 4 && parts[0] === 'attribute') {
+        console.log('Detected EAV attribute filter:', parts);
+        // Remove 'attribute' and pass the remaining parts
+        const eavParts = parts.slice(1); // ['10', 'number', 'gte']
+        this.buildEAVFilter(root, eavParts, rawValue);
+        continue;
+      }
+
+      // Check if the top-level is an implicit array (numeric index)
       if (!isNaN(Number(parts[0]))) {
         const index = Number(parts.shift());
         andGroup[index] ??= {};
         this.buildNestedFilter(andGroup[index], parts, rawValue);
       } else {
-        // This is a top-level key filter (e.g., `filter[name]...`)
         this.buildNestedFilter(root, parts, rawValue);
       }
     }
 
     if (andGroup.length > 0) {
-      // Merge the top-level AND group into the root
-      root.AND = andGroup;
+      if (root.AND) {
+        root.AND = [...root.AND, ...andGroup];
+      } else {
+        root.AND = andGroup;
+      }
     }
 
     return root;
@@ -318,9 +480,7 @@ export class ParseQueryPipe
   private parseValue(val: string): any {
     if (val === 'true') return true;
     if (val === 'false') return false;
-    // Check if it can be a number
     if (!isNaN(Number(val))) {
-      // Use BigInt for large numbers to prevent precision issues
       const num = Number(val);
       if (num > Number.MAX_SAFE_INTEGER || num < Number.MIN_SAFE_INTEGER) {
         return BigInt(val);

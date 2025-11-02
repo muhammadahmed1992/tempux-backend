@@ -6,10 +6,6 @@ export class OrderSummaryRequestDTO {
   productId!: bigint;
 
   @IsNotEmpty()
-  @IsNumber()
-  itemId!: bigint;
-
-  @IsNotEmpty()
   @Min(1, {
     message: `Quantity can't be 0.`,
   })

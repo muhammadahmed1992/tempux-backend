@@ -1,22 +1,15 @@
-import { ProductImageOutput } from './product-images-info.dto';
-
-export interface ProductSummaryOutputDTO {
-  id: BigInt;
-  name: string;
-  title: string | null;
-  averageRating: number;
-  price: number;
-  symbol: string;
-  colors: {
-    id: number;
-    name: string;
-    hexCode?: string;
-  }[];
-  images: ProductImageOutput[];
-  viewerShipCount: number;
-  model?: {
-    id: number;
-    title: string;
-    brand_id: number;
-  } | null;
+import { ProductImageOutput } from '@DTO/product-images-info.dto';
+export class ProductSummaryOutputDTO {
+  id!: bigint;
+  title!: string;
+  name!: string;
+  description!: string;
+  averageRating!: number;
+  sales_price!: number;
+  symbol!: string;
+  currency_id!: number;
+  viewerShipCount!: number;
+  images!: ProductImageOutput[];
+  model?: any;
+  productReviews?: any[];
 }

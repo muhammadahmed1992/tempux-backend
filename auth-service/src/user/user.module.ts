@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UserController } from '@User/user.controller';
 import { UserService } from '@User/services/user.service';
+import { AddressService } from '@User/services/address.service';
 import { GoogleStrategy } from './strategies/google-strategy';
 import { FacebookStrategy } from './strategies/facebook-strategy';
 import { UserRepository } from './users.repository';
@@ -11,6 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { SocialLoginService } from './services/social-login.service';
 import { UserCookieHandlerService } from './services/user-cookie.handler.service';
+import { AppLoggerService } from '../common/logging/logger.service';
 
 @Module({
   imports: [
@@ -31,12 +33,14 @@ import { UserCookieHandlerService } from './services/user-cookie.handler.service
   controllers: [UserController],
   providers: [
     UserService,
+    AddressService,
     GoogleStrategy,
     FacebookStrategy,
     UserRepository,
     EncryptionHelper,
     SocialLoginService,
     UserCookieHandlerService,
+    AppLoggerService,
   ],
 })
 export class UserModule {}

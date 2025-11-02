@@ -38,7 +38,6 @@ export class ReviewsService {
     where?: object,
     select?: object,
   ): Promise<ApiResponse<EnrichedReviewResponseDto[]>> {
-    console.log(select);
     const { data, totalCount } = await this.repository.findManyPaginated(
       pageNumber,
       pageSize,
@@ -54,7 +53,7 @@ export class ReviewsService {
     const userDetailsMap = await this.fetchUserDetailsInBatch(uniqueUserIds);
 
     // Enrich reviews with user details
-    const enrichedReviews: EnrichedReviewResponseDto[] = data.map((review) => ({
+    const enrichedReviews: EnrichedReviewResponseDto[] = data.map(( review) => ({
       review: review.review,
       ratings: review.ratings,
       user: userDetailsMap.get(review.reviewedBy.toString()) || {
@@ -91,7 +90,6 @@ export class ReviewsService {
     where?: object,
     select?: object,
   ): Promise<ApiResponse<EnrichedReviewResponseHomePageDto[]>> {
-    console.log(select);
     const { data, totalCount } = await this.repository.findManyPaginated(
       pageNumber,
       pageSize,
@@ -222,7 +220,7 @@ export class ReviewsService {
         result.updated_at.getTime() - result.created_at.getTime() < 1000);
     return ResponseHelper.CreateResponse<number>(
       Constants.REVIEW_MARKED_SUCCESSFULLy,
-      result.id,
+      Number(result.id),
       isCreated ? HttpStatus.CREATED : HttpStatus.NO_CONTENT,
     );
   }
@@ -240,7 +238,6 @@ export class ReviewsService {
       );
       return userDetailsMap;
     } catch (error) {
-      console.error('Failed to fetch user details for reviews:', error);
       // Decide how to handle this: return reviews without user data, throw error, etc.
       // For now, we'll proceed, and 'user' will be undefined for reviews where user data couldn't be fetched.
       throw new BadRequestException(

@@ -99,11 +99,7 @@ export class ReviewsRepository extends BaseRepository<
         reviewedBy: userId,
       },
       create: {
-        product: {
-          connect: {
-            id: review.productId,
-          },
-        },
+        product_id: review.productId,
         reviewedBy: userId,
         created_by: userId,
         review: review.review,

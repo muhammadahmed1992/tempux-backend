@@ -9,7 +9,12 @@ import {
   Param,
   Post,
   Query,
+  Req,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { ProductService } from '@Product/product.service';
 import { FavoriteService } from '@Favorite/favorite.service';
@@ -23,8 +28,12 @@ import { ProductAnalyticsService } from '@ProductAnalytics/product-analytics.ser
 import { OptionalUser } from '@Auth/decorators/optional-userId.decorator';
 import { ParseProductIdPipe } from '@Pipes/parse-product-id.pipe';
 import { OrderSummaryRequestDTO } from '@DTO/order-summary-request.dto';
-import { ProductVariantService } from '@ProductVariant/product-variant.service';
 import { HeaderAuthGuard } from '@Auth/guards/auth-user-guard';
+import { AppLoggerService } from '../common/logging/logger.service';
+import { CreateProductDto } from '@DTO/product.dto';
+import { ImageType } from 'src/image-upload/constants/image-configs';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { ImageUploadDto } from '@DTO/image-upload.dto';
 
 @Controller()
 export class ProductController {
@@ -32,7 +41,7 @@ export class ProductController {
     private readonly productService: ProductService,
     private readonly favoriteService: FavoriteService,
     private readonly productAnalyticsService: ProductAnalyticsService,
-    private readonly productVariantSerice: ProductVariantService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   /**
@@ -52,7 +61,10 @@ export class ProductController {
     const pType = ProductType.Accessory === productType;
     const { page, pageSize, orderBy, where, select, customCategoryExpression } =
       query;
-    console.log(userId);
+    this.logger.info({
+      message: 'getAll listing',
+      context: { operation: 'product_list', userId },
+    });
     return this.productService.getProductListingFiltered(
       page,
       pageSize,
@@ -97,7 +109,7 @@ export class ProductController {
   /**
    *
    * @param productId This is the productId provided by the client-side.
-   * @param sku This is the variant specific information which needs to be provided by client-side
+   * @param sku This is the item specific information which needs to be provided by client-side
    * @returns Detailed Information of a product.
    */
   @Get(':id/details')
@@ -150,21 +162,57 @@ export class ProductController {
     );
   }
 
-  @Post()
+  @Post('create')
+  @UseInterceptors(FilesInterceptor('images', 10)) // Max 10 images
   @UseGuards(HeaderAuthGuard)
-  async product(@UserId() userId: bigint) {
-    await this.productService.createProduct(userId);
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  async createProduct(
+    @Body() createProductDto: CreateProductDto,
+    @UploadedFiles() imageFiles: Express.Multer.File[],
+    @UserId() userId?: bigint,
+  ) {
+    userId = userId ?? 1n;
+
+    // Parse alt texts if provided
+    let altTexts: string[] | undefined;
+    if (createProductDto.altTexts) {
+      try {
+        altTexts =
+          typeof createProductDto.altTexts === 'string'
+            ? JSON.parse(createProductDto.altTexts)
+            : createProductDto.altTexts;
+      } catch (error) {
+        throw new BadRequestException(
+          'Invalid altTexts format. Expected JSON array.',
+        );
+      }
+    }
+
+    // Create image upload DTO if images are provided
+    let imageUploadDto: ImageUploadDto | undefined;
+    if (imageFiles && imageFiles.length > 0) {
+      imageUploadDto = new ImageUploadDto();
+      // Will be set after product creation
+      imageUploadDto.imageType = createProductDto.imageType as ImageType;
+      imageUploadDto.altTexts = altTexts;
+    }
+
+    return this.productService.createProduct(
+      createProductDto,
+      userId,
+      imageFiles,
+      imageUploadDto,
+    );
   }
 
-  @Post('favorite/:id/:itemId')
+  @Post('favorite/:id')
   @UseGuards(HeaderAuthGuard)
   async favorite(
     @UserId() userId: bigint,
     @Param('id', ParseProductIdPipe) id: bigint,
-    @Param('itemId') itemId: bigint,
     @Body('flag') flag: boolean,
   ) {
-    return this.favoriteService.markProductAsFavorite(userId, id, itemId, flag);
+    return this.favoriteService.markProductAsFavorite(userId, id, flag);
   }
 
   @Post('/analytics')
@@ -172,12 +220,11 @@ export class ProductController {
   async createViewerShipAnalytics(
     @UserId() userId: bigint,
     @Body()
-    analytics: { productId: bigint; itemId: bigint },
+    analytics: { productId: bigint },
   ) {
     return this.productAnalyticsService.recordProductView(
       userId,
       analytics.productId,
-      analytics.itemId,
       userId,
     );
   }
@@ -185,7 +232,7 @@ export class ProductController {
   @Post('/order-summary')
   @UseGuards(HeaderAuthGuard)
   async fetchOrderSummary(@Body() summary: OrderSummaryRequestDTO[]) {
-    return this.productVariantSerice.getOrderSummary(summary);
+    return this.productService.getOrderSummary(summary);
   }
 
   /**

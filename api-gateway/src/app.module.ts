@@ -9,10 +9,12 @@ import { ServiceResolver } from '@Config/service.resolver';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthForwardingMiddleware } from './middleware/auth-forwarding.middleware';
+import { LoggingModule } from './common/logging';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    LoggingModule,
     JwtModule.registerAsync({
       global: true,
       imports: [ConfigModule],

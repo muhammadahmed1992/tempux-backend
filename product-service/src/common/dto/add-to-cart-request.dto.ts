@@ -5,10 +5,6 @@ export class AddToCartRequestDTO {
 
   @IsNotEmpty()
   productId!: bigint;
-
-  @IsNotEmpty()
-  itemId!: bigint;
-
   @Min(1, {
     message: `Quantity can't be 0.`,
   })
