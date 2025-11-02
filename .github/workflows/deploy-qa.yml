@@ -155,6 +155,36 @@ jobs:
             npm run build
             cd "$PROJECT_DIR"
 
+
+            echo "👉 Prisma migrate + seed for order-service"
+            cd "$PROJECT_DIR/order-service"
+
+            # Step 1: Reset the DB only if flag is true
+            if [ "${{ secrets.RESET_DB }}" = "true" ]; then
+              echo "🔁 Resetting and reseeding order-service database..."
+              DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+              npx prisma migrate reset --force --skip-seed --schema prisma/schema.prisma || exit 1
+            fi
+
+            # Step 2: Run migrate deploy (for applying migrations on existing DB)
+            DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+            npx prisma migrate deploy --schema prisma/schema.prisma || exit 1
+
+            # Step 3: Generate Prisma client
+            DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+            npx prisma generate --schema prisma/schema.prisma || exit 1
+
+            # Step 4: Seed only if RE_RUN_SEED is true
+            if [ "${{ secrets.RE_RUN_SEED }}" = "true" ]; then
+              echo "🌱 Seeding order-service database..."
+              DATABASE_URL_DEV_ORDER="${{ secrets.DATABASE_URL_DEV_ORDER }}" \
+              npx prisma db seed --schema prisma/schema.prisma || exit 1
+            fi
+
+            # Step 5: Build
+            npm run build
+            cd "$PROJECT_DIR"
+
             echo "👉
             Start/Reload PM2 processes"
             pm2 start "$ECOSYSTEM_FILE" --update-env --env production || exit 1
