@@ -80,6 +80,7 @@ jobs:
             sed -i.bak "s#INJECT_HASHIDS_SALT#${{ secrets.HASHIDS_SALT }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_ALLOWED_ORIGINS#${{ secrets.ALLOWED_ORIGINS }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_DNS#${{ secrets.DNS }}#g" "$ECOSYSTEM_FILE"
+            sed -i.bak "s#INJECT_LOG_FILE_PATH#${{ secrets.LOG_FILE_PATH }}#g" "$ECOSYSTEM_FILE"
 
             # Order Service environment variables
             sed -i.bak "s#INJECT_ORDER_SERVICE_BASE_URL#${{ secrets.ORDER_SERVICE_BASE_URL }}#g" "$ECOSYSTEM_FILE"
@@ -95,7 +96,6 @@ jobs:
             sed -i.bak "s#INJECT_FEDEX_ACCOUNT_NUMBER#${{ secrets.FEDEX_ACCOUNT_NUMBER }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_FEDEX_API_BASE_URL#${{ secrets.FEDEX_API_BASE_URL }}#g" "$ECOSYSTEM_FILE"
             sed -i.bak "s#INJECT_FEDEX_OAUTH_URL#${{ secrets.FEDEX_OAUTH_URL }}#g" "$ECOSYSTEM_FILE"
-            sed -i.bak "s#INJECT_LOG_FILE_PATH#${{ secrets.LOG_FILE_PATH }}#g" "$ECOSYSTEM_FILE"
 
             BACKUP_FILENAME="${ECOSYSTEM_FILE}.bak"
             TIMESTAMP=$(date +%Y%m%d%H%M%S)
