@@ -16,12 +16,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 20
-      - name: Set DB permissions
-        run: |
-          PGPASSWORD=abc@123 psql -h localhost:5432 -U tempux_user -d tempux_db <<'SQL'
-          ALTER SCHEMA public OWNER TO tempux_user;
-          GRANT ALL ON SCHEMA public TO tempux_user;
-          SQL
       - name: SSH Deploy to EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -29,6 +23,12 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo "👉 Fixing PostgreSQL public schema permissions..."
+            PGPASSWORD="abc@123" psql -h localhost -U tempux_user -d tempux_db -c "ALTER SCHEMA public OWNER TO tempux_user;" || true
+            PGPASSWORD="abc@123" psql -h localhost -U tempux_user -d tempux_db -c "GRANT ALL ON SCHEMA public TO tempux_user;" || true
+            PGPASSWORD="abc@123" psql -h localhost -U tempux_user -d tempux_db -c "GRANT USAGE, CREATE ON SCHEMA public TO tempux_user;" || true
+
+            echo "✅ Permissions ensured."
             PROJECT_DIR=/home/ubuntu/tempux-backend
             export CI=true
             echo "👉 Pull latest code"
