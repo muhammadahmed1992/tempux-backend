@@ -68,26 +68,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
   }
 
   async getUserRecommendations(userId?: bigint, limit = 5) {
-    // If no userId provided, directly return top products
-    if (!userId) {
-      const topProducts = await this.prisma.product.findMany({
-        where: { is_deleted: false },
-        orderBy: { created_at: 'desc' },
-        take: limit,
-        include: {
-          category: true,
-          brand: true,
-          model: true,
-          productVariants: {
-            include: {
-              currency: true,
-            },
-          },
-        },
-      });
-      return topProducts.map(this.mapProductToRecommendation);
-    }
-
     const cutoffTime = new Date();
     cutoffTime.setHours(
       cutoffTime.getHours() - StaticConfiguration.viewershipWindowHours,
@@ -106,7 +86,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
             category: true,
             currency: true,
             productImages: true,
-
           },
         },
       },
@@ -121,17 +100,15 @@ export class ProductAnalyticsRepository extends BaseRepository<
         include: {
           brand: true,
           category: true,
-          model: true,
         },
       });
 
       return topProducts.map(this.mapProductToRecommendation);
     }
 
-    // --- Count brands, categories, models, price points ---
+    // --- Count brands, categories, price points ---
     const brandCount: Record<number, number> = {};
     const categoryCount: Record<number, number> = {};
-    const modelCount: Record<number, number> = {};
     const pricePoints: number[] = [];
 
     views.forEach((v) => {
@@ -152,7 +129,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
       (a, b) => a + b,
       0,
     );
-    const totalModels = Object.values(modelCount).reduce((a, b) => a + b, 0);
 
     const avgPrice =
       pricePoints.reduce((sum, p) => sum + p, 0) / (pricePoints.length || 1);
@@ -177,7 +153,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         include: {
           brand: true,
           category: true,
-          model: true,
         },
       });
       recommendations.push(...brandMatches);
@@ -198,32 +173,9 @@ export class ProductAnalyticsRepository extends BaseRepository<
         include: {
           brand: true,
           category: true,
-          model: true,
         },
       });
       recommendations.push(...catMatches);
-    }
-
-    // --- Weighted model allocation ---
-    for (const [modelId, count] of Object.entries(modelCount)) {
-      const share = count / totalModels;
-      const take = Math.max(1, Math.floor(limit * share));
-
-      const modelMatches = await this.prisma.product.findMany({
-        where: {
-          model_id: Number(modelId),
-          id: { notIn: excludeIds },
-          is_deleted: false,
-        },
-        take: take - recommendations.length / 3,
-        include: {
-          productVariants: { include: { currency: true } },
-          brand: true,
-          category: true,
-          model: true,
-        },
-      });
-      recommendations.push(...modelMatches);
     }
 
     // --- Price fallback ---
@@ -237,7 +189,6 @@ export class ProductAnalyticsRepository extends BaseRepository<
         include: {
           brand: true,
           category: true,
-          model: true,
         },
       });
       recommendations.push(...priceMatches);
