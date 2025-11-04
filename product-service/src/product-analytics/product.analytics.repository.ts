@@ -67,7 +67,7 @@ export class ProductAnalyticsRepository extends BaseRepository<
     }));
   }
 
-  async getUserRecommendations(userId: bigint, limit = 5) {
+  async getUserRecommendations(userId?: bigint, limit = 5) {
     const cutoffTime = new Date();
     cutoffTime.setHours(
       cutoffTime.getHours() - StaticConfiguration.viewershipWindowHours,
@@ -222,7 +222,11 @@ export class ProductAnalyticsRepository extends BaseRepository<
     );
 
     return {
+      id: product.id,
       productId: product.product_public_id,
+      brand_id: product.brand_id,
+      model_id: product.model_id,
+      category_id: product.category_id,
       slug: product.product_slug,
       title: product.title,
       symb: item?.currency?.curr,
